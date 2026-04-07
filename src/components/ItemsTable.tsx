@@ -1,5 +1,5 @@
 import type { Item, Participant } from '../types'
-import { isValidAmount } from '../utils/calculate'
+import { isValidPrice } from '../utils/calculate'
 
 interface Props {
   participants: Participant[]
@@ -92,7 +92,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem }: 
         <tbody>
           {items.map((item) => {
             const blank = isLastRow(item)
-            const priceInvalid = item.price !== '' && !isValidAmount(item.price)
+            const priceInvalid = item.price !== '' && !isValidPrice(item.price)
 
             return (
               <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">

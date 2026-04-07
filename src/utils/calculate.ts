@@ -12,10 +12,10 @@ export function parseAmount(value: string, base: number): number {
   const trimmed = value.trim()
   if (!trimmed) return 0
   if (trimmed.endsWith('%')) {
-    const pct = parseFloat(trimmed.slice(0, -1))
+    const pct = Number(trimmed.slice(0, -1))
     return isNaN(pct) ? 0 : (pct / 100) * base
   }
-  const n = parseFloat(trimmed)
+  const n = Number(trimmed)
   return isNaN(n) ? 0 : n
 }
 
@@ -24,7 +24,19 @@ export function isValidAmount(value: string): boolean {
   const trimmed = value.trim()
   if (!trimmed) return true // empty is allowed (treated as 0)
   const raw = trimmed.endsWith('%') ? trimmed.slice(0, -1) : trimmed
-  return !isNaN(parseFloat(raw)) && isFinite(Number(raw))
+  const n = Number(raw)
+  return !isNaN(n) && isFinite(n)
+}
+
+/**
+ * Returns true if a string is a valid item price (non-negative plain number, no % suffix).
+ * Item prices are always dollar amounts; percentage inputs are not valid here.
+ */
+export function isValidPrice(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) return true
+  const n = Number(trimmed)
+  return !isNaN(n) && isFinite(n) && n >= 0
 }
 
 // ─── Per-person breakdown ────────────────────────────────────────────────────
