@@ -34,24 +34,22 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem }: 
   const allIds = participants.map(p => p.id)
 
   function isAssignedToAll(item: Item): boolean {
-    if (item.assignedTo.length === 0) return true
-    return allIds.every(id => item.assignedTo.includes(id))
+    if (item.assignedTo === null) return true
+    return allIds.length > 0 && allIds.every(id => item.assignedTo!.includes(id))
   }
 
   function toggleAllAssigned(item: Item) {
-    if (item.assignedTo.length === 0) {
-      // Sentinel "all" → convert to an explicit full list so individual
-      // per-person checkboxes can be unchecked independently afterward.
-      onUpdateItem({ ...item, assignedTo: [...allIds] })
-    } else {
-      // Explicit list (full or partial) → collapse back to sentinel "all".
+    if (isAssignedToAll(item)) {
+      // All assigned → deselect everyone so the user can pick individuals
       onUpdateItem({ ...item, assignedTo: [] })
+    } else {
+      // None or partial → assign all via sentinel (picks up future participant adds automatically)
+      onUpdateItem({ ...item, assignedTo: null })
     }
   }
 
   function toggleParticipant(item: Item, participantId: string) {
-    const current =
-      item.assignedTo.length === 0 ? allIds : [...item.assignedTo]
+    const current = item.assignedTo === null ? allIds : [...item.assignedTo]
     const next = current.includes(participantId)
       ? current.filter(id => id !== participantId)
       : [...current, participantId]
@@ -59,7 +57,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem }: 
   }
 
   function isParticipantAssigned(item: Item, participantId: string): boolean {
-    if (item.assignedTo.length === 0) return true
+    if (item.assignedTo === null) return true
     return item.assignedTo.includes(participantId)
   }
 
@@ -142,7 +140,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem }: 
                   const assigned = isParticipantAssigned(item, p.id)
                   const price = Number(item.price)
                   const assignedCount =
-                    item.assignedTo.length === 0
+                    item.assignedTo === null
                       ? participants.length
                       : item.assignedTo.length
                   const share =

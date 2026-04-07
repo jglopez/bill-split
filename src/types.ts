@@ -9,10 +9,11 @@ export interface Item {
   // Kept as a string so React inputs remain controlled without fighting numeric
   // parsing on every keystroke. Converted to float only when calculating.
   price: string
-  // IDs of participants who share this item. An empty array means the item is
-  // split equally among all participants; otherwise, this lists the specific
-  // participant IDs assigned to the item.
-  assignedTo: string[]
+  // IDs of participants who share this item.
+  // null  = all participants (sentinel; avoids updating every item when participants are added/removed)
+  // []    = no participants assigned
+  // [ids] = explicit subset
+  assignedTo: string[] | null
 }
 
 // Controls whether a proportional fee is calculated on the pre-tax subtotal

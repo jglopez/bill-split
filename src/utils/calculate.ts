@@ -91,7 +91,8 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     const price = Number(item.price)
     if (isNaN(price) || price <= 0) continue
     const assigned =
-      item.assignedTo.length === 0 ? participants.map(p => p.id) : item.assignedTo
+      item.assignedTo === null ? participants.map(p => p.id) : item.assignedTo
+    if (assigned.length === 0) continue // no one assigned to this item
     const share = price / assigned.length
     for (const id of assigned) {
       if (id in subtotals) subtotals[id] += share

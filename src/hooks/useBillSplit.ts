@@ -6,7 +6,7 @@ import type { BillState, Item, AdditionalFee, FeesBase, PayerMode } from '../typ
 
 const DEFAULT_STATE: BillState = {
   participants: [],
-  items: [{ id: nanoid(), name: '', price: '', assignedTo: [] }],
+  items: [{ id: nanoid(), name: '', price: '', assignedTo: null }],
   tax: '',
   tip: '',
   tipBase: 'pre-tax',
@@ -20,7 +20,7 @@ const DEFAULT_STATE: BillState = {
 
 // The shape stored in localStorage. Versioning this key lets future changes
 // to BillState be introduced without silently corrupting existing sessions.
-const STORAGE_KEY = 'bill-split:v1'
+const STORAGE_KEY = 'bill-split:v2'
 
 function loadState(): BillState {
   try {
@@ -72,7 +72,7 @@ function ensureTrailingBlankRow(state: BillState): BillState {
   if (!last || last.name !== '' || last.price !== '') {
     return {
       ...state,
-      items: [...items, { id: nanoid(), name: '', price: '', assignedTo: [] }],
+      items: [...items, { id: nanoid(), name: '', price: '', assignedTo: null }],
     }
   }
   return state
@@ -95,7 +95,7 @@ function reducer(state: BillState, action: Action): BillState {
       // Remove participant from all item assignments
       const items = state.items.map(item => ({
         ...item,
-        assignedTo: item.assignedTo.filter(id => id !== action.id),
+        assignedTo: item.assignedTo === null ? null : item.assignedTo.filter(id => id !== action.id),
       }))
       const amountPaid = { ...state.amountPaid }
       delete amountPaid[action.id]
