@@ -39,10 +39,14 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem }: 
   }
 
   function toggleAllAssigned(item: Item) {
-    onUpdateItem({
-      ...item,
-      assignedTo: isAssignedToAll(item) ? [] : [...allIds],
-    })
+    if (item.assignedTo.length === 0) {
+      // Sentinel "all" → convert to an explicit full list so individual
+      // per-person checkboxes can be unchecked independently afterward.
+      onUpdateItem({ ...item, assignedTo: [...allIds] })
+    } else {
+      // Explicit list (full or partial) → collapse back to sentinel "all".
+      onUpdateItem({ ...item, assignedTo: [] })
+    }
   }
 
   function toggleParticipant(item: Item, participantId: string) {
