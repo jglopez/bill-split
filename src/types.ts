@@ -9,8 +9,9 @@ export interface Item {
   // Kept as a string so React inputs remain controlled without fighting numeric
   // parsing on every keystroke. Converted to float only when calculating.
   price: string
-  // IDs of participants who share this item. When this equals the full set of
-  // participant IDs, the item is split equally among everyone.
+  // IDs of participants who share this item. An empty array means the item is
+  // split equally among all participants; otherwise, this lists the specific
+  // participant IDs assigned to the item.
   assignedTo: string[]
 }
 
