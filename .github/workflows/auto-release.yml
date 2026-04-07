@@ -78,8 +78,11 @@ jobs:
           VERSION_NUM="${VERSION#v}"
           jq ".version = \"$VERSION_NUM\"" package.json > package.json.tmp
           mv package.json.tmp package.json
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          # Use the github-actions[bot] identity so the commit is attributed to
+          # the bot account on GitHub (avatar, audit trail) rather than an
+          # arbitrary string. ID comes from api.github.com/users/github-actions[bot].
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add package.json
           git commit -m "chore: bump version to $VERSION_NUM"
           git push
