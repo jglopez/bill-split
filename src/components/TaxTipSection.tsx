@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { AdditionalFee, FeesBase } from '../types'
 import { isValidAmount } from '../utils/calculate'
 
@@ -74,7 +75,6 @@ export function TaxTipSection({
         <IncludeTaxToggle
           base={tipBase}
           onChange={onSetTipBase}
-          label="tip"
         />
         {tipInvalid && (
           <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -148,7 +148,6 @@ function FeeRow({
       <IncludeTaxToggle
         base={fee.base}
         onChange={b => onChange({ ...fee, base: b })}
-        label={fee.name || 'fee'}
       />
       {amountInvalid && (
         <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -205,13 +204,11 @@ function AmountInput({
 function IncludeTaxToggle({
   base,
   onChange,
-  label,
 }: {
   base: FeesBase
   onChange: (b: FeesBase) => void
-  label: string
 }) {
-  const id = `incl-tax-${label}`
+  const id = useId()
   return (
     <span className="flex items-center gap-1 text-xs text-gray-500">
       <input
