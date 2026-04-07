@@ -117,9 +117,9 @@ function FeeRow({
 
   // Detect whether the current amount is a discount (negative) so we can
   // label it clearly alongside any visual distinction.
-  const isDiscount =
-    fee.amount.trim().startsWith('-') ||
-    (parseFloat(fee.amount) < 0 && !isNaN(parseFloat(fee.amount)))
+  const trimmedAmount = fee.amount.trim()
+  const numAmount = Number(trimmedAmount.endsWith('%') ? trimmedAmount.slice(0, -1) : trimmedAmount)
+  const isDiscount = trimmedAmount.startsWith('-') || (!isNaN(numAmount) && numAmount < 0)
 
   return (
     <div className="flex items-center gap-2 text-sm flex-wrap">

@@ -6,7 +6,7 @@ Notes for AI assistants working on this codebase. Read the code, git history, an
 
 ## Non-obvious design decisions
 
-**`price` and amount fields are strings in state.** Numeric inputs fight React controlled components on every keystroke. String → float conversion happens only in `calculate.ts`, not in the hook or components.
+**`price` and amount fields are strings in state.** Numeric inputs fight React controlled components on every keystroke. String → float conversion for the authoritative per-person breakdown happens in `calculate.ts`. Components parse prices locally only for display hints (e.g. showing per-checkbox share amounts).
 
 **`assignedTo` stores participant IDs, not names.** Names change; IDs don't. Renaming a participant must not break existing item assignments.
 

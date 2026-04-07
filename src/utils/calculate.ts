@@ -88,7 +88,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   for (const p of participants) subtotals[p.id] = 0
 
   for (const item of items) {
-    const price = parseFloat(item.price)
+    const price = Number(item.price)
     if (isNaN(price) || price <= 0) continue
     const assigned =
       item.assignedTo.length === 0 ? participants.map(p => p.id) : item.assignedTo
@@ -202,7 +202,7 @@ export function calculateSettlement(
     }
   } else {
     for (const p of participants) {
-      const val = parseFloat(amountPaid[p.id] ?? '')
+      const val = Number(amountPaid[p.id] ?? '')
       paid[p.id] = isNaN(val) ? 0 : val
     }
   }

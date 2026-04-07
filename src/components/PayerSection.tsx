@@ -38,7 +38,7 @@ export function PayerSection({
   const totalPaid =
     payerMode === 'multiple'
       ? participants.reduce((sum, p) => {
-          const val = parseFloat(amountPaid[p.id] ?? '')
+          const val = Number(amountPaid[p.id] ?? '')
           return sum + (isNaN(val) ? 0 : val)
         }, 0)
       : grandTotal
@@ -90,7 +90,7 @@ export function PayerSection({
         <div className="space-y-2">
           {participants.map(p => {
             const val = amountPaid[p.id] ?? ''
-            const numVal = parseFloat(val)
+            const numVal = Number(val)
             const invalid = val !== '' && (isNaN(numVal) || numVal < 0)
             return (
               <div key={p.id} className="flex items-center gap-3 text-sm">

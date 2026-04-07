@@ -140,7 +140,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem }: 
                 {/* Per-participant column cells */}
                 {participants.map(p => {
                   const assigned = isParticipantAssigned(item, p.id)
-                  const price = parseFloat(item.price)
+                  const price = Number(item.price)
                   const assignedCount =
                     item.assignedTo.length === 0
                       ? participants.length

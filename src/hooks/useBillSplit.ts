@@ -85,7 +85,7 @@ function reducer(state: BillState, action: Action): BillState {
       return ensureTrailingBlankRow({
         ...state,
         participants: [...state.participants, { id, name: action.name }],
-        // Default the new payer to the first participant if none is set
+        // Auto-select this participant as the single payer if none is set yet
         singlePayerId: state.singlePayerId || id,
       })
     }
