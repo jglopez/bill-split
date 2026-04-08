@@ -24,6 +24,12 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          PR_HEAD_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
+          if [ "$PR_HEAD_SHA" != "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "PR #$PR_NUMBER head is $PR_HEAD_SHA, not the tested SHA ${{ github.event.workflow_run.head_sha }}; skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           ACTOR=$(gh pr view "$PR_NUMBER" --json author --jq '.author.login')
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "actor=$ACTOR" >> "$GITHUB_OUTPUT"
