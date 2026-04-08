@@ -22,6 +22,8 @@ jobs:
 
       - run: npm ci
 
+      # Block on high/critical only. Moderate vulns (e.g. dev-only build tool
+      # advisories) are surfaced via Dependabot PRs instead of breaking CI.
       - run: npm audit --audit-level=high
 
       - run: npm run typecheck
