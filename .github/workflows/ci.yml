@@ -20,6 +20,8 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
+      - run: corepack enable
+
       - run: npm ci
 
       # Block on high/critical only. Moderate vulns (e.g. dev-only build tool
