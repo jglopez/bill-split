@@ -1,5 +1,5 @@
 // Standalone test script for makeVersionedStore.
-// Run with: npx tsx src/lib/versionedStore.test.ts
+// Run with: npm test
 //
 // Tests makeVersionedStore in isolation using an in-memory localStorage mock,
 // then fuzz-tests migrateV1toBillV2 with randomized v1 payloads.
