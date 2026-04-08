@@ -5,6 +5,7 @@
 // then fuzz-tests migrateV1toBillV2 with randomized v1 payloads.
 
 import { makeVersionedStore } from './versionedStore'
+import { migrateV1toBillV2 } from './billMigrations'
 
 // ─── localStorage mock ────────────────────────────────────────────────────────
 
@@ -160,35 +161,9 @@ test('second load after save returns saved value', () => {
 
 // ─── migrateV1toBillV2 fuzz tests ─────────────────────────────────────────────
 
-// Import migration inline (duplicate logic) to test independently of the hook.
-// This mirrors the production function exactly.
-type BillStateV1Item = { id: string; name: string; price: string; assignedTo: string[] | null }
-type BillStateV2Item = { id: string; name: string; price: string; assignedTo: string[] | null }
-type V1Payload = {
-  items?: BillStateV1Item[]
-  participants?: unknown[]
-  tax?: string
-  tip?: string
-}
-type V2Payload = { items: BillStateV2Item[] }
-
-function migrateV1toBillV2(raw: unknown): V2Payload {
-  const DEFAULT_STATE = { participants: [], items: [], tax: '', tip: '' }
-  const v1 = raw as V1Payload
-  return {
-    ...DEFAULT_STATE,
-    ...v1,
-    items: (v1.items ?? []).map(item => ({
-      ...item,
-      assignedTo:
-        Array.isArray(item.assignedTo) && item.assignedTo.length === 0
-          ? null
-          : item.assignedTo,
-    })),
-  }
-}
-
 console.log('\nmigrateV1toBillV2 (fuzz)')
+
+type V1Item = { id: string; name: string; price: string; assignedTo: string[] | null }
 
 function randomId() {
   return Math.random().toString(36).slice(2, 10)
@@ -202,11 +177,11 @@ function randomAssignedTo(): string[] | null {
   return [randomId(), randomId()]   // multi-person subset
 }
 
-function randomItem(): BillStateV1Item {
+function randomItem(): V1Item {
   return { id: randomId(), name: 'item', price: String(Math.random() * 100), assignedTo: randomAssignedTo() }
 }
 
-function randomV1(itemCount: number): V1Payload {
+function randomV1(itemCount: number): { items: V1Item[]; participants: unknown[]; tax: string; tip: string } {
   return {
     items: Array.from({ length: itemCount }, randomItem),
     participants: [],
@@ -234,13 +209,13 @@ test('fuzz: non-empty arrays and null are preserved exactly (50 payloads)', () =
   for (let i = 0; i < 50; i++) {
     const itemCount = Math.floor(Math.random() * 8) + 1
     // Force only non-empty-array assignedTo values
-    const items: BillStateV1Item[] = Array.from({ length: itemCount }, () => ({
+    const items: V1Item[] = Array.from({ length: itemCount }, () => ({
       id: randomId(),
       name: 'x',
       price: '1.00',
       assignedTo: Math.random() < 0.5 ? null : [randomId()],
     }))
-    const payload: V1Payload = { items }
+    const payload = { items }
     const result = migrateV1toBillV2(payload)
 
     for (let j = 0; j < items.length; j++) {
