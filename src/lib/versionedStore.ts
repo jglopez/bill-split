@@ -42,10 +42,12 @@ export function makeVersionedStore<T>(
         try {
           const migrated = migrate(JSON.parse(raw))
           localStorage.setItem(currentKey, JSON.stringify(migrated))
-          localStorage.removeItem(oldKey)
+          // Best-effort cleanup: a removeItem failure must not suppress the
+          // migrated value that was already written to the current key.
+          try { localStorage.removeItem(oldKey) } catch { /* ignore */ }
           return migrated
         } catch {
-          // Migration failed for this key — try the next one.
+          // Migration or serialization failed — try the next entry.
         }
       }
 
