@@ -30,7 +30,13 @@ export function makeVersionedStore<T>(
 
       // Walk migrations in order (most-recent old key first).
       for (const [oldKey, migrate] of migrations) {
-        const raw = localStorage.getItem(oldKey)
+        let raw: string | null
+        try {
+          raw = localStorage.getItem(oldKey)
+        } catch {
+          // Storage blocked (e.g. SecurityError) — skip this key.
+          continue
+        }
         if (raw === null) continue
 
         try {
