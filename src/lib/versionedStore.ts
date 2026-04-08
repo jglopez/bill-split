@@ -1,0 +1,65 @@
+// ─── Versioned localStorage store ─────────────────────────────────────────────
+//
+// Each store owns one current key and an ordered list of (oldKey, migrate) pairs.
+// On load, it tries the current key first. If absent, it walks the migration
+// list, applies the first matching migration, writes the result to the current
+// key, and removes the old key — all before first render. On save it writes to
+// the current key only.
+
+type Migration<T> = (raw: unknown) => T
+
+interface VersionedStore<T> {
+  load: () => T
+  save: (value: T) => void
+}
+
+export function makeVersionedStore<T>(
+  currentKey: string,
+  migrations: [oldKey: string, migrate: Migration<T>][],
+  fallback: T,
+): VersionedStore<T> {
+  return {
+    load(): T {
+      // Try the current key first.
+      try {
+        const raw = localStorage.getItem(currentKey)
+        if (raw !== null) return JSON.parse(raw) as T
+      } catch {
+        // Corrupt JSON in the current key — fall through to migrations.
+      }
+
+      // Walk migrations in order (most-recent old key first).
+      for (const [oldKey, migrate] of migrations) {
+        let raw: string | null
+        try {
+          raw = localStorage.getItem(oldKey)
+        } catch {
+          // Storage blocked (e.g. SecurityError) — skip this key.
+          continue
+        }
+        if (raw === null) continue
+
+        try {
+          const migrated = migrate(JSON.parse(raw))
+          localStorage.setItem(currentKey, JSON.stringify(migrated))
+          // Best-effort cleanup: a removeItem failure must not suppress the
+          // migrated value that was already written to the current key.
+          try { localStorage.removeItem(oldKey) } catch { /* ignore */ }
+          return migrated
+        } catch {
+          // Migration or serialization failed — try the next entry.
+        }
+      }
+
+      return fallback
+    },
+
+    save(value: T): void {
+      try {
+        localStorage.setItem(currentKey, JSON.stringify(value))
+      } catch {
+        // Storage quota exceeded or private browsing — degrade silently.
+      }
+    },
+  }
+}
