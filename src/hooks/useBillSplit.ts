@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode } from '../types'
+import { makeVersionedStore } from '../lib/versionedStore'
 
 // ─── Default state ────────────────────────────────────────────────────────────
 
@@ -18,28 +19,34 @@ const DEFAULT_STATE: BillState = {
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 
-// The shape stored in localStorage. Versioning this key lets future changes
-// to BillState be introduced without silently corrupting existing sessions.
-const STORAGE_KEY = 'bill-split:v2'
-
-function loadState(): BillState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_STATE
-    const parsed = JSON.parse(raw) as BillState
-    // Ensure the trailing blank row always exists after a restore
-    return ensureTrailingBlankRow(parsed)
-  } catch {
-    return DEFAULT_STATE
+// v1 → v2: the "assigned to all" sentinel changed from [] to null.
+function migrateV1toBillV2(raw: unknown): BillState {
+  const v1 = raw as Omit<BillState, 'items'> & {
+    items?: Array<Omit<BillState['items'][number], 'assignedTo'> & { assignedTo: string[] | null }>
+  }
+  return {
+    ...DEFAULT_STATE,
+    ...v1,
+    items: (v1.items ?? []).map(item => ({
+      ...item,
+      assignedTo:
+        Array.isArray(item.assignedTo) && item.assignedTo.length === 0
+          ? null
+          : item.assignedTo,
+    })),
   }
 }
 
-function saveState(state: BillState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  } catch {
-    // Storage quota exceeded or private browsing — degrade silently.
-  }
+const billStore = makeVersionedStore<BillState>(
+  'bill-split:v2',
+  [['bill-split:v1', migrateV1toBillV2]],
+  DEFAULT_STATE,
+)
+
+function loadState(): BillState {
+  const state = billStore.load()
+  // Ensure the trailing blank row always exists after a restore
+  return ensureTrailingBlankRow(state)
 }
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -193,7 +200,7 @@ export function useBillSplit() {
 
   // Persist to localStorage on every state change
   useEffect(() => {
-    saveState(state)
+    billStore.save(state)
   }, [state])
 
   const addParticipant = useCallback(
