@@ -4,7 +4,7 @@
 // Tests makeVersionedStore in isolation using an in-memory localStorage mock,
 // then fuzz-tests migrateV1toBillV2 with randomized v1 payloads.
 
-import { makeVersionedStore } from './versionedStore.js'
+import { makeVersionedStore } from './versionedStore'
 
 // ─── localStorage mock ────────────────────────────────────────────────────────
 
