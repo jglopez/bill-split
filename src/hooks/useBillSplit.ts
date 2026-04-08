@@ -21,20 +21,37 @@ const DEFAULT_STATE: BillState = {
 
 // v1 → v2: the "assigned to all" sentinel changed from [] to null.
 function migrateV1toBillV2(raw: unknown): BillState {
-  const v1 = raw as Omit<BillState, 'items'> & {
-    items?: Array<Omit<BillState['items'][number], 'assignedTo'> & { assignedTo: string[] | null }>
+  if (typeof raw !== 'object' || raw === null) {
+    throw new Error('Invalid v1 bill state: expected object')
   }
-  return {
-    ...DEFAULT_STATE,
-    ...v1,
-    items: (v1.items ?? []).map(item => ({
-      ...item,
-      assignedTo:
-        Array.isArray(item.assignedTo) && item.assignedTo.length === 0
-          ? null
-          : item.assignedTo,
-    })),
+  const v1 = raw as Record<string, unknown>
+
+  const rawItems = v1['items']
+  if (rawItems !== undefined && !Array.isArray(rawItems)) {
+    throw new Error('Invalid v1 bill state: items must be an array')
   }
+  const items: BillState['items'] = (rawItems ?? []).map((item: unknown) => {
+    if (typeof item !== 'object' || item === null) {
+      throw new Error('Invalid v1 bill state: each item must be an object')
+    }
+    const { assignedTo, ...rest } = item as Record<string, unknown>
+    let normalized: string[] | null
+    if (assignedTo === null || assignedTo === undefined) {
+      normalized = null
+    } else if (!Array.isArray(assignedTo)) {
+      throw new Error('Invalid v1 bill state: item.assignedTo must be null or string[]')
+    } else if (assignedTo.length === 0) {
+      normalized = null // v1 "all" sentinel → v2 null
+    } else {
+      if (!assignedTo.every((id: unknown) => typeof id === 'string')) {
+        throw new Error('Invalid v1 bill state: item.assignedTo must contain only strings')
+      }
+      normalized = assignedTo as string[]
+    }
+    return { ...rest, assignedTo: normalized } as BillState['items'][number]
+  })
+
+  return { ...DEFAULT_STATE, ...v1, items }
 }
 
 const billStore = makeVersionedStore<BillState>(
