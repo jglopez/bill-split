@@ -24,13 +24,13 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          PR_HEAD_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
+          PR_HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq '.headRefOid')
           if [ "$PR_HEAD_SHA" != "${{ github.event.workflow_run.head_sha }}" ]; then
             echo "PR #$PR_NUMBER head is $PR_HEAD_SHA, not the tested SHA ${{ github.event.workflow_run.head_sha }}; skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          ACTOR=$(gh pr view "$PR_NUMBER" --json author --jq '.author.login')
+          ACTOR=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author --jq '.author.login')
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "actor=$ACTOR" >> "$GITHUB_OUTPUT"
         env:
@@ -38,7 +38,7 @@ jobs:
 
       - name: Merge if Dependabot PR
         if: steps.pr.outputs.skip != 'true' && steps.pr.outputs.actor == 'dependabot[bot]'
-        run: gh pr merge --squash "$PR_NUMBER"
+        run: gh pr merge --squash --repo "$GITHUB_REPOSITORY" "$PR_NUMBER"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
