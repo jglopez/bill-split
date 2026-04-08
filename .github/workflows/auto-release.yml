@@ -11,8 +11,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Skip Dependabot auto-merge commits
-    if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
         with:
