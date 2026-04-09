@@ -23,4 +23,4 @@ Notes for AI assistants working on this codebase. Read the code, git history, an
 ## Things to avoid
 
 - Don't add comments that include specific config values — they drift. Describe intent instead.
-- The `base` path in `vite.config.ts` is tied to the current deployment path (the repo name). If migrating to a custom domain or a host that serves from the root, remove it or drive it via an environment variable.
+- The `base` path in `vite.config.ts` defaults to `/bill-split/` (the GitHub Pages deployment path) but is overridable via the `BASE_PATH` env var. The Docker prod build sets `BASE_PATH=/`. Don't hardcode a different default.
