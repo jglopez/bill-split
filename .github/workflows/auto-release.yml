@@ -1,0 +1,83 @@
+name: Auto-release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get merged PR
+        id: pr
+        run: |
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR found; will create patch release from commit."
+          else
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+            LABELS=$(gh pr view "$PR_NUMBER" --json labels --jq '[.labels[].name] | join(",")')
+            echo "labels=$LABELS" >> "$GITHUB_OUTPUT"
+            TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
+            echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+            BODY=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
+            echo "body<<GHEOF" >> "$GITHUB_OUTPUT"
+            echo "$BODY" >> "$GITHUB_OUTPUT"
+            echo "GHEOF" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine bump type
+        id: bump
+        run: |
+          LABELS="${{ steps.pr.outputs.labels }}"
+          if [[ "$LABELS" == *"version:major"* ]]; then
+            echo "type=major" >> "$GITHUB_OUTPUT"
+          elif [[ "$LABELS" == *"version:minor"* ]]; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get latest tag and bump
+        id: version
+        run: |
+          LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v0.0.0"
+          fi
+          IFS='.' read -r major minor patch <<< "${LATEST#v}"
+          case "${{ steps.bump.outputs.type }}" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          echo "tag=v${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            printf '%s\n\n%s\n\nPR: #%s\n' "$TITLE" "$BODY" "$PR_NUMBER" > notes.md
+          else
+            COMMIT_MSG=$(git log -1 --format='%s' "${{ github.sha }}")
+            printf '%s\n\nCommit: %s\n' "$COMMIT_MSG" "${{ github.sha }}" > notes.md
+          fi
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          TITLE: ${{ steps.pr.outputs.title }}
+          BODY: ${{ steps.pr.outputs.body }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
