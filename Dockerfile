@@ -1,9 +1,12 @@
 # syntax=docker/dockerfile:1
 
+# Keep in sync with .nvmrc. Override at build time: --build-arg NODE_VERSION=26
+ARG NODE_VERSION=24
+
 # ── dev ──────────────────────────────────────────────────────────────────────
 # Hot-reload dev server. Intended for use with docker compose (see
 # docker-compose.yml), which mounts the source tree as a volume.
-FROM node:24-alpine AS dev
+FROM node:${NODE_VERSION}-alpine AS dev
 RUN apk upgrade --no-cache
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -14,7 +17,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host"]
 
 # ── builder ───────────────────────────────────────────────────────────────────
-FROM node:24-alpine AS builder
+FROM node:${NODE_VERSION}-alpine AS builder
 RUN apk upgrade --no-cache
 WORKDIR /app
 COPY package.json package-lock.json ./
