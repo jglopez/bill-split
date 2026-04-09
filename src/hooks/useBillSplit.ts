@@ -49,6 +49,7 @@ type Action =
   | { type: 'SET_PAYER_MODE'; mode: PayerMode }
   | { type: 'SET_SINGLE_PAYER'; id: string }
   | { type: 'SET_AMOUNT_PAID'; participantId: string; value: string }
+  | { type: 'REORDER_ITEMS'; fromIndex: number; toIndex: number }
   | { type: 'RESET' }
 
 /**
@@ -168,6 +169,13 @@ function reducer(state: BillState, action: Action): BillState {
         amountPaid: { ...state.amountPaid, [action.participantId]: action.value },
       }
 
+    case 'REORDER_ITEMS': {
+      const items = [...state.items]
+      const [moved] = items.splice(action.fromIndex, 1)
+      items.splice(action.toIndex, 0, moved)
+      return ensureTrailingBlankRow({ ...state, items })
+    }
+
     case 'RESET':
       return DEFAULT_STATE
 
@@ -235,6 +243,11 @@ export function useBillSplit() {
     [],
   )
   const reset = useCallback(() => dispatch({ type: 'RESET' }), [])
+  const reorderItems = useCallback(
+    (fromIndex: number, toIndex: number) =>
+      dispatch({ type: 'REORDER_ITEMS', fromIndex, toIndex }),
+    [],
+  )
 
   return {
     state,
@@ -243,6 +256,7 @@ export function useBillSplit() {
     renameParticipant,
     updateItem,
     removeItem,
+    reorderItems,
     setTax,
     setTip,
     setTipBase,
