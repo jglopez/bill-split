@@ -16,6 +16,7 @@ export function App() {
     renameParticipant,
     updateItem,
     removeItem,
+    reorderItems,
     setTax,
     setTip,
     setTipBase,
@@ -67,6 +68,7 @@ export function App() {
             items={state.items}
             onUpdateItem={updateItem}
             onRemoveItem={removeItem}
+            onReorderItems={reorderItems}
           />
 
           {/* Tax, tip, and additional fees */}
