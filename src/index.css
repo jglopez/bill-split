@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Prevent iOS rubber-band scrolling from exposing blank canvas on either side
+   of horizontally-scrollable tables. */
+html, body {
+  overscroll-behavior-x: none;
+}
+
 /* Prevent iOS Safari from auto-zooming on input focus.
    Safari zooms in when font-size < 16px and doesn't zoom back out. */
 @media (max-width: 639px) {
