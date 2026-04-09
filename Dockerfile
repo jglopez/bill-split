@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Keep in sync with .nvmrc. Override at build time: --build-arg NODE_VERSION=26
+# Synced automatically from .nvmrc by the sync-node-version workflow.
+# Override at build time: --build-arg NODE_VERSION=26
 ARG NODE_VERSION=24
 
 # ── dev ──────────────────────────────────────────────────────────────────────
