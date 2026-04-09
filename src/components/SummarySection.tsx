@@ -1,5 +1,6 @@
 import type { AdditionalFee, BillState, Participant } from '../types'
 import type { BillBreakdown } from '../utils/calculate'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 interface Props {
   orderedParticipants: Participant[]
@@ -16,6 +17,9 @@ interface Props {
  * useColumnOrder in App). Per-person values are looked up by participantId
  * rather than relying on parallel index ordering.
  *
+ * On narrow screens (below sm breakpoint) each participant is rendered as
+ * a stacked card instead of a column in the table.
+ *
  * This is intentionally display-only; all interactive inputs live in the
  * sections above. Rendering it separately keeps the component boundary clear
  * and makes it easy to extract into an export/print view later.
@@ -23,6 +27,7 @@ interface Props {
 export function SummarySection({ orderedParticipants, additionalFees, state, breakdown }: Props) {
   if (orderedParticipants.length === 0 || breakdown.totalSubtotal === 0) return null
 
+  const isMobile = useIsMobile()
   const perPersonMap = new Map(breakdown.perPerson.map(p => [p.participantId, p]))
 
   function perPersonValue(participantId: string, field: 'subtotal' | 'tax' | 'tip' | 'grandTotal'): number {
@@ -31,6 +36,54 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
 
   function perPersonFee(participantId: string, feeIndex: number): number {
     return perPersonMap.get(participantId)?.additionalFees[feeIndex] ?? 0
+  }
+
+  if (isMobile) {
+    return (
+      <div className="mt-4 space-y-3">
+        {orderedParticipants.map(p => {
+          const subtotal = perPersonValue(p.id, 'subtotal')
+          const tax = perPersonValue(p.id, 'tax')
+          const tip = perPersonValue(p.id, 'tip')
+          const grandTotal = perPersonValue(p.id, 'grandTotal')
+          return (
+            <div key={p.id} className="rounded-lg border border-gray-200 px-4 py-3 text-sm">
+              <div className="font-medium text-gray-800 mb-2">{p.name}</div>
+              <CardRow label="Subtotal" value={subtotal} />
+              {breakdown.totalTax !== 0 && (
+                <CardRow
+                  label={`+ Tax${state.tax ? ` (${state.tax})` : ''}`}
+                  value={tax}
+                />
+              )}
+              {breakdown.totalTip !== 0 && (
+                <CardRow
+                  label={`+ Tip${state.tip ? ` (${state.tip})` : ''}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+                  value={tip}
+                />
+              )}
+              {additionalFees.map((fee, i) => {
+                const feeAmount = perPersonFee(p.id, i)
+                if (breakdown.totalAdditionalFees[i] === 0) return null
+                const isDiscount = feeAmount < 0
+                return (
+                  <CardRow
+                    key={fee.id}
+                    label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${fee.amount ? ` (${fee.amount})` : ''}`}
+                    value={feeAmount}
+                    isDiscount={isDiscount}
+                  />
+                )
+              })}
+              <div className="flex justify-between border-t border-gray-300 mt-2 pt-2 font-semibold text-gray-800">
+                <span>Total</span>
+                <span className="tabular-nums">{fmt(grandTotal)}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
   }
 
   return (
@@ -112,7 +165,27 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
   )
 }
 
-// ─── Row ──────────────────────────────────────────────────────────────────────
+// ─── Mobile card row ──────────────────────────────────────────────────────────
+
+function CardRow({
+  label,
+  value,
+  isDiscount = false,
+}: {
+  label: string
+  value: number
+  isDiscount?: boolean
+}) {
+  const colorClass = isDiscount ? 'text-green-700' : 'text-gray-600'
+  return (
+    <div className={`flex justify-between py-0.5 text-xs ${colorClass}`}>
+      <span>{label}</span>
+      <span className="tabular-nums">{fmt(value)}</span>
+    </div>
+  )
+}
+
+// ─── Desktop table row ────────────────────────────────────────────────────────
 
 function SummaryRow({
   label,
