@@ -4,7 +4,7 @@ services:
       context: .
       target: dev
     ports:
-      - "${DEV_PORT:-5173}"
+      - "5173"
     volumes:
       # Mount source for hot reload. The named volume keeps the container's
       # node_modules isolated from the host so they don't conflict.
@@ -13,8 +13,6 @@ services:
     environment:
       - NODE_ENV=development
       - BASE_PATH=/
-      - DEV_PORT=${DEV_PORT:-5173}
-    command: npm run dev -- --port ${DEV_PORT:-5173} --strictPort
 
 volumes:
   node_modules:
