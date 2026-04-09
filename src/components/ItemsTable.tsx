@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
   closestCenter,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -18,14 +20,14 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Item, Participant } from '../types'
 import { isValidPrice } from '../utils/calculate'
 
-const COLUMN_ORDER_KEY = 'bill-split-column-order:v1'
-
 interface Props {
   participants: Participant[]
   items: Item[]
+  columnOrder: string[]
   onUpdateItem: (item: Item) => void
   onRemoveItem: (id: string) => void
   onReorderItems: (fromIndex: number, toIndex: number) => void
+  onReorderColumns: (newOrder: string[]) => void
 }
 
 /**
@@ -44,54 +46,30 @@ interface Props {
  *
  * Columns (participants) can be reordered by dragging the column header.
  * Rows (items) can be reordered by dragging the grip handle on the left.
- * Column order is a display preference stored in localStorage separately from
- * BillState. Row order updates BillState directly.
+ * Column order is managed by the parent via useColumnOrder and persisted in
+ * localStorage. Row order updates BillState directly.
  */
-export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, onReorderItems }: Props) {
+export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
   const allIds = participants.map(p => p.id)
-
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(COLUMN_ORDER_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown
-        if (Array.isArray(parsed)) {
-          const ids = parsed as string[]
-          const filtered = ids.filter(id => allIds.includes(id))
-          const added = allIds.filter(id => !ids.includes(id))
-          return [...filtered, ...added]
-        }
-      }
-    } catch {}
-    return [...allIds]
-  })
-
-  // Sync column order when participants are added or removed
-  useEffect(() => {
-    setColumnOrder(prev => {
-      const participantIds = participants.map(p => p.id)
-      const filtered = prev.filter(id => participantIds.includes(id))
-      const added = participantIds.filter(id => !prev.includes(id))
-      if (filtered.length === prev.length && added.length === 0) return prev
-      return [...filtered, ...added]
-    })
-  }, [participants])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
-    } catch {}
-  }, [columnOrder])
 
   const orderedParticipants = columnOrder
     .map(id => participants.find(p => p.id === id))
     .filter((p): p is Participant => p !== undefined)
 
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
 
+  function handleDragStart(event: DragStartEvent) {
+    if (event.active.data.current?.type === 'column') {
+      setActiveColumnId(event.active.id as string)
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveColumnId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -99,12 +77,11 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
     const overType = over.data.current?.type as string | undefined
 
     if (activeType === 'column' && overType === 'column') {
-      setColumnOrder(prev => {
-        const oldIdx = prev.indexOf(active.id as string)
-        const newIdx = prev.indexOf(over.id as string)
-        if (oldIdx === -1 || newIdx === -1) return prev
-        return arrayMove(prev, oldIdx, newIdx)
-      })
+      const oldIdx = columnOrder.indexOf(active.id as string)
+      const newIdx = columnOrder.indexOf(over.id as string)
+      if (oldIdx !== -1 && newIdx !== -1) {
+        onReorderColumns(arrayMove(columnOrder, oldIdx, newIdx))
+      }
     } else if (activeType === 'row' && overType === 'row') {
       const draggable = items.slice(0, -1) // exclude trailing blank row
       const oldIdx = draggable.findIndex(i => i.id === active.id)
@@ -155,7 +132,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
 
   return (
     <div className="mb-2 overflow-x-auto -mx-4 px-4">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <table className="w-full text-sm border-collapse min-w-[500px]">
           <thead>
             <tr className="border-b border-gray-200">
@@ -231,7 +208,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                           : 0
 
                       return (
-                        <td key={p.id} className="py-1 px-1 text-center">
+                        <td key={p.id} className="py-1 px-1 text-center" style={{ opacity: activeColumnId === p.id ? 0.4 : undefined }}>
                           {blank ? (
                             <span className="text-gray-300 text-xs">—</span>
                           ) : (
@@ -305,7 +282,60 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
             </SortableContext>
           </tbody>
         </table>
+        <DragOverlay>
+          {activeColumnId && (() => {
+            const participant = orderedParticipants.find(p => p.id === activeColumnId)
+            if (!participant) return null
+            return <ColumnDragOverlay participant={participant} items={items} participants={participants} />
+          })()}
+        </DragOverlay>
       </DndContext>
+    </div>
+  )
+}
+
+// ─── Column drag overlay ──────────────────────────────────────────────────────
+
+function ColumnDragOverlay({
+  participant,
+  items,
+  participants,
+}: {
+  participant: Participant
+  items: Item[]
+  participants: Participant[]
+}) {
+  const displayItems = items.slice(0, -1) // exclude trailing blank row
+  return (
+    <div className="bg-white shadow-xl rounded border border-gray-300 w-20 overflow-hidden">
+      <div className="text-center py-2 px-1 border-b-2 border-gray-200">
+        <span className="block text-xs leading-tight max-w-[70px] mx-auto break-words font-medium text-gray-600">
+          {participant.name}
+        </span>
+      </div>
+      {displayItems.map(item => {
+        const assigned = item.assignedTo === null || item.assignedTo.includes(participant.id)
+        const price = Number(item.price)
+        const assignedCount = item.assignedTo === null ? participants.length : item.assignedTo.length
+        const share =
+          assigned && !isNaN(price) && price > 0 && assignedCount > 0
+            ? price / assignedCount
+            : 0
+        return (
+          <div key={item.id} className="py-1 px-1 text-center border-b border-gray-100 flex flex-col items-center gap-0.5">
+            <span
+              className={`w-5 h-5 rounded flex items-center justify-center border ${
+                assigned ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 bg-white'
+              }`}
+            >
+              {assigned && <CheckIcon />}
+            </span>
+            <span className="text-xs text-gray-600 tabular-nums">
+              {share > 0 ? fmt(share) : <span className="text-gray-300">—</span>}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }

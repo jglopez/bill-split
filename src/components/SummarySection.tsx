@@ -2,7 +2,7 @@ import type { AdditionalFee, BillState, Participant } from '../types'
 import type { BillBreakdown } from '../utils/calculate'
 
 interface Props {
-  participants: Participant[]
+  orderedParticipants: Participant[]
   additionalFees: AdditionalFee[]
   state: BillState
   breakdown: BillBreakdown
@@ -12,12 +12,26 @@ interface Props {
  * Read-only summary table showing each person's share of:
  * subtotal → tax → tip → each additional fee → grand total.
  *
+ * Columns are rendered in the same order as ItemsTable (controlled by
+ * useColumnOrder in App). Per-person values are looked up by participantId
+ * rather than relying on parallel index ordering.
+ *
  * This is intentionally display-only; all interactive inputs live in the
  * sections above. Rendering it separately keeps the component boundary clear
  * and makes it easy to extract into an export/print view later.
  */
-export function SummarySection({ participants, additionalFees, state, breakdown }: Props) {
-  if (participants.length === 0 || breakdown.totalSubtotal === 0) return null
+export function SummarySection({ orderedParticipants, additionalFees, state, breakdown }: Props) {
+  if (orderedParticipants.length === 0 || breakdown.totalSubtotal === 0) return null
+
+  const perPersonMap = new Map(breakdown.perPerson.map(p => [p.participantId, p]))
+
+  function perPersonValue(participantId: string, field: 'subtotal' | 'tax' | 'tip' | 'grandTotal'): number {
+    return perPersonMap.get(participantId)?.[field] ?? 0
+  }
+
+  function perPersonFee(participantId: string, feeIndex: number): number {
+    return perPersonMap.get(participantId)?.additionalFees[feeIndex] ?? 0
+  }
 
   return (
     <div className="mt-4 overflow-x-auto -mx-4 px-4">
@@ -26,7 +40,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           <tr className="border-b-2 border-gray-200">
             <th className="text-left py-2 pr-3 font-medium text-gray-600 w-[35%]" />
             <th className="text-right py-2 px-2 font-semibold text-gray-700 w-20">Total</th>
-            {participants.map(p => (
+            {orderedParticipants.map(p => (
               <th
                 key={p.id}
                 className="text-right py-2 px-2 font-medium text-gray-600 w-20"
@@ -43,7 +57,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           <SummaryRow
             label="Subtotal"
             total={breakdown.totalSubtotal}
-            values={breakdown.perPerson.map(p => p.subtotal)}
+            values={orderedParticipants.map(p => perPersonValue(p.id, 'subtotal'))}
           />
 
           {/* Tax */}
@@ -51,7 +65,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             <SummaryRow
               label={`+ Tax ${state.tax ? `(${state.tax})` : ''}`}
               total={breakdown.totalTax}
-              values={breakdown.perPerson.map(p => p.tax)}
+              values={orderedParticipants.map(p => perPersonValue(p.id, 'tax'))}
             />
           )}
 
@@ -60,7 +74,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             <SummaryRow
               label={`+ Tip ${state.tip ? `(${state.tip})` : ''}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
               total={breakdown.totalTip}
-              values={breakdown.perPerson.map(p => p.tip)}
+              values={orderedParticipants.map(p => perPersonValue(p.id, 'tip'))}
             />
           )}
 
@@ -74,7 +88,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
                 key={fee.id}
                 label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')} ${fee.amount ? `(${fee.amount})` : ''}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
                 total={total}
-                values={breakdown.perPerson.map(p => p.additionalFees[i])}
+                values={orderedParticipants.map(p => perPersonFee(p.id, i))}
                 isDiscount={isDiscount}
               />
             )
@@ -86,9 +100,9 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             <td className="py-2 px-2 text-right text-gray-800 tabular-nums">
               {fmt(breakdown.totalGrandTotal)}
             </td>
-            {breakdown.perPerson.map(p => (
-              <td key={p.participantId} className="py-2 px-2 text-right text-gray-800 tabular-nums">
-                {fmt(p.grandTotal)}
+            {orderedParticipants.map(p => (
+              <td key={p.id} className="py-2 px-2 text-right text-gray-800 tabular-nums">
+                {fmt(perPersonValue(p.id, 'grandTotal'))}
               </td>
             ))}
           </tr>
