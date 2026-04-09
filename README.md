@@ -19,9 +19,8 @@ An itemized bill-splitting tool. Add participants, enter line items, assign them
 
 ## Running locally
 
-Requires Node 24 (or use `nvm use` with the `.nvmrc` in this repo).
-
 ```bash
+nvm use   # picks up the version from .nvmrc
 npm install
 npm run dev
 ```
