@@ -5,9 +5,11 @@ import { useState, useEffect } from 'react'
  * (640px). Updates reactively on window resize.
  */
 export function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
+  const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const handler = () => setIsMobile(window.innerWidth < 640)
+    handler()
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
