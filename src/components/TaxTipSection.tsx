@@ -204,10 +204,10 @@ function AmountInput({
   const numeric = isPercent ? trimmed.slice(0, -1) : trimmed
 
   function handleInputChange(raw: string) {
-    // Support desktop users who type "%" directly — strip it from the input
-    // and encode it as the percent flag instead.
+    // "%" typed directly acts as a toggle: turns percent mode on if off,
+    // off if already on. This mirrors the behavior of the % button.
     if (raw.endsWith('%')) {
-      onChange(raw.slice(0, -1) + '%')
+      onChange(raw.slice(0, -1) + (isPercent ? '' : '%'))
     } else {
       onChange(raw + (isPercent ? '%' : ''))
     }
