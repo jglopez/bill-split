@@ -1,7 +1,8 @@
 {
   "name": "bill-split",
   "private": true,
-  "version": "1.1.11",
+  "version": "0.0.0",
+  "_versionNote": "not auto-managed; update manually before a release",
   "type": "module",
   "scripts": {
     "dev": "vite",
