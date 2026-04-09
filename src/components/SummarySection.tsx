@@ -69,7 +69,7 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
                 return (
                   <CardRow
                     key={fee.id}
-                    label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${fee.amount ? ` (${fee.amount})` : ''}`}
+                    label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${fee.amount ? ` (${fee.amount})` : ''}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
                     value={feeAmount}
                     isDiscount={isDiscount}
                   />
