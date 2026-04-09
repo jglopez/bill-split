@@ -19,6 +19,8 @@ An itemized bill-splitting tool. Add participants, enter line items, assign them
 
 ## Running locally
 
+Requires Node 24 (or use `nvm use` with the `.nvmrc` in this repo).
+
 ```bash
 npm install
 npm run dev
@@ -32,6 +34,23 @@ Other scripts:
 npm run build      # production build → dist/
 npm run preview    # preview the production build locally
 npm run typecheck  # run TypeScript without emitting files
+```
+
+### Docker
+
+**Dev** (hot reload, source mounted as a volume):
+
+```bash
+docker compose up
+# → http://localhost:5173
+```
+
+**Prod** (static build served by nginx):
+
+```bash
+docker build --target prod -t bill-split .
+docker run -p 8080:80 bill-split
+# → http://localhost:8080
 ```
 
 ---
