@@ -8,5 +8,8 @@ export default defineConfig({
   base: process.env.BASE_PATH ?? '/bill-split/',
   server: {
     allowedHosts: ['.orb.local'],
+    watch: {
+      usePolling: true,
+    },
   },
 })
