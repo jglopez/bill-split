@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
   closestCenter,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -53,11 +56,20 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
     .map(id => participants.find(p => p.id === id))
     .filter((p): p is Participant => p !== undefined)
 
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
 
+  function handleDragStart(event: DragStartEvent) {
+    if (event.active.data.current?.type === 'column') {
+      setActiveColumnId(event.active.id as string)
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveColumnId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -120,7 +132,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
 
   return (
     <div className="mb-2 overflow-x-auto -mx-4 px-4">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <table className="w-full text-sm border-collapse min-w-[500px]">
           <thead>
             <tr className="border-b border-gray-200">
@@ -196,7 +208,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                           : 0
 
                       return (
-                        <td key={p.id} className="py-1 px-1 text-center">
+                        <td key={p.id} className="py-1 px-1 text-center" style={{ opacity: activeColumnId === p.id ? 0.4 : undefined }}>
                           {blank ? (
                             <span className="text-gray-300 text-xs">—</span>
                           ) : (
@@ -270,7 +282,60 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
             </SortableContext>
           </tbody>
         </table>
+        <DragOverlay>
+          {activeColumnId && (() => {
+            const participant = orderedParticipants.find(p => p.id === activeColumnId)
+            if (!participant) return null
+            return <ColumnDragOverlay participant={participant} items={items} participants={participants} />
+          })()}
+        </DragOverlay>
       </DndContext>
+    </div>
+  )
+}
+
+// ─── Column drag overlay ──────────────────────────────────────────────────────
+
+function ColumnDragOverlay({
+  participant,
+  items,
+  participants,
+}: {
+  participant: Participant
+  items: Item[]
+  participants: Participant[]
+}) {
+  const displayItems = items.slice(0, -1) // exclude trailing blank row
+  return (
+    <div className="bg-white shadow-xl rounded border border-gray-300 w-20 overflow-hidden">
+      <div className="text-center py-2 px-1 border-b-2 border-gray-200">
+        <span className="block text-xs leading-tight max-w-[70px] mx-auto break-words font-medium text-gray-600">
+          {participant.name}
+        </span>
+      </div>
+      {displayItems.map(item => {
+        const assigned = item.assignedTo === null || item.assignedTo.includes(participant.id)
+        const price = Number(item.price)
+        const assignedCount = item.assignedTo === null ? participants.length : item.assignedTo.length
+        const share =
+          assigned && !isNaN(price) && price > 0 && assignedCount > 0
+            ? price / assignedCount
+            : 0
+        return (
+          <div key={item.id} className="py-1 px-1 text-center border-b border-gray-100 flex flex-col items-center gap-0.5">
+            <span
+              className={`w-5 h-5 rounded flex items-center justify-center border ${
+                assigned ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 bg-white'
+              }`}
+            >
+              {assigned && <CheckIcon />}
+            </span>
+            <span className="text-xs text-gray-600 tabular-nums">
+              {share > 0 ? fmt(share) : <span className="text-gray-300">—</span>}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
