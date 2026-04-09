@@ -75,6 +75,7 @@ export function TaxTipSection({
         <IncludeTaxToggle
           base={tipBase}
           onChange={onSetTipBase}
+          disabled={!tip.trim().endsWith('%')}
         />
         {tipInvalid && (
           <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -167,6 +168,7 @@ function FeeRow({
       <IncludeTaxToggle
         base={fee.base}
         onChange={b => onChange({ ...fee, base: b })}
+        disabled={!fee.amount.trim().endsWith('%')}
       />
       {amountInvalid && (
         <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -257,11 +259,18 @@ function AmountInput({
 function IncludeTaxToggle({
   base,
   onChange,
+  disabled = false,
 }: {
   base: FeesBase
   onChange: (b: FeesBase) => void
+  disabled?: boolean
 }) {
   const id = useId()
+
+  if (disabled) {
+    return <Tooltip text="Switch to % to calculate this on the pre- or post-tax subtotal." />
+  }
+
   return (
     <span className="flex items-center gap-1 text-xs text-gray-500">
       <input
