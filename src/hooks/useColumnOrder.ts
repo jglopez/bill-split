@@ -21,7 +21,9 @@ export function useColumnOrder(participants: Participant[]): {
       if (stored) {
         const parsed = JSON.parse(stored) as unknown
         if (Array.isArray(parsed)) {
-          const ids = parsed as string[]
+          // Deduplicate before filtering so corrupt/duplicate localStorage data
+          // can't produce duplicate columns.
+          const ids = [...new Set(parsed as string[])]
           const filtered = ids.filter(id => allIds.includes(id))
           const added = allIds.filter(id => !ids.includes(id))
           return [...filtered, ...added]
@@ -49,8 +51,9 @@ export function useColumnOrder(participants: Participant[]): {
     } catch {}
   }, [columnOrder])
 
+  const participantMap = new Map(participants.map(p => [p.id, p]))
   const orderedParticipants = columnOrder
-    .map(id => participants.find(p => p.id === id))
+    .map(id => participantMap.get(id))
     .filter((p): p is Participant => p !== undefined)
 
   return { columnOrder, setColumnOrder, orderedParticipants }
