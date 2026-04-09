@@ -23,12 +23,14 @@ interface Props {
 export function SummarySection({ orderedParticipants, additionalFees, state, breakdown }: Props) {
   if (orderedParticipants.length === 0 || breakdown.totalSubtotal === 0) return null
 
+  const perPersonMap = new Map(breakdown.perPerson.map(p => [p.participantId, p]))
+
   function perPersonValue(participantId: string, field: 'subtotal' | 'tax' | 'tip' | 'grandTotal'): number {
-    return breakdown.perPerson.find(p => p.participantId === participantId)?.[field] ?? 0
+    return perPersonMap.get(participantId)?.[field] ?? 0
   }
 
   function perPersonFee(participantId: string, feeIndex: number): number {
-    return breakdown.perPerson.find(p => p.participantId === participantId)?.additionalFees[feeIndex] ?? 0
+    return perPersonMap.get(participantId)?.additionalFees[feeIndex] ?? 0
   }
 
   return (
