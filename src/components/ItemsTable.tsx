@@ -6,6 +6,7 @@ import {
   useSensor,
   useSensors,
   closestCenter,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
@@ -61,6 +62,18 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
+
+  const collisionDetection: CollisionDetection = (args) => {
+    if (activeColumnId !== null) {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(
+          c => c.data.current?.type === 'column',
+        ),
+      })
+    }
+    return closestCenter(args)
+  }
 
   function handleDragStart(event: DragStartEvent) {
     if (event.active.data.current?.type === 'column') {
@@ -132,7 +145,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
 
   return (
     <div className="mb-2 overflow-x-auto -mx-4 px-4">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <table className="w-full text-sm border-collapse min-w-[500px]">
           <thead>
             <tr className="border-b border-gray-200">
