@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* Prevent iOS Safari from auto-zooming on input focus.
+   Safari zooms in when font-size < 16px and doesn't zoom back out. */
+@media (max-width: 639px) {
+  input[type="text"],
+  input[type="number"] {
+    font-size: 16px;
+  }
+}
