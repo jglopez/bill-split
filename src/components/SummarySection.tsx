@@ -34,7 +34,7 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
   }
 
   return (
-    <div className="mt-4 overflow-x-auto -mx-4 px-4">
+    <div className="mt-4 overflow-x-auto overscroll-x-none -mx-4 px-4">
       <table className="w-full text-sm border-collapse min-w-[400px]">
         <thead>
           <tr className="border-b-2 border-gray-200">

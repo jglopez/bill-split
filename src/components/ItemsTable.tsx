@@ -144,7 +144,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
   const isLastRow = (item: Item) => item === items[items.length - 1]
 
   return (
-    <div className="mb-2 overflow-x-auto -mx-4 px-4">
+    <div className="mb-2 overflow-x-auto overscroll-x-none -mx-4 px-4">
       <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <table className="w-full text-sm border-collapse min-w-[500px]">
           <thead>
