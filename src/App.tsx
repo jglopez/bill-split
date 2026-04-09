@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useBillSplit } from './hooks/useBillSplit'
 import { useColumnOrder } from './hooks/useColumnOrder'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
@@ -8,6 +8,7 @@ import { TaxTipSection } from './components/TaxTipSection'
 import { SummarySection } from './components/SummarySection'
 import { PayerSection } from './components/PayerSection'
 import { SettlementSection } from './components/SettlementSection'
+import { ConfirmModal } from './components/ConfirmModal'
 
 export function App() {
   const {
@@ -31,6 +32,7 @@ export function App() {
   } = useBillSplit()
 
   const { columnOrder, setColumnOrder, orderedParticipants } = useColumnOrder(state.participants)
+  const [showResetModal, setShowResetModal] = useState(false)
 
   // Recalculate on every render. The calculation is fast enough that memoizing
   // by individual field is not necessary, but useMemo avoids recomputing when
@@ -48,7 +50,7 @@ export function App() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Bill Split</h1>
           <button
-            onClick={reset}
+            onClick={() => setShowResetModal(true)}
             aria-label="Reset all fields and start over"
             className="text-sm text-gray-400 hover:text-red-500 focus:outline-none focus:text-red-500 transition-colors px-3 py-1.5 rounded border border-transparent hover:border-red-200 focus:border-red-200 min-h-[44px]"
           >
@@ -119,6 +121,15 @@ export function App() {
           />
         </div>
       </div>
+      {showResetModal && (
+        <ConfirmModal
+          title="Reset everything?"
+          message="This will clear all participants, items, and settings. It can't be undone."
+          confirmLabel="Reset"
+          onConfirm={() => { reset(); setShowResetModal(false) }}
+          onCancel={() => setShowResetModal(false)}
+        />
+      )}
     </div>
   )
 }
