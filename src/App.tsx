@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useBillSplit } from './hooks/useBillSplit'
+import { useColumnOrder } from './hooks/useColumnOrder'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
 import { ParticipantSection } from './components/ParticipantSection'
 import { ItemsTable } from './components/ItemsTable'
@@ -28,6 +29,8 @@ export function App() {
     setAmountPaid,
     reset,
   } = useBillSplit()
+
+  const { columnOrder, setColumnOrder, orderedParticipants } = useColumnOrder(state.participants)
 
   // Recalculate on every render. The calculation is fast enough that memoizing
   // by individual field is not necessary, but useMemo avoids recomputing when
@@ -66,9 +69,11 @@ export function App() {
           <ItemsTable
             participants={state.participants}
             items={state.items}
+            columnOrder={columnOrder}
             onUpdateItem={updateItem}
             onRemoveItem={removeItem}
             onReorderItems={reorderItems}
+            onReorderColumns={setColumnOrder}
           />
 
           {/* Tax, tip, and additional fees */}
@@ -91,7 +96,7 @@ export function App() {
 
           {/* Summary table */}
           <SummarySection
-            participants={state.participants}
+            orderedParticipants={orderedParticipants}
             additionalFees={state.additionalFees}
             state={state}
             breakdown={breakdown}

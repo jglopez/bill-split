@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -18,14 +17,14 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Item, Participant } from '../types'
 import { isValidPrice } from '../utils/calculate'
 
-const COLUMN_ORDER_KEY = 'bill-split-column-order:v1'
-
 interface Props {
   participants: Participant[]
   items: Item[]
+  columnOrder: string[]
   onUpdateItem: (item: Item) => void
   onRemoveItem: (id: string) => void
   onReorderItems: (fromIndex: number, toIndex: number) => void
+  onReorderColumns: (newOrder: string[]) => void
 }
 
 /**
@@ -44,44 +43,11 @@ interface Props {
  *
  * Columns (participants) can be reordered by dragging the column header.
  * Rows (items) can be reordered by dragging the grip handle on the left.
- * Column order is a display preference stored in localStorage separately from
- * BillState. Row order updates BillState directly.
+ * Column order is managed by the parent via useColumnOrder and persisted in
+ * localStorage. Row order updates BillState directly.
  */
-export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, onReorderItems }: Props) {
+export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
   const allIds = participants.map(p => p.id)
-
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(COLUMN_ORDER_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown
-        if (Array.isArray(parsed)) {
-          const ids = parsed as string[]
-          const filtered = ids.filter(id => allIds.includes(id))
-          const added = allIds.filter(id => !ids.includes(id))
-          return [...filtered, ...added]
-        }
-      }
-    } catch {}
-    return [...allIds]
-  })
-
-  // Sync column order when participants are added or removed
-  useEffect(() => {
-    setColumnOrder(prev => {
-      const participantIds = participants.map(p => p.id)
-      const filtered = prev.filter(id => participantIds.includes(id))
-      const added = participantIds.filter(id => !prev.includes(id))
-      if (filtered.length === prev.length && added.length === 0) return prev
-      return [...filtered, ...added]
-    })
-  }, [participants])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
-    } catch {}
-  }, [columnOrder])
 
   const orderedParticipants = columnOrder
     .map(id => participants.find(p => p.id === id))
@@ -99,12 +65,11 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
     const overType = over.data.current?.type as string | undefined
 
     if (activeType === 'column' && overType === 'column') {
-      setColumnOrder(prev => {
-        const oldIdx = prev.indexOf(active.id as string)
-        const newIdx = prev.indexOf(over.id as string)
-        if (oldIdx === -1 || newIdx === -1) return prev
-        return arrayMove(prev, oldIdx, newIdx)
-      })
+      const oldIdx = columnOrder.indexOf(active.id as string)
+      const newIdx = columnOrder.indexOf(over.id as string)
+      if (oldIdx !== -1 && newIdx !== -1) {
+        onReorderColumns(arrayMove(columnOrder, oldIdx, newIdx))
+      }
     } else if (activeType === 'row' && overType === 'row') {
       const draggable = items.slice(0, -1) // exclude trailing blank row
       const oldIdx = draggable.findIndex(i => i.id === active.id)
