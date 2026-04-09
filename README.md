@@ -41,7 +41,7 @@ npm run typecheck  # run TypeScript without emitting files
 
 ```bash
 docker compose up
-# → http://localhost:5173
+# → check `docker compose ps` for the assigned host port
 ```
 
 **Prod** (static build served by nginx):
