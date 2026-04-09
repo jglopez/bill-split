@@ -26,9 +26,9 @@ interface Props {
  * just reduces each person's share instead of increasing it.
  *
  * Amount fields accept either a plain dollar amount ("15.00") or a percentage
- * ("18%"). The "%" suffix is detected on input so users don't need a separate
- * toggle. These fields use inputMode="text" (not "decimal") to allow the "%"
- * character on mobile keyboards.
+ * ("18%"). The "%" state is controlled by a toggle button next to the input,
+ * so the input itself uses inputMode="decimal" for a numeric keypad on mobile.
+ * Typing "%" directly in the input is also supported for desktop users.
  */
 export function TaxTipSection({
   tax,
@@ -54,7 +54,7 @@ export function TaxTipSection({
           value={tax}
           onChange={onSetTax}
           invalid={taxInvalid}
-          placeholder="e.g. 10%"
+          placeholder="e.g. 10"
           label="Tax amount"
         />
         {taxInvalid && (
@@ -69,7 +69,7 @@ export function TaxTipSection({
           value={tip}
           onChange={onSetTip}
           invalid={tipInvalid}
-          placeholder="e.g. 20%"
+          placeholder="e.g. 20"
           label="Tip amount"
         />
         <IncludeTaxToggle
@@ -121,6 +121,12 @@ function FeeRow({
   const numAmount = Number(trimmedAmount.endsWith('%') ? trimmedAmount.slice(0, -1) : trimmedAmount)
   const isDiscount = trimmedAmount.startsWith('-') || (!isNaN(numAmount) && numAmount < 0)
 
+  function toggleSign() {
+    const t = fee.amount.trim()
+    const next = t.startsWith('-') ? t.slice(1) : '-' + t
+    onChange({ ...fee, amount: next })
+  }
+
   return (
     <div className="flex items-center gap-2 text-sm flex-wrap">
       <span className="w-24 text-gray-600 shrink-0">
@@ -142,9 +148,22 @@ function FeeRow({
         value={fee.amount}
         onChange={v => onChange({ ...fee, amount: v })}
         invalid={amountInvalid}
-        placeholder="e.g. 5% or -5%"
+        placeholder="e.g. 5"
         label={`${fee.name || 'fee'} amount`}
       />
+      <button
+        type="button"
+        onClick={toggleSign}
+        aria-label={isDiscount ? 'Switch to positive fee' : 'Switch to discount'}
+        aria-pressed={isDiscount}
+        className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${
+          isDiscount
+            ? 'border-green-500 text-green-700 bg-green-50'
+            : 'border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-500'
+        }`}
+      >
+        {isDiscount ? '−' : '+/−'}
+      </button>
       <IncludeTaxToggle
         base={fee.base}
         onChange={b => onChange({ ...fee, base: b })}
@@ -178,22 +197,56 @@ function AmountInput({
   placeholder: string
   label: string
 }) {
+  // Parse into numeric portion and percent flag.
+  // A trailing "%" in the stored value means percent mode is on.
+  const trimmed = value.trim()
+  const isPercent = trimmed.endsWith('%')
+  const numeric = isPercent ? trimmed.slice(0, -1) : trimmed
+
+  function handleInputChange(raw: string) {
+    // Support desktop users who type "%" directly — strip it from the input
+    // and encode it as the percent flag instead.
+    if (raw.endsWith('%')) {
+      onChange(raw.slice(0, -1) + '%')
+    } else {
+      onChange(raw + (isPercent ? '%' : ''))
+    }
+  }
+
+  function handleTogglePercent() {
+    onChange(isPercent ? numeric : numeric + '%')
+  }
+
   return (
-    <input
-      type="text"
-      // "text" instead of "decimal" so the % character is available on mobile
-      inputMode="text"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      aria-label={label}
-      aria-invalid={invalid}
-      className={`border-b border-dashed focus:outline-none bg-transparent py-0.5 w-24 tabular-nums ${
-        invalid
-          ? 'border-red-400 text-red-600'
-          : 'border-gray-300 focus:border-gray-500 text-gray-800'
-      } placeholder-gray-300`}
-    />
+    <span className="inline-flex items-center gap-1">
+      <input
+        type="text"
+        inputMode="decimal"
+        value={numeric}
+        onChange={e => handleInputChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={label}
+        aria-invalid={invalid}
+        className={`border-b border-dashed focus:outline-none bg-transparent py-0.5 w-20 tabular-nums ${
+          invalid
+            ? 'border-red-400 text-red-600'
+            : 'border-gray-300 focus:border-gray-500 text-gray-800'
+        } placeholder-gray-300`}
+      />
+      <button
+        type="button"
+        onClick={handleTogglePercent}
+        aria-label={isPercent ? 'Switch to dollar amount' : 'Switch to percentage'}
+        aria-pressed={isPercent}
+        className={`text-xs px-1 py-0.5 rounded border transition-colors ${
+          isPercent
+            ? 'border-teal-500 text-teal-600 bg-teal-50'
+            : 'border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-500'
+        }`}
+      >
+        %
+      </button>
+    </span>
   )
 }
 
