@@ -1,0 +1,17 @@
+services:
+  dev:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount source for hot reload. The named volume keeps the container's
+      # node_modules isolated from the host so they don't conflict.
+      - .:/app
+      - node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+
+volumes:
+  node_modules:
