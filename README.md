@@ -48,7 +48,7 @@ docker compose up
 
 ```bash
 docker build --target prod -t bill-split .
-docker run -p 8080:80 bill-split
+docker run -p 8080:8080 bill-split
 # → http://localhost:8080
 ```
 

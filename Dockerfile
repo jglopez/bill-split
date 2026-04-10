@@ -1,14 +1,9 @@
 # syntax=docker/dockerfile:1
 
-# Synced automatically from .nvmrc by the sync-node-version workflow.
-# Override at build time: --build-arg NODE_VERSION=26
-ARG NODE_VERSION=24
-
 # ── dev ──────────────────────────────────────────────────────────────────────
 # Hot-reload dev server. Intended for use with docker compose (see
 # docker-compose.yml), which mounts the source tree as a volume.
-FROM node:${NODE_VERSION}-alpine AS dev
-RUN apk upgrade --no-cache
+FROM cgr.dev/chainguard/node:latest-dev AS dev
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -18,8 +13,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host"]
 
 # ── builder ───────────────────────────────────────────────────────────────────
-FROM node:${NODE_VERSION}-alpine AS builder
-RUN apk upgrade --no-cache
+FROM cgr.dev/chainguard/node:latest-dev AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -30,8 +24,8 @@ RUN npm run build
 
 # ── prod ──────────────────────────────────────────────────────────────────────
 # Minimal nginx image that serves the static build output.
-FROM nginx:alpine AS prod
-RUN apk upgrade --no-cache
+# Chainguard nginx runs as non-root, so port 8080 is used instead of 80.
+FROM cgr.dev/chainguard/nginx:latest AS prod
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 8080
