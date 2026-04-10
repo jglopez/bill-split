@@ -9,7 +9,10 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 EXPOSE 5173
+# Chainguard node sets ENTRYPOINT ["node"]; clear it so this exec-form CMD runs `npm`
+# directly instead of having `npm` treated as a Node script/module.
 # --host binds Vite to 0.0.0.0 so the port is reachable from outside the container.
+ENTRYPOINT []
 CMD ["npm", "run", "dev", "--", "--host"]
 
 # ── builder ───────────────────────────────────────────────────────────────────
