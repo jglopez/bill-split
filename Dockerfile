@@ -30,5 +30,5 @@ RUN npm run build
 # Chainguard nginx runs as non-root, so port 8080 is used instead of 80.
 FROM cgr.dev/chainguard/nginx:latest AS prod
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/nginx.default.conf
 EXPOSE 8080
