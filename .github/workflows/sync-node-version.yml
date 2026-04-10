@@ -1,0 +1,45 @@
+name: Sync Node version
+
+on:
+  schedule:
+    # Runs weekly on Monday at midnight UTC. Chainguard's latest-dev
+    # tracks the current Node.js release; this keeps .nvmrc (and CI)
+    # aligned with whatever version is in the image.
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get Node major version from Chainguard latest-dev
+        id: node-version
+        run: |
+          VERSION=$(docker run --rm --entrypoint node cgr.dev/chainguard/node:latest-dev --version \
+            | sed 's/^v//' | cut -d. -f1)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Update .nvmrc
+        run: |
+          CURRENT=$(tr -d '[:space:]' < .nvmrc)
+          NEW="${{ steps.node-version.outputs.version }}"
+
+          if [ "$CURRENT" = "$NEW" ]; then
+            echo ".nvmrc already up to date (${CURRENT}); nothing to commit."
+            exit 0
+          fi
+
+          echo "$NEW" > .nvmrc
+
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .nvmrc
+          git commit -m "chore: sync .nvmrc to Chainguard node latest-dev (${NEW})"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
