@@ -109,8 +109,9 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   const totalSubtotal = Object.values(subtotals).reduce((a, b) => a + b, 0)
   const taxableTotal = Object.values(taxableSubtotals).reduce((a, b) => a + b, 0)
 
-  // Tax: on taxable items only
-  const taxTotal = parseAmount(tax, taxableTotal)
+  // Tax: on taxable items only. When nothing is taxable the tax is $0 regardless
+  // of whether a flat or percentage amount was entered.
+  const taxTotal = taxableTotal === 0 ? 0 : parseAmount(tax, taxableTotal)
   const taxShares = distributeProportionally(
     taxTotal,
     participants.map(p => taxableSubtotals[p.id]),
