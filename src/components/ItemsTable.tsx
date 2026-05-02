@@ -159,6 +159,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                 ))}
               </SortableContext>
               <th className="text-center py-2 px-2 font-medium text-gray-400 text-xs w-12">all</th>
+              <th className="text-center py-2 px-2 font-medium text-gray-400 text-xs w-12">tax</th>
               <th className="w-8" />
             </tr>
           </thead>
@@ -272,6 +273,31 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                             }`}
                           >
                             {isAssignedToAll(item) && <CheckIcon />}
+                          </span>
+                        </label>
+                      )}
+                    </td>
+
+                    {/* Taxable toggle */}
+                    <td className="py-1 px-2 text-center">
+                      {blank ? null : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={item.taxable !== false}
+                            onChange={() => onUpdateItem({ ...item, taxable: item.taxable === false ? undefined : false })}
+                            aria-label={`"${item.name || 'item'}" is taxable`}
+                            className="sr-only"
+                          />
+                          <span
+                            aria-hidden="true"
+                            className={`inline-flex w-5 h-5 rounded items-center justify-center border transition-colors ${
+                              item.taxable !== false
+                                ? 'bg-teal-600 border-teal-600 text-white'
+                                : 'border-gray-300 bg-white'
+                            }`}
+                          >
+                            {item.taxable !== false && <CheckIcon />}
                           </span>
                         </label>
                       )}
