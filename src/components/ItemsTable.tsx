@@ -214,7 +214,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                         <button
                           role="switch"
                           aria-checked={item.taxable !== false}
-                          aria-label={`"${item.name || 'item'}" is taxable`}
+                          aria-label={`Taxable: "${item.name || 'item'}"`}
                           onClick={() => onUpdateItem({ ...item, taxable: item.taxable === false ? undefined : false })}
                           className={`relative inline-flex h-4 w-7 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-1 ${
                             item.taxable !== false ? 'bg-teal-600' : 'bg-gray-300'
