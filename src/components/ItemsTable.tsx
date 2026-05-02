@@ -153,6 +153,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
               <th className="w-6" />
               <th className="text-left py-2 pr-3 font-medium text-gray-600 w-[35%]">Item</th>
               <th className="text-right py-2 px-2 font-medium text-gray-600 w-20">$</th>
+              <th className="text-center py-2 px-2 font-medium text-gray-400 text-xs w-14">taxable</th>
               <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
                 {orderedParticipants.map(p => (
                   <SortableColumnHeader key={p.id} participant={p} />
@@ -205,6 +206,28 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                           </span>
                         )}
                       </div>
+                    </td>
+
+                    {/* Taxable toggle switch */}
+                    <td className="py-1 px-2 text-center">
+                      {blank ? null : (
+                        <button
+                          role="switch"
+                          aria-checked={item.taxable !== false}
+                          aria-label={`Taxable: "${item.name || 'item'}"`}
+                          onClick={() => onUpdateItem({ ...item, taxable: item.taxable === false ? undefined : false })}
+                          className={`relative inline-flex h-4 w-7 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-1 ${
+                            item.taxable !== false ? 'bg-teal-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                              item.taxable !== false ? 'translate-x-3' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      )}
                     </td>
 
                     {/* Per-participant column cells — rendered in column display order */}

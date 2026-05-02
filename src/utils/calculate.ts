@@ -83,9 +83,13 @@ function distributeProportionally(
 export function calculateBreakdown(state: BillState): BillBreakdown {
   const { participants, items, tax, tip, tipBase, additionalFees } = state
 
-  // Per-person item subtotals
+  // Per-person item subtotals (all items) and taxable-only subtotals
   const subtotals: Record<string, number> = {}
-  for (const p of participants) subtotals[p.id] = 0
+  const taxableSubtotals: Record<string, number> = {}
+  for (const p of participants) {
+    subtotals[p.id] = 0
+    taxableSubtotals[p.id] = 0
+  }
 
   for (const item of items) {
     const price = Number(item.price)
@@ -95,18 +99,23 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     if (assigned.length === 0) continue // no one assigned to this item
     const share = price / assigned.length
     for (const id of assigned) {
-      if (id in subtotals) subtotals[id] += share
+      if (id in subtotals) {
+        subtotals[id] += share
+        if (item.taxable !== false) taxableSubtotals[id] += share
+      }
     }
   }
 
   const totalSubtotal = Object.values(subtotals).reduce((a, b) => a + b, 0)
+  const taxableTotal = Object.values(taxableSubtotals).reduce((a, b) => a + b, 0)
 
-  // Tax: always on item subtotal
-  const taxTotal = parseAmount(tax, totalSubtotal)
+  // Tax: on taxable items only. When nothing is taxable the tax is $0 regardless
+  // of whether a flat or percentage amount was entered.
+  const taxTotal = taxableTotal === 0 ? 0 : parseAmount(tax, taxableTotal)
   const taxShares = distributeProportionally(
     taxTotal,
-    participants.map(p => subtotals[p.id]),
-    totalSubtotal,
+    participants.map(p => taxableSubtotals[p.id]),
+    taxableTotal,
   )
 
   // Helper: resolve the base amount for a proportional fee given its base setting

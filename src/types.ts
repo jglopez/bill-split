@@ -14,6 +14,9 @@ export interface Item {
   // []    = no participants assigned
   // [ids] = explicit subset
   assignedTo: string[] | null
+  // Opt-out model: absent or true means taxable; false means non-taxable.
+  // Non-taxable items are excluded from the tax base but still count toward each person's subtotal.
+  taxable?: boolean
 }
 
 // Controls whether a proportional fee is calculated on the pre-tax subtotal

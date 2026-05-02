@@ -2,7 +2,7 @@
   "name": "bill-split",
   "private": true,
   "version": "0.0.0",
-  "_versionNote": "not auto-managed; update manually before a release",
+  "_versionNote": "not used at runtime; releases and version numbers are managed via PR labels (version:minor, version:major) and git tags by .github/workflows/auto-release.yml",
   "type": "module",
   "scripts": {
     "dev": "vite",
