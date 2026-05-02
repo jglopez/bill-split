@@ -37,7 +37,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Merge if Dependabot PR
-        if: steps.pr.outputs.skip != 'true' && steps.pr.outputs.actor == 'dependabot[bot]'
+        if: >-
+          steps.pr.outputs.skip != 'true' &&
+          (steps.pr.outputs.actor == 'dependabot[bot]' ||
+           steps.pr.outputs.actor == 'app/dependabot')
         run: gh pr merge --squash --repo "$GITHUB_REPOSITORY" "$PR_NUMBER"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
