@@ -20,7 +20,7 @@ An itemized bill-splitting tool. Add participants, enter line items, assign them
 ## Running locally
 
 ```bash
-nvm use   # picks up the version from .nvmrc
+nvm use   # picks up the version from .nvmrc (or: fnm use)
 npm install
 npm run dev
 ```
