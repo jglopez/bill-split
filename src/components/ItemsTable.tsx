@@ -153,13 +153,13 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
               <th className="w-6" />
               <th className="text-left py-2 pr-3 font-medium text-gray-600 w-[35%]">Item</th>
               <th className="text-right py-2 px-2 font-medium text-gray-600 w-20">$</th>
+              <th className="text-center py-2 px-2 font-medium text-gray-400 text-xs w-14">taxable</th>
               <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
                 {orderedParticipants.map(p => (
                   <SortableColumnHeader key={p.id} participant={p} />
                 ))}
               </SortableContext>
               <th className="text-center py-2 px-2 font-medium text-gray-400 text-xs w-12">all</th>
-              <th className="text-center py-2 px-2 font-medium text-gray-400 text-xs w-12">tax</th>
               <th className="w-8" />
             </tr>
           </thead>
@@ -206,6 +206,28 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                           </span>
                         )}
                       </div>
+                    </td>
+
+                    {/* Taxable toggle switch */}
+                    <td className="py-1 px-2 text-center">
+                      {blank ? null : (
+                        <button
+                          role="switch"
+                          aria-checked={item.taxable !== false}
+                          aria-label={`"${item.name || 'item'}" is taxable`}
+                          onClick={() => onUpdateItem({ ...item, taxable: item.taxable === false ? undefined : false })}
+                          className={`relative inline-flex h-4 w-7 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-1 ${
+                            item.taxable !== false ? 'bg-teal-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                              item.taxable !== false ? 'translate-x-3' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      )}
                     </td>
 
                     {/* Per-participant column cells — rendered in column display order */}
@@ -273,31 +295,6 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                             }`}
                           >
                             {isAssignedToAll(item) && <CheckIcon />}
-                          </span>
-                        </label>
-                      )}
-                    </td>
-
-                    {/* Taxable toggle */}
-                    <td className="py-1 px-2 text-center">
-                      {blank ? null : (
-                        <label className="cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={item.taxable !== false}
-                            onChange={() => onUpdateItem({ ...item, taxable: item.taxable === false ? undefined : false })}
-                            aria-label={`"${item.name || 'item'}" is taxable`}
-                            className="sr-only"
-                          />
-                          <span
-                            aria-hidden="true"
-                            className={`inline-flex w-5 h-5 rounded items-center justify-center border transition-colors ${
-                              item.taxable !== false
-                                ? 'bg-teal-600 border-teal-600 text-white'
-                                : 'border-gray-300 bg-white'
-                            }`}
-                          >
-                            {item.taxable !== false && <CheckIcon />}
                           </span>
                         </label>
                       )}
