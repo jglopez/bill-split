@@ -1,5 +1,6 @@
 name: Deploy
 
+# Depends on ci.yml — only runs after CI passes on main.
 on:
   workflow_run:
     workflows: ["CI"]
