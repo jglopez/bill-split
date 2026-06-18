@@ -52,11 +52,17 @@ export interface PersonBreakdown {
 
 export interface BillBreakdown {
   totalSubtotal: number
+  totalTaxableSubtotal: number
   totalTax: number
   totalTip: number
   totalAdditionalFees: number[] // parallel to BillState.additionalFees
   totalGrandTotal: number
   perPerson: PersonBreakdown[]
+}
+
+/** Resolve the base amount for a proportional fee given its base setting. */
+export function getTotalFeeBase(base: FeesBase, totalSubtotal: number, totalTax: number): number {
+  return base === 'post-tax' ? totalSubtotal + totalTax : totalSubtotal
 }
 
 /**
@@ -118,16 +124,13 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     taxableTotal,
   )
 
-  // Helper: resolve the base amount for a proportional fee given its base setting
+  // Helper: resolve the base amount for a single person's proportional fee share
   function getFeeBase(base: FeesBase, personSubtotal: number, personTax: number): number {
     return base === 'post-tax' ? personSubtotal + personTax : personSubtotal
   }
-  function getTotalFeeBase(base: FeesBase): number {
-    return base === 'post-tax' ? totalSubtotal + taxTotal : totalSubtotal
-  }
 
   // Tip
-  const tipTotalBase = getTotalFeeBase(tipBase)
+  const tipTotalBase = getTotalFeeBase(tipBase, totalSubtotal, taxTotal)
   const tipTotal = parseAmount(tip, tipTotalBase)
   const tipShares = distributeProportionally(
     tipTotal,
@@ -137,7 +140,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
 
   // Additional fees (surcharges and discounts)
   const additionalFeeShares: number[][] = additionalFees.map(fee => {
-    const feeBase = getTotalFeeBase(fee.base)
+    const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
     const feeTotal = parseAmount(fee.amount, feeBase)
     return distributeProportionally(
       feeTotal,
@@ -147,7 +150,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   })
 
   const totalAdditionalFees = additionalFees.map(fee => {
-    const feeBase = getTotalFeeBase(fee.base)
+    const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
     return parseAmount(fee.amount, feeBase)
   })
 
@@ -172,6 +175,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
 
   return {
     totalSubtotal,
+    totalTaxableSubtotal: taxableTotal,
     totalTax: taxTotal,
     totalTip: tipTotal,
     totalAdditionalFees,
