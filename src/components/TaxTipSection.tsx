@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import type { AdditionalFee, FeesBase } from '../types'
 import { getAmountEquivalent, getTotalFeeBase, isValidAmount, splitAmountInput } from '../utils/calculate'
+import { NAME_MAX_LENGTH } from '../constants'
 
 interface Props {
   tax: string
@@ -159,6 +160,7 @@ function FeeRow({
         onChange={e => onChange({ ...fee, name: e.target.value })}
         placeholder="Name"
         aria-label="Fee name"
+        maxLength={NAME_MAX_LENGTH}
         className="border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none bg-transparent py-0.5 w-28 text-gray-800 placeholder-gray-300"
       />
       <AmountInput

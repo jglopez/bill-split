@@ -21,6 +21,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Item, Participant } from '../types'
 import { isValidPrice } from '../utils/calculate'
 import { formatAmount } from '../utils/format'
+import { NAME_MAX_LENGTH } from '../constants'
 
 function isParticipantAssigned(item: Item, participantId: string): boolean {
   if (item.assignedTo === null) return true
@@ -190,6 +191,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                         onChange={e => onUpdateItem({ ...item, name: e.target.value })}
                         placeholder={blank ? 'Description' : ''}
                         aria-label="Item description"
+                        maxLength={NAME_MAX_LENGTH}
                         className="w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none py-0.5 placeholder-gray-300 text-gray-800"
                       />
                     </td>

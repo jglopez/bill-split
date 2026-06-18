@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Participant } from '../types'
+import { NAME_MAX_LENGTH } from '../constants'
 
 interface Props {
   participants: Participant[]
@@ -64,6 +65,7 @@ export function ParticipantSection({ participants, onAdd, onRemove, onRename }: 
             onKeyDown={handleKeyDown}
             placeholder="Add participant"
             aria-label="New participant name"
+            maxLength={NAME_MAX_LENGTH}
             className="border border-gray-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-w-[140px]"
           />
           <button
@@ -133,6 +135,7 @@ function ParticipantChip({ participant, onRemove, onRename }: ChipProps) {
             onKeyDown={handleKeyDown}
             onBlur={commit}
             aria-label={`Rename ${participant.name}`}
+            maxLength={NAME_MAX_LENGTH}
             className="border border-teal-400 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[100px]"
           />
           {error && (
