@@ -20,16 +20,49 @@ const DEFAULT_STATE: BillState = {
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 
-function isBillState(v: unknown): v is BillState {
+function isParticipant(v: unknown): boolean {
+  if (typeof v !== 'object' || v === null) return false
+  const p = v as Record<string, unknown>
+  return typeof p.id === 'string' && typeof p.name === 'string'
+}
+
+function isItem(v: unknown): boolean {
+  if (typeof v !== 'object' || v === null) return false
+  const item = v as Record<string, unknown>
+  return (
+    typeof item.id === 'string' &&
+    typeof item.name === 'string' &&
+    typeof item.price === 'string' &&
+    (item.assignedTo === null ||
+      (Array.isArray(item.assignedTo) && (item.assignedTo as unknown[]).every(id => typeof id === 'string'))) &&
+    (item.taxable === undefined || typeof item.taxable === 'boolean')
+  )
+}
+
+function isAdditionalFee(v: unknown): boolean {
+  if (typeof v !== 'object' || v === null) return false
+  const fee = v as Record<string, unknown>
+  return (
+    typeof fee.id === 'string' &&
+    typeof fee.name === 'string' &&
+    typeof fee.amount === 'string' &&
+    (fee.base === 'pre-tax' || fee.base === 'post-tax')
+  )
+}
+
+export function isBillState(v: unknown): v is BillState {
   if (typeof v !== 'object' || v === null) return false
   const s = v as Record<string, unknown>
   return (
     Array.isArray(s.participants) &&
+    s.participants.every(isParticipant) &&
     Array.isArray(s.items) &&
+    s.items.every(isItem) &&
     typeof s.tax === 'string' &&
     typeof s.tip === 'string' &&
     (s.tipBase === 'pre-tax' || s.tipBase === 'post-tax') &&
     Array.isArray(s.additionalFees) &&
+    s.additionalFees.every(isAdditionalFee) &&
     (s.payerMode === 'single' || s.payerMode === 'multiple') &&
     typeof s.singlePayerId === 'string' &&
     typeof s.amountPaid === 'object' && s.amountPaid !== null && !Array.isArray(s.amountPaid)
