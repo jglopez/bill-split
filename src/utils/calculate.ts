@@ -150,6 +150,31 @@ function distributeProportionally(
 }
 
 /**
+ * Apply largest-remainder cent reconciliation to a set of shares so that
+ * toFixed(2) on each share sums to toFixed(2) on the total.
+ *
+ * Without this, splitting $10 three ways gives three $3.33 cells (= $9.99)
+ * under a $10.00 total. The largest-remainder method distributes the extra
+ * penny to the participant(s) with the biggest fractional cent remainder.
+ */
+export function reconcileCents(shares: number[], total: number): number[] {
+  if (shares.length === 0) return shares
+  const totalCents = Math.round(total * 100)
+  const floored = shares.map(s => Math.floor(Math.round(s * 1000) / 10))
+  const remainders = shares.map((s, i) => Math.round(s * 1000) / 10 - floored[i])
+  const flooredSum = floored.reduce((a, b) => a + b, 0)
+  const extra = totalCents - flooredSum
+  const order = remainders
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => b.r - a.r)
+  const result = [...floored]
+  for (let j = 0; j < extra && j < order.length; j++) {
+    result[order[j].i]++
+  }
+  return result.map(cents => cents / 100)
+}
+
+/**
  * Calculate the full per-person breakdown from the current bill state.
  * All math is pure; no side effects.
  */
@@ -182,13 +207,24 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   const totalSubtotal = Object.values(subtotals).reduce((a, b) => a + b, 0)
   const taxableTotal = Object.values(taxableSubtotals).reduce((a, b) => a + b, 0)
 
+  // Reconcile per-person item subtotals to whole cents so displayed shares sum
+  // to the displayed total. Subtotals are derived from item-by-item division so
+  // they accumulate floating-point residue before reconciliation.
+  const reconciledSubtotals = reconcileCents(
+    participants.map(p => subtotals[p.id]),
+    totalSubtotal,
+  )
+
   // Tax: on taxable items only. When nothing is taxable the tax is $0 regardless
   // of whether a flat or percentage amount was entered.
   const taxTotal = taxableTotal === 0 ? 0 : parseAmount(tax, taxableTotal)
-  const taxShares = distributeProportionally(
+  const taxShares = reconcileCents(
+    distributeProportionally(
+      taxTotal,
+      participants.map(p => taxableSubtotals[p.id]),
+      taxableTotal,
+    ),
     taxTotal,
-    participants.map(p => taxableSubtotals[p.id]),
-    taxableTotal,
   )
 
   // Helper: resolve the base amount for a single person's proportional fee share
@@ -199,30 +235,35 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   // Tip
   const tipTotalBase = getTotalFeeBase(tipBase, totalSubtotal, taxTotal)
   const tipTotal = parseAmount(tip, tipTotalBase)
-  const tipShares = distributeProportionally(
+  const tipShares = reconcileCents(
+    distributeProportionally(
+      tipTotal,
+      participants.map((_p, i) => getFeeBase(tipBase, reconciledSubtotals[i], taxShares[i])),
+      tipTotalBase,
+    ),
     tipTotal,
-    participants.map((p, i) => getFeeBase(tipBase, subtotals[p.id], taxShares[i])),
-    tipTotalBase,
   )
 
   // Additional fees (surcharges and discounts)
-  const additionalFeeShares: number[][] = additionalFees.map(fee => {
-    const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
-    const feeTotal = parseAmount(fee.amount, feeBase)
-    return distributeProportionally(
-      feeTotal,
-      participants.map((p, i) => getFeeBase(fee.base, subtotals[p.id], taxShares[i])),
-      feeBase,
-    )
-  })
-
   const totalAdditionalFees = additionalFees.map(fee => {
     const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
     return parseAmount(fee.amount, feeBase)
   })
 
+  const additionalFeeShares: number[][] = additionalFees.map((fee, fi) => {
+    const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
+    return reconcileCents(
+      distributeProportionally(
+        totalAdditionalFees[fi],
+        participants.map((_p, i) => getFeeBase(fee.base, reconciledSubtotals[i], taxShares[i])),
+        feeBase,
+      ),
+      totalAdditionalFees[fi],
+    )
+  })
+
   const perPerson: PersonBreakdown[] = participants.map((p, i) => {
-    const subtotal = subtotals[p.id]
+    const subtotal = reconciledSubtotals[i]
     const taxShare = taxShares[i]
     const tipShare = tipShares[i]
     const feeShares = additionalFeeShares.map(shares => shares[i])
@@ -238,6 +279,8 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     }
   })
 
+  // Grand totals are sums of reconciled whole-cent values, so they are already
+  // in whole cents; no further reconciliation needed.
   const totalGrandTotal = perPerson.reduce((a, p) => a + p.grandTotal, 0)
 
   return {
@@ -313,7 +356,7 @@ export function calculateSettlement(
   while (di < debtors.length && ci < creditors.length) {
     const debtor = debtors[di]
     const creditor = creditors[ci]
-    const amount = Math.min(debtor.amount, creditor.amount)
+    const amount = Math.round(Math.min(debtor.amount, creditor.amount) * 100) / 100
     transactions.push({ fromId: debtor.id, toId: creditor.id, amount })
     debtor.amount -= amount
     creditor.amount -= amount
