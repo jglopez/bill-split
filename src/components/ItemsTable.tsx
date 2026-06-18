@@ -270,7 +270,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                                 {assigned && <CheckIcon />}
                               </span>
                               <span className="text-xs text-gray-600 tabular-nums">
-                                {share > 0 ? fmt(share) : <span className="text-gray-300">—</span>}
+                                {share > 0 ? formatAmount(share) : <span className="text-gray-300">—</span>}
                               </span>
                             </label>
                           )}
@@ -365,7 +365,7 @@ function ColumnDragOverlay({
               {assigned && <CheckIcon />}
             </span>
             <span className="text-xs text-gray-600 tabular-nums">
-              {share > 0 ? fmt(share) : <span className="text-gray-300">—</span>}
+              {share > 0 ? formatAmount(share) : <span className="text-gray-300">—</span>}
             </span>
           </div>
         )
@@ -453,7 +453,6 @@ function SortableItemRow({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmt = formatAmount
 
 function CheckIcon() {
   return (

@@ -117,7 +117,7 @@ export function PayerSection({
 
           {mismatch && (
             <p role="status" className="text-xs text-amber-600 mt-1">
-              Total paid ({fmt(totalPaid)}) doesn't match the grand total ({fmt(grandTotal)}).
+              Total paid ({formatMoney(totalPaid)}) doesn't match the grand total ({formatMoney(grandTotal)}).
               Settlement will reflect the difference.
             </p>
           )}
@@ -127,4 +127,3 @@ export function PayerSection({
   )
 }
 
-const fmt = formatMoney

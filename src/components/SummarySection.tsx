@@ -78,7 +78,7 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
               })}
               <div className="flex justify-between border-t border-gray-300 mt-2 pt-2 font-semibold text-gray-800">
                 <span>Total</span>
-                <span className="tabular-nums">{fmt(grandTotal)}</span>
+                <span className="tabular-nums">{formatAmount(grandTotal)}</span>
               </div>
             </div>
           )
@@ -152,11 +152,11 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
           <tr className="border-t-2 border-gray-300 font-semibold">
             <td className="py-2 pr-3 text-gray-800">Grand total</td>
             <td className="py-2 px-2 text-right text-gray-800 tabular-nums">
-              {fmt(breakdown.totalGrandTotal)}
+              {formatAmount(breakdown.totalGrandTotal)}
             </td>
             {orderedParticipants.map(p => (
               <td key={p.id} className="py-2 px-2 text-right text-gray-800 tabular-nums">
-                {fmt(perPersonValue(p.id, 'grandTotal'))}
+                {formatAmount(perPersonValue(p.id, 'grandTotal'))}
               </td>
             ))}
           </tr>
@@ -181,7 +181,7 @@ function CardRow({
   return (
     <div className={`flex justify-between py-0.5 text-xs ${colorClass}`}>
       <span>{label}</span>
-      <span className="tabular-nums">{fmt(value)}</span>
+      <span className="tabular-nums">{formatAmount(value)}</span>
     </div>
   )
 }
@@ -203,14 +203,13 @@ function SummaryRow({
   return (
     <tr className="border-b border-gray-100">
       <td className={`py-1.5 pr-3 ${colorClass} text-xs`}>{label}</td>
-      <td className={`py-1.5 px-2 text-right tabular-nums ${colorClass}`}>{fmt(total)}</td>
+      <td className={`py-1.5 px-2 text-right tabular-nums ${colorClass}`}>{formatAmount(total)}</td>
       {values.map((v, i) => (
         <td key={i} className={`py-1.5 px-2 text-right tabular-nums ${colorClass}`}>
-          {fmt(v)}
+          {formatAmount(v)}
         </td>
       ))}
     </tr>
   )
 }
 
-const fmt = formatAmount
