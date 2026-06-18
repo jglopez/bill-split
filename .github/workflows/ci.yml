@@ -30,6 +30,8 @@ jobs:
 
       - run: npm run typecheck
 
+      - run: npm run lint
+
       - run: npx vite build
 
       - run: npm test

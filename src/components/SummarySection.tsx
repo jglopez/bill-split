@@ -1,6 +1,7 @@
 import type { AdditionalFee, BillState, Participant } from '../types'
 import type { BillBreakdown } from '../utils/calculate'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { formatAmount } from '../utils/format'
 
 interface Props {
   orderedParticipants: Participant[]
@@ -25,9 +26,9 @@ interface Props {
  * and makes it easy to extract into an export/print view later.
  */
 export function SummarySection({ orderedParticipants, additionalFees, state, breakdown }: Props) {
-  if (orderedParticipants.length === 0 || breakdown.totalSubtotal === 0) return null
-
   const isMobile = useIsMobile()
+
+  if (orderedParticipants.length === 0 || breakdown.totalSubtotal === 0) return null
   const perPersonMap = new Map(breakdown.perPerson.map(p => [p.participantId, p]))
 
   function perPersonValue(participantId: string, field: 'subtotal' | 'tax' | 'tip' | 'grandTotal'): number {
@@ -212,8 +213,4 @@ function SummaryRow({
   )
 }
 
-function fmt(n: number): string {
-  // Show negative amounts with an explicit minus sign so meaning isn't
-  // conveyed by color alone (WCAG).
-  return (n < 0 ? '−' : '') + Math.abs(n).toFixed(2)
-}
+const fmt = formatAmount

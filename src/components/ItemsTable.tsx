@@ -20,6 +20,21 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import type { Item, Participant } from '../types'
 import { isValidPrice } from '../utils/calculate'
+import { formatAmount } from '../utils/format'
+
+function isParticipantAssigned(item: Item, participantId: string): boolean {
+  if (item.assignedTo === null) return true
+  return item.assignedTo.includes(participantId)
+}
+
+function getItemShare(item: Item, participantId: string, allParticipantCount: number): number {
+  const assigned = isParticipantAssigned(item, participantId)
+  const price = Number(item.price)
+  const assignedCount = item.assignedTo === null ? allParticipantCount : item.assignedTo.length
+  return assigned && !isNaN(price) && price > 0 && assignedCount > 0
+    ? price / assignedCount
+    : 0
+}
 
 interface Props {
   participants: Participant[]
@@ -136,10 +151,6 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
     onUpdateItem({ ...item, assignedTo: next })
   }
 
-  function isParticipantAssigned(item: Item, participantId: string): boolean {
-    if (item.assignedTo === null) return true
-    return item.assignedTo.includes(participantId)
-  }
 
   const isLastRow = (item: Item) => item === items[items.length - 1]
 
@@ -233,15 +244,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                     {/* Per-participant column cells — rendered in column display order */}
                     {orderedParticipants.map(p => {
                       const assigned = isParticipantAssigned(item, p.id)
-                      const price = Number(item.price)
-                      const assignedCount =
-                        item.assignedTo === null
-                          ? participants.length
-                          : item.assignedTo.length
-                      const share =
-                        assigned && !isNaN(price) && price > 0 && assignedCount > 0
-                          ? price / assignedCount
-                          : 0
+                      const share = getItemShare(item, p.id, participants.length)
 
                       return (
                         <td key={p.id} className="py-1 px-1 text-center" style={{ opacity: activeColumnId === p.id ? 0.4 : undefined }}>
@@ -350,13 +353,8 @@ function ColumnDragOverlay({
         </span>
       </div>
       {displayItems.map(item => {
-        const assigned = item.assignedTo === null || item.assignedTo.includes(participant.id)
-        const price = Number(item.price)
-        const assignedCount = item.assignedTo === null ? participants.length : item.assignedTo.length
-        const share =
-          assigned && !isNaN(price) && price > 0 && assignedCount > 0
-            ? price / assignedCount
-            : 0
+        const assigned = isParticipantAssigned(item, participant.id)
+        const share = getItemShare(item, participant.id, participants.length)
         return (
           <div key={item.id} className="py-1 px-1 text-center border-b border-gray-100 flex flex-col items-center gap-0.5">
             <span
@@ -455,9 +453,7 @@ function SortableItemRow({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number): string {
-  return n.toFixed(2)
-}
+const fmt = formatAmount
 
 function CheckIcon() {
   return (
