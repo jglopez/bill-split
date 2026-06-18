@@ -54,6 +54,10 @@ jobs:
            steps.pr.outputs.actor == 'app/dependabot')
         run: |
           MERGE_SHA=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')
+          if [ -z "$MERGE_SHA" ]; then
+            echo "Could not resolve merge commit SHA for PR #$PR_NUMBER; skipping auto-release dispatch."
+            exit 1
+          fi
           gh workflow run auto-release.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
