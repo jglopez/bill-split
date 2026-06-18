@@ -152,7 +152,6 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
     onUpdateItem({ ...item, assignedTo: next })
   }
 
-
   const isLastRow = (item: Item) => item === items[items.length - 1]
 
   return (

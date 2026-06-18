@@ -21,9 +21,7 @@ interface Props {
  * On narrow screens (below sm breakpoint) each participant is rendered as
  * a stacked card instead of a column in the table.
  *
- * This is intentionally display-only; all interactive inputs live in the
- * sections above. Rendering it separately keeps the component boundary clear
- * and makes it easy to extract into an export/print view later.
+ * Display-only; all interactive inputs live in the sections above.
  */
 export function SummarySection({ orderedParticipants, additionalFees, state, breakdown }: Props) {
   const isMobile = useIsMobile()

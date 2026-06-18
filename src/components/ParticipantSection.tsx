@@ -10,9 +10,8 @@ interface Props {
 }
 
 /**
- * Participant management is intentionally isolated in this component so the
- * source of participant data (freeform text today, user profile tomorrow) can
- * be swapped without touching the rest of the app.
+ * Participant management is isolated so the data source can change without
+ * touching the rest of the app.
  */
 export function ParticipantSection({ participants, onAdd, onRemove, onRename }: Props) {
   const [newName, setNewName] = useState('')

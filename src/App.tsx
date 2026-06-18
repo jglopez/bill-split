@@ -36,9 +36,6 @@ export function App() {
   const { columnOrder, setColumnOrder, orderedParticipants } = useColumnOrder(state.participants)
   const [showResetModal, setShowResetModal] = useState(false)
 
-  // Recalculate on every render. The calculation is fast enough that memoizing
-  // by individual field is not necessary, but useMemo avoids recomputing when
-  // an unrelated parent re-renders.
   const breakdown = useMemo(() => calculateBreakdown(state), [state])
   const transactions = useMemo(
     () => calculateSettlement(state, breakdown),
