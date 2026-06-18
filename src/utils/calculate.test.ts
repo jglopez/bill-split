@@ -56,6 +56,18 @@ test('dollar -> percent, 3 sig figs at 3+ digits -> 0 decimals', () => {
   assertEqual(getAmountEquivalent('150.5', 100), '~151%', 'values >= 100 round to a whole percent')
 })
 
+test('dollar -> percent, exact 100% keeps all digits', () => {
+  assertEqual(getAmountEquivalent('100', 100), '100%', '$100 of $100 base should show 100%, not 1%')
+})
+
+test('dollar -> percent, exact 200% keeps all digits', () => {
+  assertEqual(getAmountEquivalent('200', 100), '200%', '$200 of $100 base should show 200%, not 2%')
+})
+
+test('dollar -> percent, $0 shows 0% not bare %', () => {
+  assertEqual(getAmountEquivalent('0', 100), '0%', '$0 should show 0%, not a bare %')
+})
+
 test('percent -> dollar, rounded', () => {
   assertEqual(getAmountEquivalent('33.333%', 3), '~$1.00', 'tilde when rounding loses precision')
 })

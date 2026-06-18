@@ -78,7 +78,8 @@ function formatPercent(n: number): string {
   const rounded = Math.round(n * factor) / factor
   const isExact = Math.abs(n - rounded) < 1e-9
   const prefix = isExact ? '' : '~'
-  const trimmed = rounded.toFixed(decimals).replace(/\.?0+$/, '')
+  const fixed = rounded.toFixed(decimals)
+  const trimmed = fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed
   return `${prefix}${trimmed}%`
 }
 
