@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Participant } from '../types'
+import { readJSON, writeJSON } from '../lib/versionedStore'
 
 const COLUMN_ORDER_KEY = 'bill-split-column-order:v1'
 
@@ -16,20 +17,15 @@ export function useColumnOrder(participants: Participant[]): {
 } {
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
     const allIds = participants.map(p => p.id)
-    try {
-      const stored = localStorage.getItem(COLUMN_ORDER_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown
-        if (Array.isArray(parsed)) {
-          // Deduplicate before filtering so corrupt/duplicate localStorage data
-          // can't produce duplicate columns.
-          const ids = [...new Set(parsed as string[])]
-          const filtered = ids.filter(id => allIds.includes(id))
-          const added = allIds.filter(id => !ids.includes(id))
-          return [...filtered, ...added]
-        }
-      }
-    } catch { /* ignore corrupt or blocked localStorage */ }
+    const parsed = readJSON(COLUMN_ORDER_KEY)
+    if (Array.isArray(parsed)) {
+      // Deduplicate before filtering so corrupt/duplicate localStorage data
+      // can't produce duplicate columns.
+      const ids = [...new Set(parsed as string[])]
+      const filtered = ids.filter(id => allIds.includes(id))
+      const added = allIds.filter(id => !ids.includes(id))
+      return [...filtered, ...added]
+    }
     return [...allIds]
   })
 
@@ -46,9 +42,7 @@ export function useColumnOrder(participants: Participant[]): {
 
   // Persist to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
-    } catch { /* ignore quota-exceeded or private-browsing errors */ }
+    writeJSON(COLUMN_ORDER_KEY, columnOrder)
   }, [columnOrder])
 
   const participantMap = new Map(participants.map(p => [p.id, p]))
