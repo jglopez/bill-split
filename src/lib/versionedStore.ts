@@ -17,13 +17,19 @@ export function makeVersionedStore<T>(
   currentKey: string,
   migrations: [oldKey: string, migrate: Migration<T>][],
   fallback: T,
+  validate?: (v: unknown) => v is T,
 ): VersionedStore<T> {
   return {
     load(): T {
       // Try the current key first.
       try {
         const raw = localStorage.getItem(currentKey)
-        if (raw !== null) return JSON.parse(raw) as T
+        if (raw !== null) {
+          const parsed: unknown = JSON.parse(raw)
+          // If a validator is supplied and the parsed value fails it, fall
+          // through to migrations rather than returning malformed state.
+          if (!validate || validate(parsed)) return parsed as T
+        }
       } catch {
         // Corrupt JSON in the current key — fall through to migrations.
       }

@@ -137,6 +137,36 @@ test('second load after save returns saved value', () => {
   assertEqual(store.load(), { x: 55 }, 'round-trip')
 })
 
+test('validate: valid current key passes through unchanged', () => {
+  localStorage.setItem('key:v2', JSON.stringify({ x: 42 }))
+  const isValid = (v: unknown): v is { x: number } =>
+    typeof (v as Record<string, unknown>).x === 'number'
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 }, isValid)
+  assertEqual(store.load(), { x: 42 }, 'valid value returned directly')
+})
+
+test('validate: invalid-shape current key falls back to fallback', () => {
+  localStorage.setItem('key:v2', JSON.stringify({ notX: 'wrong' }))
+  const isValid = (v: unknown): v is { x: number } =>
+    typeof (v as Record<string, unknown>).x === 'number'
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: -1 }, isValid)
+  assertEqual(store.load(), { x: -1 }, 'invalid shape falls back to fallback')
+})
+
+test('validate: invalid-shape current key falls back to migration when available', () => {
+  localStorage.setItem('key:v2', JSON.stringify({ notX: 'wrong' }))
+  localStorage.setItem('key:v1', JSON.stringify({ x: 7 }))
+  const isValid = (v: unknown): v is { x: number } =>
+    typeof (v as Record<string, unknown>).x === 'number'
+  const store = makeVersionedStore<{ x: number }>(
+    'key:v2',
+    [['key:v1', raw => raw as { x: number }]],
+    { x: -1 },
+    isValid,
+  )
+  assertEqual(store.load(), { x: 7 }, 'migrated value returned when current key fails validation')
+})
+
 test('migration succeeds and returns migrated value even when removeItem throws', () => {
   localStorage.setItem('key:v1', JSON.stringify({ x: 7 }))
   // Force removeItem to fail to verify the try/catch guard in versionedStore

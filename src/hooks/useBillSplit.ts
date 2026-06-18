@@ -20,10 +20,27 @@ const DEFAULT_STATE: BillState = {
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 
+function isBillState(v: unknown): v is BillState {
+  if (typeof v !== 'object' || v === null) return false
+  const s = v as Record<string, unknown>
+  return (
+    Array.isArray(s.participants) &&
+    Array.isArray(s.items) &&
+    typeof s.tax === 'string' &&
+    typeof s.tip === 'string' &&
+    (s.tipBase === 'pre-tax' || s.tipBase === 'post-tax') &&
+    Array.isArray(s.additionalFees) &&
+    (s.payerMode === 'single' || s.payerMode === 'multiple') &&
+    typeof s.singlePayerId === 'string' &&
+    typeof s.amountPaid === 'object' && s.amountPaid !== null && !Array.isArray(s.amountPaid)
+  )
+}
+
 const billStore = makeVersionedStore<BillState>(
   'bill-split:v2',
   [['bill-split:v1', migrateV1toBillV2]],
   DEFAULT_STATE,
+  isBillState,
 )
 
 function loadState(): BillState {
