@@ -4,6 +4,9 @@
 import {
   getAmountEquivalent,
   parseAmount,
+  isValidAmount,
+  isValidPrice,
+  getTotalFeeBase,
   reconcileCents,
   calculateBreakdown,
   calculateSettlement,
@@ -479,6 +482,84 @@ test('singlePayerId not in participants → no paid credit assigned', () => {
   // No one is credited as having paid, so everyone owes their full share to "nobody"
   // — net for both A and B is positive (they owe) but there's no creditor.
   assertEqual(txns.length, 0, 'no creditor → no transactions')
+})
+
+// ─── isValidAmount ────────────────────────────────────────────────────────────
+
+console.log('\nisValidAmount')
+
+test('empty string is valid (treated as 0)', () => {
+  assertEqual(isValidAmount(''), true, 'empty allowed')
+})
+test('whitespace-only is valid', () => {
+  assertEqual(isValidAmount('   '), true, 'whitespace allowed')
+})
+test('plain number is valid', () => {
+  assertEqual(isValidAmount('12.50'), true, 'flat dollar')
+})
+test('negative number is valid (discount)', () => {
+  assertEqual(isValidAmount('-5'), true, 'negative allowed')
+})
+test('percentage is valid', () => {
+  assertEqual(isValidAmount('20%'), true, 'percent allowed')
+})
+test('negative percentage is valid', () => {
+  assertEqual(isValidAmount('-10%'), true, 'negative percent allowed')
+})
+test('non-numeric string is invalid', () => {
+  assertEqual(isValidAmount('abc'), false, 'text rejected')
+})
+test('non-numeric percent is invalid', () => {
+  assertEqual(isValidAmount('abc%'), false, 'text% rejected')
+})
+test('Infinity is invalid', () => {
+  assertEqual(isValidAmount('Infinity'), false, 'Infinity rejected')
+})
+test('Infinity% is invalid', () => {
+  assertEqual(isValidAmount('Infinity%'), false, 'Infinity% rejected')
+})
+
+// ─── isValidPrice ─────────────────────────────────────────────────────────────
+
+console.log('\nisValidPrice')
+
+test('empty string is valid', () => {
+  assertEqual(isValidPrice(''), true, 'empty allowed')
+})
+test('positive number is valid', () => {
+  assertEqual(isValidPrice('9.99'), true, 'positive price')
+})
+test('zero is valid', () => {
+  assertEqual(isValidPrice('0'), true, 'zero price')
+})
+test('negative number is invalid (prices are non-negative)', () => {
+  assertEqual(isValidPrice('-5'), false, 'negative price rejected')
+})
+test('percentage string is invalid for prices', () => {
+  assertEqual(isValidPrice('10%'), false, '% rejected for price')
+})
+test('non-numeric string is invalid', () => {
+  assertEqual(isValidPrice('abc'), false, 'text rejected')
+})
+test('Infinity is invalid', () => {
+  assertEqual(isValidPrice('Infinity'), false, 'Infinity rejected')
+})
+
+// ─── getTotalFeeBase ──────────────────────────────────────────────────────────
+
+console.log('\ngetTotalFeeBase')
+
+test('pre-tax base returns subtotal only', () => {
+  assertEqual(getTotalFeeBase('pre-tax', 100, 10), 100, 'pre-tax ignores tax')
+})
+test('post-tax base returns subtotal + tax', () => {
+  assertEqual(getTotalFeeBase('post-tax', 100, 10), 110, 'post-tax adds tax')
+})
+test('pre-tax with zero tax is just subtotal', () => {
+  assertEqual(getTotalFeeBase('pre-tax', 50, 0), 50, 'pre-tax zero tax')
+})
+test('post-tax with zero tax is still subtotal', () => {
+  assertEqual(getTotalFeeBase('post-tax', 50, 0), 50, 'post-tax zero tax = subtotal')
 })
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
