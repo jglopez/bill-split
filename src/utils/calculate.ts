@@ -57,12 +57,15 @@ function significantDecimals(n: number): number {
 /**
  * Round a dollar amount to 2 decimals, prefixed with "~" only when that
  * rounding actually lost precision. Exact 2-decimal values are shown plain.
+ * Negative amounts (e.g. the dollar equivalent of a percent discount) are
+ * shown as "-$5.00", not "$-5.00".
  */
 function formatDollar(n: number): string {
   const rounded = Math.round(n * 100) / 100
   const isExact = Math.abs(n - rounded) < 1e-9
   const prefix = isExact ? '' : '~'
-  return `${prefix}$${rounded.toFixed(2)}`
+  const sign = rounded < 0 ? '-' : ''
+  return `${prefix}${sign}$${Math.abs(rounded).toFixed(2)}`
 }
 
 /**
@@ -83,20 +86,22 @@ function formatPercent(n: number): string {
  * Given a tax/tip/fee amount string and the dollar base it's calculated
  * against, return the equivalent value in the other unit ($ if the input is
  * a %, % if the input is a $ amount). Returns null when there's nothing
- * sensible to show: empty/invalid input, or a $-to-% conversion against a
- * zero or negative base.
+ * sensible to show: empty/bare/invalid/non-finite input, a non-finite base,
+ * or a $-to-% conversion against a zero or negative base.
  */
 export function getAmountEquivalent(value: string, base: number): string | null {
   const trimmed = value.trim()
-  if (!trimmed) return null
+  if (!trimmed || !isFinite(base)) return null
   const isPercent = trimmed.endsWith('%')
   if (isPercent) {
-    const pct = Number(trimmed.slice(0, -1))
-    if (isNaN(pct)) return null
+    const numericPart = trimmed.slice(0, -1)
+    if (!numericPart) return null // bare "%" (e.g. mid-toggle with no digits yet)
+    const pct = Number(numericPart)
+    if (isNaN(pct) || !isFinite(pct)) return null
     return formatDollar((pct / 100) * base)
   }
   const n = Number(trimmed)
-  if (isNaN(n) || base <= 0) return null
+  if (isNaN(n) || !isFinite(n) || base <= 0) return null
   return formatPercent((n / base) * 100)
 }
 

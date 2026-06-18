@@ -76,6 +76,26 @@ test('empty input -> hidden', () => {
   assertEqual(getAmountEquivalent('', 100), null, 'empty input has no equivalent')
 })
 
+test('bare "%" (mid-toggle, no digits yet) -> hidden', () => {
+  assertEqual(getAmountEquivalent('%', 100), null, 'no digits to convert yet')
+})
+
+test('negative percent -> dollar shows sign before $, not after', () => {
+  assertEqual(getAmountEquivalent('-5%', 100), '-$5.00', 'discount equivalents read as -$5.00, not $-5.00')
+})
+
+test('non-finite percent input -> hidden', () => {
+  assertEqual(getAmountEquivalent('Infinity%', 100), null, 'non-finite percent has no sensible dollar equivalent')
+})
+
+test('non-finite dollar input -> hidden', () => {
+  assertEqual(getAmountEquivalent('Infinity', 100), null, 'non-finite dollar amount has no sensible percent equivalent')
+})
+
+test('non-finite base -> hidden', () => {
+  assertEqual(getAmountEquivalent('20%', Infinity), null, 'a non-finite base has no sensible equivalent either direction')
+})
+
 test('invalid percent input -> hidden', () => {
   assertEqual(getAmountEquivalent('abc%', 100), null, 'unparseable percent is hidden')
 })
