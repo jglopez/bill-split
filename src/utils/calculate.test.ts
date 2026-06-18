@@ -36,8 +36,24 @@ test('dollar -> percent, exact', () => {
   assertEqual(getAmountEquivalent('40', 200), '20%', 'no tilde when exact to 2 decimals')
 })
 
-test('dollar -> percent, rounded (1/3)', () => {
-  assertEqual(getAmountEquivalent('1', 3), '~33.33%', 'tilde when rounding loses precision')
+test('dollar -> percent, rounded (1/3), 3 sig figs at 2 digits -> 1 decimal', () => {
+  assertEqual(getAmountEquivalent('1', 3), '~33.3%', '3 sig figs caps 33.333...% at one decimal')
+})
+
+test('dollar -> percent, 3 sig figs at 1 digit -> 2 decimals', () => {
+  assertEqual(getAmountEquivalent('1', 30), '~3.33%', '3.333...% shown with 2 decimals for 3 sig figs')
+})
+
+test('dollar -> percent, 3 sig figs below 1% -> 3 decimals', () => {
+  assertEqual(getAmountEquivalent('1', 300), '~0.333%', '0.333...% shown with 3 decimals for 3 sig figs')
+})
+
+test('dollar -> percent, very small % caps at 3 decimals (fewer than 3 sig figs)', () => {
+  assertEqual(getAmountEquivalent('1', 3000), '~0.033%', 'capped at 3 decimals rather than growing further')
+})
+
+test('dollar -> percent, 3 sig figs at 3+ digits -> 0 decimals', () => {
+  assertEqual(getAmountEquivalent('150.5', 100), '~151%', 'values >= 100 round to a whole percent')
 })
 
 test('percent -> dollar, rounded', () => {

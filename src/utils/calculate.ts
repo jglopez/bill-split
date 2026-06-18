@@ -42,15 +42,41 @@ export function isValidPrice(value: string): boolean {
 // ─── Equivalent display ────────────────────────────────────────────────────
 
 /**
- * Round to 2 decimals and prefix with "~" only when that rounding actually
- * lost precision (e.g. 1/3 of a base). Exact 2-decimal values are shown plain.
+ * Number of decimal places that give ~3 significant figures for a percentage,
+ * capped at 3 decimals (so very small percentages may show fewer than 3 sig
+ * figs rather than growing decimals without bound).
  */
-function formatRounded(n: number, unit: '$' | '%'): string {
+function significantDecimals(n: number): number {
+  const abs = Math.abs(n)
+  if (abs === 0 || abs >= 100) return 0
+  if (abs >= 10) return 1
+  if (abs >= 1) return 2
+  return 3
+}
+
+/**
+ * Round a dollar amount to 2 decimals, prefixed with "~" only when that
+ * rounding actually lost precision. Exact 2-decimal values are shown plain.
+ */
+function formatDollar(n: number): string {
   const rounded = Math.round(n * 100) / 100
   const isExact = Math.abs(n - rounded) < 1e-9
   const prefix = isExact ? '' : '~'
-  if (unit === '$') return `${prefix}$${rounded.toFixed(2)}`
-  return `${prefix}${rounded.toFixed(2).replace(/\.?0+$/, '')}%`
+  return `${prefix}$${rounded.toFixed(2)}`
+}
+
+/**
+ * Round a percentage to ~3 significant figures (see `significantDecimals`),
+ * prefixed with "~" only when that rounding actually lost precision.
+ */
+function formatPercent(n: number): string {
+  const decimals = significantDecimals(n)
+  const factor = 10 ** decimals
+  const rounded = Math.round(n * factor) / factor
+  const isExact = Math.abs(n - rounded) < 1e-9
+  const prefix = isExact ? '' : '~'
+  const trimmed = rounded.toFixed(decimals).replace(/\.?0+$/, '')
+  return `${prefix}${trimmed}%`
 }
 
 /**
@@ -67,11 +93,11 @@ export function getAmountEquivalent(value: string, base: number): string | null 
   if (isPercent) {
     const pct = Number(trimmed.slice(0, -1))
     if (isNaN(pct)) return null
-    return formatRounded((pct / 100) * base, '$')
+    return formatDollar((pct / 100) * base)
   }
   const n = Number(trimmed)
   if (isNaN(n) || base <= 0) return null
-  return formatRounded((n / base) * 100, '%')
+  return formatPercent((n / base) * 100)
 }
 
 // ─── Per-person breakdown ────────────────────────────────────────────────────
