@@ -39,6 +39,41 @@ export function isValidPrice(value: string): boolean {
   return !isNaN(n) && isFinite(n) && n >= 0
 }
 
+// ─── Equivalent display ────────────────────────────────────────────────────
+
+/**
+ * Round to 2 decimals and prefix with "~" only when that rounding actually
+ * lost precision (e.g. 1/3 of a base). Exact 2-decimal values are shown plain.
+ */
+function formatRounded(n: number, unit: '$' | '%'): string {
+  const rounded = Math.round(n * 100) / 100
+  const isExact = Math.abs(n - rounded) < 1e-9
+  const prefix = isExact ? '' : '~'
+  if (unit === '$') return `${prefix}$${rounded.toFixed(2)}`
+  return `${prefix}${rounded.toFixed(2).replace(/\.?0+$/, '')}%`
+}
+
+/**
+ * Given a tax/tip/fee amount string and the dollar base it's calculated
+ * against, return the equivalent value in the other unit ($ if the input is
+ * a %, % if the input is a $ amount). Returns null when there's nothing
+ * sensible to show: empty/invalid input, or a $-to-% conversion against a
+ * zero or negative base.
+ */
+export function getAmountEquivalent(value: string, base: number): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const isPercent = trimmed.endsWith('%')
+  if (isPercent) {
+    const pct = Number(trimmed.slice(0, -1))
+    if (isNaN(pct)) return null
+    return formatRounded((pct / 100) * base, '$')
+  }
+  const n = Number(trimmed)
+  if (isNaN(n) || base <= 0) return null
+  return formatRounded((n / base) * 100, '%')
+}
+
 // ─── Per-person breakdown ────────────────────────────────────────────────────
 
 export interface PersonBreakdown {
