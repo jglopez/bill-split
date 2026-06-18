@@ -139,10 +139,10 @@ export function getTotalFeeBase(base: FeesBase, totalSubtotal: number, totalTax:
   return base === 'post-tax' ? totalSubtotal + totalTax : totalSubtotal
 }
 
-/** Parse a paid-amount string, treating empty/null/undefined/NaN as 0. */
+/** Parse a paid-amount string; empty, undefined, non-numeric, or non-finite values become 0. */
 export function parsePaidAmount(value: string | undefined): number {
   const n = Number(value ?? '')
-  return isNaN(n) ? 0 : n
+  return isFinite(n) ? n : 0
 }
 
 /**

@@ -661,6 +661,12 @@ test('empty string returns 0', () => {
 test('non-numeric string returns 0', () => {
   assertEqual(parsePaidAmount('abc'), 0, 'non-numeric → 0')
 })
+test('Infinity string returns 0', () => {
+  assertEqual(parsePaidAmount('Infinity'), 0, 'Infinity → 0')
+})
+test('-Infinity string returns 0', () => {
+  assertEqual(parsePaidAmount('-Infinity'), 0, '-Infinity → 0')
+})
 
 // ─── splitAmountInput ─────────────────────────────────────────────────────────
 
