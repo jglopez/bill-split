@@ -9,6 +9,7 @@ import {
   calculateSettlement,
 } from './calculate'
 import type { BillState, Item, Participant, AdditionalFee } from '../types'
+import { test, assertEqual, summary } from '../test/harness'
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -42,27 +43,6 @@ function state(overrides: Partial<BillState> = {}): BillState {
 /** Sum per-person values to cents, for reconciliation assertions. */
 function sumCents(values: number[]): number {
   return values.reduce((a, b) => a + Math.round(b * 100), 0)
-}
-
-let passed = 0
-let failed = 0
-
-function test(name: string, fn: () => void) {
-  try {
-    fn()
-    console.log(`  ✓ ${name}`)
-    passed++
-  } catch (e) {
-    console.error(`  ✗ ${name}`)
-    console.error(`    ${e instanceof Error ? e.message : e}`)
-    failed++
-  }
-}
-
-function assertEqual<T>(actual: T, expected: T, label: string) {
-  const a = JSON.stringify(actual)
-  const b = JSON.stringify(expected)
-  if (a !== b) throw new Error(`${label}\n    expected: ${b}\n    actual:   ${a}`)
 }
 
 // ─── getAmountEquivalent ───────────────────────────────────────────────────
@@ -503,5 +483,4 @@ test('singlePayerId not in participants → no paid credit assigned', () => {
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
-console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
-if (failed > 0) process.exit(1)
+summary()

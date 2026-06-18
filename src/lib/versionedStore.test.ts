@@ -6,6 +6,7 @@
 
 import { makeVersionedStore } from './versionedStore'
 import { migrateV1toBillV2 } from './billMigrations'
+import { test as baseTest, assert, assertEqual, summary } from '../test/harness'
 
 // ─── localStorage mock ────────────────────────────────────────────────────────
 
@@ -33,32 +34,9 @@ function resetStorage() {
   mockStorage = makeMockStorage()
 }
 
-// ─── Test harness ─────────────────────────────────────────────────────────────
-
-let passed = 0
-let failed = 0
-
+// Wrap the shared test() to reset storage before each case.
 function test(name: string, fn: () => void) {
-  resetStorage()
-  try {
-    fn()
-    console.log(`  ✓ ${name}`)
-    passed++
-  } catch (e) {
-    console.error(`  ✗ ${name}`)
-    console.error(`    ${e instanceof Error ? e.message : e}`)
-    failed++
-  }
-}
-
-function assert(condition: boolean, message: string): asserts condition {
-  if (!condition) throw new Error(message)
-}
-
-function assertEqual<T>(actual: T, expected: T, label: string) {
-  const a = JSON.stringify(actual)
-  const b = JSON.stringify(expected)
-  assert(a === b, `${label}\n    expected: ${b}\n    actual:   ${a}`)
+  baseTest(name, () => { resetStorage(); fn() })
 }
 
 // ─── makeVersionedStore tests ─────────────────────────────────────────────────
@@ -247,5 +225,4 @@ test('fuzz: null payload fields do not crash migration', () => {
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
-console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
-if (failed > 0) process.exit(1)
+summary()
