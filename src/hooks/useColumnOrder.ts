@@ -31,6 +31,7 @@ export function useColumnOrder(participants: Participant[]): {
 
   // Sync when participants are added or removed
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setColumnOrder(prev => {
       const participantIds = participants.map(p => p.id)
       const filtered = prev.filter(id => participantIds.includes(id))

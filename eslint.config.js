@@ -12,10 +12,6 @@ export default tseslint.config(
       // typescript-eslint flags unused vars; let tsc handle that instead so we
       // don't duplicate the noUnusedLocals / noUnusedParameters tsc checks.
       '@typescript-eslint/no-unused-vars': 'off',
-      // Advisory rule about calling setState inside effects. The useColumnOrder
-      // hook intentionally uses this pattern to sync an ordered list of IDs
-      // when participants are added/removed; turning it off project-wide.
-      'react-hooks/set-state-in-effect': 'off',
     },
   },
   {

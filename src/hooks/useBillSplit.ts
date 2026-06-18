@@ -210,6 +210,7 @@ export function useBillSplit() {
   // Persist to localStorage on every state change
   useEffect(() => {
     const ok = billStore.save(state)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveFailed(!ok)
   }, [state])
 
