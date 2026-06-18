@@ -130,7 +130,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
 
   function isAssignedToAll(item: Item): boolean {
     if (item.assignedTo === null) return true
-    return allIds.length > 0 && allIds.every(id => item.assignedTo!.includes(id))
+    return allIds.length > 0 && allIds.every(id => (item.assignedTo ?? []).includes(id))
   }
 
   function toggleAllAssigned(item: Item) {
