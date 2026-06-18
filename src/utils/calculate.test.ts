@@ -7,6 +7,7 @@ import {
   isValidAmount,
   isValidPrice,
   getTotalFeeBase,
+  splitAmountInput,
   reconcileCents,
   calculateBreakdown,
   calculateSettlement,
@@ -641,6 +642,29 @@ test('pre-tax with zero tax is just subtotal', () => {
 })
 test('post-tax with zero tax is still subtotal', () => {
   assertEqual(getTotalFeeBase('post-tax', 50, 0), 50, 'post-tax zero tax = subtotal')
+})
+
+// ─── splitAmountInput ─────────────────────────────────────────────────────────
+
+console.log('\nsplitAmountInput')
+
+test('plain number: not percent, numeric preserved', () => {
+  assertEqual(splitAmountInput('10.50'), { isPercent: false, numeric: '10.50' }, 'flat dollar')
+})
+test('percent string: isPercent true, % stripped', () => {
+  assertEqual(splitAmountInput('20%'), { isPercent: true, numeric: '20' }, 'percent')
+})
+test('bare %: isPercent true, numeric empty', () => {
+  assertEqual(splitAmountInput('%'), { isPercent: true, numeric: '' }, 'bare %')
+})
+test('empty string: not percent, numeric empty', () => {
+  assertEqual(splitAmountInput(''), { isPercent: false, numeric: '' }, 'empty')
+})
+test('whitespace trimmed', () => {
+  assertEqual(splitAmountInput('  15%  '), { isPercent: true, numeric: '15' }, 'trims before parsing')
+})
+test('negative percent', () => {
+  assertEqual(splitAmountInput('-10%'), { isPercent: true, numeric: '-10' }, 'negative percent')
 })
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
