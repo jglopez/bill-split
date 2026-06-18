@@ -444,11 +444,7 @@ test('three-way: transaction amounts are whole cents', () => {
   const bd = calculateBreakdown(s)
   const txns = calculateSettlement(s, bd)
   for (const t of txns) {
-    const cents = Math.round(t.amount * 100)
-    assertEqual(cents, Math.round(cents), `transaction ${t.fromId}→${t.toId} is whole cents`)
-    if (String(t.amount).includes('.') && String(t.amount).split('.')[1].length > 2) {
-      throw new Error(`${t.amount} has more than 2 decimal places`)
-    }
+    assertEqual(Math.round(t.amount * 100) / 100, t.amount, `transaction ${t.fromId}→${t.toId} is whole cents`)
   }
 })
 
@@ -482,6 +478,91 @@ test('singlePayerId not in participants → no paid credit assigned', () => {
   // No one is credited as having paid, so everyone owes their full share to "nobody"
   // — net for both A and B is positive (they owe) but there's no creditor.
   assertEqual(txns.length, 0, 'no creditor → no transactions')
+})
+
+test('settlement with overpayment: payer is owed the difference', () => {
+  const participants = [p('A'), p('B')]
+  const s = state({
+    participants,
+    items: [item('x', '10')],
+    payerMode: 'multiple',
+    amountPaid: { A: '12', B: '0' }, // A overpaid by $2
+  })
+  const bd = calculateBreakdown(s)
+  const txns = calculateSettlement(s, bd)
+  // A's grandTotal = 5, A paid 12, so net = 5-12 = -7 (owed $7)
+  // B's grandTotal = 5, B paid 0, so net = 5-0 = +5 (owes $5)
+  // Only B→A transaction because overpayment doesn't create a second creditor
+  assertEqual(txns.length, 1, 'one transaction')
+  assertEqual(txns[0].fromId, 'B', 'B pays')
+  assertEqual(txns[0].toId, 'A', 'to A')
+  assertEqual(txns[0].amount, 5, 'B pays their share')
+})
+
+test('settlement nets all within 0.005 threshold: no transactions', () => {
+  const participants = [p('A'), p('B')]
+  const s = state({
+    participants,
+    items: [item('x', '10')],
+    payerMode: 'multiple',
+    amountPaid: { A: '5.002', B: '4.998' }, // nets < 0.005, both within threshold
+  })
+  const bd = calculateBreakdown(s)
+  const txns = calculateSettlement(s, bd)
+  assertEqual(txns.length, 0, 'sub-cent nets produce no transactions')
+})
+
+// ─── calculateBreakdown (edge cases) ─────────────────────────────────────────
+
+console.log('\ncalculateBreakdown (edge cases)')
+
+test('additional fee on post-tax base', () => {
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [item('x', '10')],
+    tax: '10%', // $1 tax, totalSubtotal = $10, post-tax = $11
+    additionalFees: [fee('svc', '10%', 'post-tax')], // 10% of $11 = $1.10
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 1, '$1 tax')
+  assertEqual(bd.totalAdditionalFees[0], 1.1, '10% of $11 post-tax = $1.10')
+})
+
+test('percentage fee when pool base is 0 splits evenly', () => {
+  // No items → subtotal = 0, fee base = 0, distributeProportionally falls back to even split
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [],
+    additionalFees: [fee('svc', '2')], // $2 flat fee with zero pool
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalAdditionalFees[0], 2, '$2 fee')
+  assertEqual(bd.perPerson[0].additionalFees[0], 1, 'A pays half (even split)')
+  assertEqual(bd.perPerson[1].additionalFees[0], 1, 'B pays half (even split)')
+})
+
+test('3-way negative discount splits proportionally', () => {
+  const s = state({
+    participants: [p('A'), p('B'), p('C')],
+    items: [item('x', '30')], // $10 each
+    additionalFees: [fee('coupon', '-3')], // -$3 total = -$1 each
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalAdditionalFees[0], -3, '-$3 discount')
+  for (const pp of bd.perPerson) {
+    assertEqual(pp.additionalFees[0], -1, 'each person saves $1')
+  }
+})
+
+test('item assigned to id not in participants is silently skipped', () => {
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [item('x', '10', ['ghost'])], // 'ghost' is not a participant
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalSubtotal, 0, 'item with non-participant assignee contributes nothing')
+  assertEqual(bd.perPerson[0].subtotal, 0, 'A gets nothing')
+  assertEqual(bd.perPerson[1].subtotal, 0, 'B gets nothing')
 })
 
 // ─── isValidAmount ────────────────────────────────────────────────────────────
