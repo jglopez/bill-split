@@ -29,7 +29,7 @@ export function useColumnOrder(participants: Participant[]): {
           return [...filtered, ...added]
         }
       }
-    } catch {}
+    } catch { /* ignore corrupt or blocked localStorage */ }
     return [...allIds]
   })
 
@@ -48,7 +48,7 @@ export function useColumnOrder(participants: Participant[]): {
   useEffect(() => {
     try {
       localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
-    } catch {}
+    } catch { /* ignore quota-exceeded or private-browsing errors */ }
   }, [columnOrder])
 
   const participantMap = new Map(participants.map(p => [p.id, p]))
