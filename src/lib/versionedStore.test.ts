@@ -137,6 +137,19 @@ test('second load after save returns saved value', () => {
   assertEqual(store.load(), { x: 55 }, 'round-trip')
 })
 
+test('migration succeeds and returns migrated value even when removeItem throws', () => {
+  localStorage.setItem('key:v1', JSON.stringify({ x: 7 }))
+  // Force removeItem to fail to verify the try/catch guard in versionedStore
+  mockStorage.removeItem = () => { throw new Error('simulated removeItem failure') }
+  const store = makeVersionedStore<{ x: number; migrated: boolean }>(
+    'key:v2',
+    [['key:v1', raw => ({ ...(raw as { x: number }), migrated: true })]],
+    { x: 0, migrated: false },
+  )
+  const result = store.load()
+  assertEqual(result, { x: 7, migrated: true }, 'migrated value returned despite removeItem failure')
+})
+
 // ─── migrateV1toBillV2 fuzz tests ─────────────────────────────────────────────
 
 console.log('\nmigrateV1toBillV2 (fuzz)')
@@ -221,6 +234,44 @@ test('fuzz: missing items field produces empty items array', () => {
 test('fuzz: null payload fields do not crash migration', () => {
   const result = migrateV1toBillV2({ items: undefined, participants: undefined })
   assert(Array.isArray(result.items), 'items is array even when input items is undefined')
+})
+
+// ─── migrateV1toBillV2 validation tests ──────────────────────────────────────
+
+console.log('\nmigrateV1toBillV2 (validation)')
+
+function assertThrows(fn: () => unknown, label: string) {
+  let threw = false
+  try { fn() } catch { threw = true }
+  assert(threw, label)
+}
+
+test('throws when assignedTo is a string', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: '1.00', assignedTo: 'invalid' }] }),
+    'should throw for string assignedTo',
+  )
+})
+
+test('throws when assignedTo is a boolean', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: '1.00', assignedTo: true }] }),
+    'should throw for boolean assignedTo',
+  )
+})
+
+test('throws when assignedTo is a plain object', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: '1.00', assignedTo: { ids: [] } }] }),
+    'should throw for object assignedTo',
+  )
+})
+
+test('throws when price is a number instead of string', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: 9.99, assignedTo: null }] }),
+    'should throw for numeric price',
+  )
 })
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
