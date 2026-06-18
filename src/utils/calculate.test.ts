@@ -4,11 +4,17 @@
 import {
   getAmountEquivalent,
   parseAmount,
+  parsePaidAmount,
+  isValidAmount,
+  isValidPrice,
+  getTotalFeeBase,
+  splitAmountInput,
   reconcileCents,
   calculateBreakdown,
   calculateSettlement,
 } from './calculate'
 import type { BillState, Item, Participant, AdditionalFee } from '../types'
+import { test, assertEqual, summary } from '../test/harness'
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -42,27 +48,6 @@ function state(overrides: Partial<BillState> = {}): BillState {
 /** Sum per-person values to cents, for reconciliation assertions. */
 function sumCents(values: number[]): number {
   return values.reduce((a, b) => a + Math.round(b * 100), 0)
-}
-
-let passed = 0
-let failed = 0
-
-function test(name: string, fn: () => void) {
-  try {
-    fn()
-    console.log(`  ✓ ${name}`)
-    passed++
-  } catch (e) {
-    console.error(`  ✗ ${name}`)
-    console.error(`    ${e instanceof Error ? e.message : e}`)
-    failed++
-  }
-}
-
-function assertEqual<T>(actual: T, expected: T, label: string) {
-  const a = JSON.stringify(actual)
-  const b = JSON.stringify(expected)
-  if (a !== b) throw new Error(`${label}\n    expected: ${b}\n    actual:   ${a}`)
 }
 
 // ─── getAmountEquivalent ───────────────────────────────────────────────────
@@ -461,11 +446,7 @@ test('three-way: transaction amounts are whole cents', () => {
   const bd = calculateBreakdown(s)
   const txns = calculateSettlement(s, bd)
   for (const t of txns) {
-    const cents = Math.round(t.amount * 100)
-    assertEqual(cents, Math.round(cents), `transaction ${t.fromId}→${t.toId} is whole cents`)
-    if (String(t.amount).includes('.') && String(t.amount).split('.')[1].length > 2) {
-      throw new Error(`${t.amount} has more than 2 decimal places`)
-    }
+    assertEqual(Math.round(t.amount * 100) / 100, t.amount, `transaction ${t.fromId}→${t.toId} is whole cents`)
   }
 })
 
@@ -501,7 +482,215 @@ test('singlePayerId not in participants → no paid credit assigned', () => {
   assertEqual(txns.length, 0, 'no creditor → no transactions')
 })
 
+test('settlement with overpayment: payer is owed the difference', () => {
+  const participants = [p('A'), p('B')]
+  const s = state({
+    participants,
+    items: [item('x', '10')],
+    payerMode: 'multiple',
+    amountPaid: { A: '12', B: '0' }, // A overpaid by $2
+  })
+  const bd = calculateBreakdown(s)
+  const txns = calculateSettlement(s, bd)
+  // A's grandTotal = 5, A paid 12, so net = 5-12 = -7 (owed $7)
+  // B's grandTotal = 5, B paid 0, so net = 5-0 = +5 (owes $5)
+  // Only B→A transaction because overpayment doesn't create a second creditor
+  assertEqual(txns.length, 1, 'one transaction')
+  assertEqual(txns[0].fromId, 'B', 'B pays')
+  assertEqual(txns[0].toId, 'A', 'to A')
+  assertEqual(txns[0].amount, 5, 'B pays their share')
+})
+
+test('settlement nets all within 0.005 threshold: no transactions', () => {
+  const participants = [p('A'), p('B')]
+  const s = state({
+    participants,
+    items: [item('x', '10')],
+    payerMode: 'multiple',
+    amountPaid: { A: '5.002', B: '4.998' }, // nets < 0.005, both within threshold
+  })
+  const bd = calculateBreakdown(s)
+  const txns = calculateSettlement(s, bd)
+  assertEqual(txns.length, 0, 'sub-cent nets produce no transactions')
+})
+
+// ─── calculateBreakdown (edge cases) ─────────────────────────────────────────
+
+console.log('\ncalculateBreakdown (edge cases)')
+
+test('additional fee on post-tax base', () => {
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [item('x', '10')],
+    tax: '10%', // $1 tax, totalSubtotal = $10, post-tax = $11
+    additionalFees: [fee('svc', '10%', 'post-tax')], // 10% of $11 = $1.10
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 1, '$1 tax')
+  assertEqual(bd.totalAdditionalFees[0], 1.1, '10% of $11 post-tax = $1.10')
+})
+
+test('flat fee when pool base is 0 splits evenly', () => {
+  // No items → subtotal = 0, fee base = 0, distributeProportionally falls back to even split
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [],
+    additionalFees: [fee('svc', '2')], // $2 flat fee with zero pool
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalAdditionalFees[0], 2, '$2 fee')
+  assertEqual(bd.perPerson[0].additionalFees[0], 1, 'A pays half (even split)')
+  assertEqual(bd.perPerson[1].additionalFees[0], 1, 'B pays half (even split)')
+})
+
+test('3-way negative discount splits proportionally', () => {
+  const s = state({
+    participants: [p('A'), p('B'), p('C')],
+    items: [item('x', '30')], // $10 each
+    additionalFees: [fee('coupon', '-3')], // -$3 total = -$1 each
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalAdditionalFees[0], -3, '-$3 discount')
+  for (const pp of bd.perPerson) {
+    assertEqual(pp.additionalFees[0], -1, 'each person saves $1')
+  }
+})
+
+test('item assigned to id not in participants is silently skipped', () => {
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [item('x', '10', ['ghost'])], // 'ghost' is not a participant
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalSubtotal, 0, 'item with non-participant assignee contributes nothing')
+  assertEqual(bd.perPerson[0].subtotal, 0, 'A gets nothing')
+  assertEqual(bd.perPerson[1].subtotal, 0, 'B gets nothing')
+})
+
+// ─── isValidAmount ────────────────────────────────────────────────────────────
+
+console.log('\nisValidAmount')
+
+test('empty string is valid (treated as 0)', () => {
+  assertEqual(isValidAmount(''), true, 'empty allowed')
+})
+test('whitespace-only is valid', () => {
+  assertEqual(isValidAmount('   '), true, 'whitespace allowed')
+})
+test('plain number is valid', () => {
+  assertEqual(isValidAmount('12.50'), true, 'flat dollar')
+})
+test('negative number is valid (discount)', () => {
+  assertEqual(isValidAmount('-5'), true, 'negative allowed')
+})
+test('percentage is valid', () => {
+  assertEqual(isValidAmount('20%'), true, 'percent allowed')
+})
+test('negative percentage is valid', () => {
+  assertEqual(isValidAmount('-10%'), true, 'negative percent allowed')
+})
+test('non-numeric string is invalid', () => {
+  assertEqual(isValidAmount('abc'), false, 'text rejected')
+})
+test('non-numeric percent is invalid', () => {
+  assertEqual(isValidAmount('abc%'), false, 'text% rejected')
+})
+test('Infinity is invalid', () => {
+  assertEqual(isValidAmount('Infinity'), false, 'Infinity rejected')
+})
+test('Infinity% is invalid', () => {
+  assertEqual(isValidAmount('Infinity%'), false, 'Infinity% rejected')
+})
+
+// ─── isValidPrice ─────────────────────────────────────────────────────────────
+
+console.log('\nisValidPrice')
+
+test('empty string is valid', () => {
+  assertEqual(isValidPrice(''), true, 'empty allowed')
+})
+test('positive number is valid', () => {
+  assertEqual(isValidPrice('9.99'), true, 'positive price')
+})
+test('zero is valid', () => {
+  assertEqual(isValidPrice('0'), true, 'zero price')
+})
+test('negative number is invalid (prices are non-negative)', () => {
+  assertEqual(isValidPrice('-5'), false, 'negative price rejected')
+})
+test('percentage string is invalid for prices', () => {
+  assertEqual(isValidPrice('10%'), false, '% rejected for price')
+})
+test('non-numeric string is invalid', () => {
+  assertEqual(isValidPrice('abc'), false, 'text rejected')
+})
+test('Infinity is invalid', () => {
+  assertEqual(isValidPrice('Infinity'), false, 'Infinity rejected')
+})
+
+// ─── getTotalFeeBase ──────────────────────────────────────────────────────────
+
+console.log('\ngetTotalFeeBase')
+
+test('pre-tax base returns subtotal only', () => {
+  assertEqual(getTotalFeeBase('pre-tax', 100, 10), 100, 'pre-tax ignores tax')
+})
+test('post-tax base returns subtotal + tax', () => {
+  assertEqual(getTotalFeeBase('post-tax', 100, 10), 110, 'post-tax adds tax')
+})
+test('pre-tax with zero tax is just subtotal', () => {
+  assertEqual(getTotalFeeBase('pre-tax', 50, 0), 50, 'pre-tax zero tax')
+})
+test('post-tax with zero tax is still subtotal', () => {
+  assertEqual(getTotalFeeBase('post-tax', 50, 0), 50, 'post-tax zero tax = subtotal')
+})
+
+// ─── parsePaidAmount ──────────────────────────────────────────────────────────
+
+console.log('\nparsePaidAmount')
+
+test('valid number string', () => {
+  assertEqual(parsePaidAmount('12.50'), 12.5, 'parses valid amount')
+})
+test('undefined returns 0', () => {
+  assertEqual(parsePaidAmount(undefined), 0, 'undefined → 0')
+})
+test('empty string returns 0', () => {
+  assertEqual(parsePaidAmount(''), 0, 'empty → 0')
+})
+test('non-numeric string returns 0', () => {
+  assertEqual(parsePaidAmount('abc'), 0, 'non-numeric → 0')
+})
+test('Infinity string returns 0', () => {
+  assertEqual(parsePaidAmount('Infinity'), 0, 'Infinity → 0')
+})
+test('-Infinity string returns 0', () => {
+  assertEqual(parsePaidAmount('-Infinity'), 0, '-Infinity → 0')
+})
+
+// ─── splitAmountInput ─────────────────────────────────────────────────────────
+
+console.log('\nsplitAmountInput')
+
+test('plain number: not percent, numeric preserved', () => {
+  assertEqual(splitAmountInput('10.50'), { isPercent: false, numeric: '10.50' }, 'flat dollar')
+})
+test('percent string: isPercent true, % stripped', () => {
+  assertEqual(splitAmountInput('20%'), { isPercent: true, numeric: '20' }, 'percent')
+})
+test('bare %: isPercent true, numeric empty', () => {
+  assertEqual(splitAmountInput('%'), { isPercent: true, numeric: '' }, 'bare %')
+})
+test('empty string: not percent, numeric empty', () => {
+  assertEqual(splitAmountInput(''), { isPercent: false, numeric: '' }, 'empty')
+})
+test('whitespace trimmed', () => {
+  assertEqual(splitAmountInput('  15%  '), { isPercent: true, numeric: '15' }, 'trims before parsing')
+})
+test('negative percent', () => {
+  assertEqual(splitAmountInput('-10%'), { isPercent: true, numeric: '-10' }, 'negative percent')
+})
+
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
-console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
-if (failed > 0) process.exit(1)
+summary()

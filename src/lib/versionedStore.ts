@@ -10,56 +10,67 @@ type Migration<T> = (raw: unknown) => T
 
 interface VersionedStore<T> {
   load: () => T
-  save: (value: T) => void
+  save: (value: T) => boolean
+}
+
+/** Read and JSON-parse a localStorage key. Returns null if absent, blocked, or corrupt. */
+export function readJSON(key: string): unknown {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw !== null ? JSON.parse(raw) as unknown : null
+  } catch {
+    return null
+  }
+}
+
+/** JSON-serialize and write a value to localStorage. Returns true on success. */
+export function writeJSON(key: string, value: unknown): boolean {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function makeVersionedStore<T>(
   currentKey: string,
   migrations: [oldKey: string, migrate: Migration<T>][],
   fallback: T,
+  validate?: (v: unknown) => v is T,
 ): VersionedStore<T> {
   return {
     load(): T {
       // Try the current key first.
-      try {
-        const raw = localStorage.getItem(currentKey)
-        if (raw !== null) return JSON.parse(raw) as T
-      } catch {
-        // Corrupt JSON in the current key — fall through to migrations.
+      const current = readJSON(currentKey)
+      if (current !== null) {
+        // If a validator is supplied and the parsed value fails it, fall
+        // through to migrations rather than returning malformed state.
+        if (!validate || validate(current)) return current as T
       }
 
       // Walk migrations in order (most-recent old key first).
       for (const [oldKey, migrate] of migrations) {
-        let raw: string | null
-        try {
-          raw = localStorage.getItem(oldKey)
-        } catch {
-          // Storage blocked (e.g. SecurityError) — skip this key.
-          continue
-        }
+        const raw = readJSON(oldKey)
         if (raw === null) continue
 
         try {
-          const migrated = migrate(JSON.parse(raw))
-          localStorage.setItem(currentKey, JSON.stringify(migrated))
+          const migrated = migrate(raw)
+          writeJSON(currentKey, migrated)
           // Best-effort cleanup: a removeItem failure must not suppress the
           // migrated value that was already written to the current key.
           try { localStorage.removeItem(oldKey) } catch { /* ignore */ }
           return migrated
         } catch {
-          // Migration or serialization failed — try the next entry.
+          // Migration failed — try the next entry.
         }
       }
 
       return fallback
     },
 
-    save(value: T): void {
-      try {
-        localStorage.setItem(currentKey, JSON.stringify(value))
-      } catch {
-        // Storage quota exceeded or private browsing — degrade silently.
-      }
+    save(value: T): boolean {
+      return writeJSON(currentKey, value)
     },
   }
 }

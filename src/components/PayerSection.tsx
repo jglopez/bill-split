@@ -1,5 +1,5 @@
 import type { BillState, Participant, PayerMode } from '../types'
-import { isValidPrice } from '../utils/calculate'
+import { isValidPrice, parsePaidAmount } from '../utils/calculate'
 import type { BillBreakdown } from '../utils/calculate'
 import { formatMoney } from '../utils/format'
 
@@ -39,10 +39,7 @@ export function PayerSection({
   // Soft warning for multiple payer mode when amounts don't add up
   const totalPaid =
     payerMode === 'multiple'
-      ? participants.reduce((sum, p) => {
-          const val = Number(amountPaid[p.id] ?? '')
-          return sum + (isNaN(val) ? 0 : val)
-        }, 0)
+      ? participants.reduce((sum, p) => sum + parsePaidAmount(amountPaid[p.id]), 0)
       : grandTotal
 
   const mismatch =
@@ -120,7 +117,7 @@ export function PayerSection({
 
           {mismatch && (
             <p role="status" className="text-xs text-amber-600 mt-1">
-              Total paid ({fmt(totalPaid)}) doesn't match the grand total ({fmt(grandTotal)}).
+              Total paid ({formatMoney(totalPaid)}) doesn't match the grand total ({formatMoney(grandTotal)}).
               Settlement will reflect the difference.
             </p>
           )}
@@ -130,4 +127,3 @@ export function PayerSection({
   )
 }
 
-const fmt = formatMoney

@@ -6,6 +6,7 @@
 
 import { makeVersionedStore } from './versionedStore'
 import { migrateV1toBillV2 } from './billMigrations'
+import { test as baseTest, assert, assertEqual, summary } from '../test/harness'
 
 // ─── localStorage mock ────────────────────────────────────────────────────────
 
@@ -33,32 +34,9 @@ function resetStorage() {
   mockStorage = makeMockStorage()
 }
 
-// ─── Test harness ─────────────────────────────────────────────────────────────
-
-let passed = 0
-let failed = 0
-
+// Wrap the shared test() to reset storage before each case.
 function test(name: string, fn: () => void) {
-  resetStorage()
-  try {
-    fn()
-    console.log(`  ✓ ${name}`)
-    passed++
-  } catch (e) {
-    console.error(`  ✗ ${name}`)
-    console.error(`    ${e instanceof Error ? e.message : e}`)
-    failed++
-  }
-}
-
-function assert(condition: boolean, message: string): asserts condition {
-  if (!condition) throw new Error(message)
-}
-
-function assertEqual<T>(actual: T, expected: T, label: string) {
-  const a = JSON.stringify(actual)
-  const b = JSON.stringify(expected)
-  assert(a === b, `${label}\n    expected: ${b}\n    actual:   ${a}`)
+  baseTest(name, () => { resetStorage(); fn() })
 }
 
 // ─── makeVersionedStore tests ─────────────────────────────────────────────────
@@ -159,6 +137,62 @@ test('second load after save returns saved value', () => {
   assertEqual(store.load(), { x: 55 }, 'round-trip')
 })
 
+test('save returns true on success', () => {
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
+  const result = store.save({ x: 1 })
+  assert(result === true, 'save returns true when setItem succeeds')
+})
+
+test('save returns false when setItem throws (simulated quota exceeded)', () => {
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
+  mockStorage.setItem = () => { throw new DOMException('QuotaExceededError') }
+  const result = store.save({ x: 99 })
+  assert(result === false, 'save returns false when setItem throws')
+})
+
+test('validate: valid current key passes through unchanged', () => {
+  localStorage.setItem('key:v2', JSON.stringify({ x: 42 }))
+  const isValid = (v: unknown): v is { x: number } =>
+    typeof (v as Record<string, unknown>).x === 'number'
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 }, isValid)
+  assertEqual(store.load(), { x: 42 }, 'valid value returned directly')
+})
+
+test('validate: invalid-shape current key falls back to fallback', () => {
+  localStorage.setItem('key:v2', JSON.stringify({ notX: 'wrong' }))
+  const isValid = (v: unknown): v is { x: number } =>
+    typeof (v as Record<string, unknown>).x === 'number'
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: -1 }, isValid)
+  assertEqual(store.load(), { x: -1 }, 'invalid shape falls back to fallback')
+})
+
+test('validate: invalid-shape current key falls back to migration when available', () => {
+  localStorage.setItem('key:v2', JSON.stringify({ notX: 'wrong' }))
+  localStorage.setItem('key:v1', JSON.stringify({ x: 7 }))
+  const isValid = (v: unknown): v is { x: number } =>
+    typeof (v as Record<string, unknown>).x === 'number'
+  const store = makeVersionedStore<{ x: number }>(
+    'key:v2',
+    [['key:v1', raw => raw as { x: number }]],
+    { x: -1 },
+    isValid,
+  )
+  assertEqual(store.load(), { x: 7 }, 'migrated value returned when current key fails validation')
+})
+
+test('migration succeeds and returns migrated value even when removeItem throws', () => {
+  localStorage.setItem('key:v1', JSON.stringify({ x: 7 }))
+  // Force removeItem to fail to verify the try/catch guard in versionedStore
+  mockStorage.removeItem = () => { throw new Error('simulated removeItem failure') }
+  const store = makeVersionedStore<{ x: number; migrated: boolean }>(
+    'key:v2',
+    [['key:v1', raw => ({ ...(raw as { x: number }), migrated: true })]],
+    { x: 0, migrated: false },
+  )
+  const result = store.load()
+  assertEqual(result, { x: 7, migrated: true }, 'migrated value returned despite removeItem failure')
+})
+
 // ─── migrateV1toBillV2 fuzz tests ─────────────────────────────────────────────
 
 console.log('\nmigrateV1toBillV2 (fuzz)')
@@ -245,7 +279,44 @@ test('fuzz: null payload fields do not crash migration', () => {
   assert(Array.isArray(result.items), 'items is array even when input items is undefined')
 })
 
+// ─── migrateV1toBillV2 validation tests ──────────────────────────────────────
+
+console.log('\nmigrateV1toBillV2 (validation)')
+
+function assertThrows(fn: () => unknown, label: string) {
+  let threw = false
+  try { fn() } catch { threw = true }
+  assert(threw, label)
+}
+
+test('throws when assignedTo is a string', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: '1.00', assignedTo: 'invalid' }] }),
+    'should throw for string assignedTo',
+  )
+})
+
+test('throws when assignedTo is a boolean', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: '1.00', assignedTo: true }] }),
+    'should throw for boolean assignedTo',
+  )
+})
+
+test('throws when assignedTo is a plain object', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: '1.00', assignedTo: { ids: [] } }] }),
+    'should throw for object assignedTo',
+  )
+})
+
+test('throws when price is a number instead of string', () => {
+  assertThrows(
+    () => migrateV1toBillV2({ items: [{ id: 'x', name: 'x', price: 9.99, assignedTo: null }] }),
+    'should throw for numeric price',
+  )
+})
+
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
-console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
-if (failed > 0) process.exit(1)
+summary()

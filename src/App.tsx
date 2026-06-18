@@ -13,6 +13,7 @@ import { ConfirmModal } from './components/ConfirmModal'
 export function App() {
   const {
     state,
+    saveFailed,
     addParticipant,
     removeParticipant,
     renameParticipant,
@@ -29,14 +30,12 @@ export function App() {
     setSinglePayer,
     setAmountPaid,
     reset,
+    dismissSaveWarning,
   } = useBillSplit()
 
   const { columnOrder, setColumnOrder, orderedParticipants } = useColumnOrder(state.participants)
   const [showResetModal, setShowResetModal] = useState(false)
 
-  // Recalculate on every render. The calculation is fast enough that memoizing
-  // by individual field is not necessary, but useMemo avoids recomputing when
-  // an unrelated parent re-renders.
   const breakdown = useMemo(() => calculateBreakdown(state), [state])
   const transactions = useMemo(
     () => calculateSettlement(state, breakdown),
@@ -45,6 +44,21 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {saveFailed && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-800"
+        >
+          <span>Changes can't be saved — private browsing or storage is full.</span>
+          <button
+            onClick={dismissSaveWarning}
+            aria-label="Dismiss"
+            className="text-amber-600 hover:text-amber-800 focus:outline-none font-medium"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

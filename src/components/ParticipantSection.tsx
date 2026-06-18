@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Participant } from '../types'
+import { NAME_MAX_LENGTH } from '../constants'
 
 interface Props {
   participants: Participant[]
@@ -9,9 +10,8 @@ interface Props {
 }
 
 /**
- * Participant management is intentionally isolated in this component so the
- * source of participant data (freeform text today, user profile tomorrow) can
- * be swapped without touching the rest of the app.
+ * Participant management is isolated so the data source can change without
+ * touching the rest of the app.
  */
 export function ParticipantSection({ participants, onAdd, onRemove, onRename }: Props) {
   const [newName, setNewName] = useState('')
@@ -64,6 +64,7 @@ export function ParticipantSection({ participants, onAdd, onRemove, onRename }: 
             onKeyDown={handleKeyDown}
             placeholder="Add participant"
             aria-label="New participant name"
+            maxLength={NAME_MAX_LENGTH}
             className="border border-gray-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-w-[140px]"
           />
           <button
@@ -133,6 +134,7 @@ function ParticipantChip({ participant, onRemove, onRename }: ChipProps) {
             onKeyDown={handleKeyDown}
             onBlur={commit}
             aria-label={`Rename ${participant.name}`}
+            maxLength={NAME_MAX_LENGTH}
             className="border border-teal-400 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[100px]"
           />
           {error && (

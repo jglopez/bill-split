@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import type { AdditionalFee, FeesBase } from '../types'
-import { getAmountEquivalent, getTotalFeeBase, isValidAmount } from '../utils/calculate'
+import { getAmountEquivalent, getTotalFeeBase, isValidAmount, splitAmountInput } from '../utils/calculate'
+import { NAME_MAX_LENGTH } from '../constants'
 
 interface Props {
   tax: string
@@ -84,7 +85,7 @@ export function TaxTipSection({
         <IncludeTaxToggle
           base={tipBase}
           onChange={onSetTipBase}
-          disabled={!tip.trim().endsWith('%')}
+          disabled={!splitAmountInput(tip).isPercent}
         />
         {tipInvalid && (
           <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -135,7 +136,7 @@ function FeeRow({
   // Detect whether the current amount is a discount (negative) so we can
   // label it clearly alongside any visual distinction.
   const trimmedAmount = fee.amount.trim()
-  const numAmount = Number(trimmedAmount.endsWith('%') ? trimmedAmount.slice(0, -1) : trimmedAmount)
+  const numAmount = Number(splitAmountInput(trimmedAmount).numeric)
   const isDiscount = trimmedAmount.startsWith('-') || (!isNaN(numAmount) && numAmount < 0)
 
   function toggleSign() {
@@ -159,6 +160,7 @@ function FeeRow({
         onChange={e => onChange({ ...fee, name: e.target.value })}
         placeholder="Name"
         aria-label="Fee name"
+        maxLength={NAME_MAX_LENGTH}
         className="border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none bg-transparent py-0.5 w-28 text-gray-800 placeholder-gray-300"
       />
       <AmountInput
@@ -185,7 +187,7 @@ function FeeRow({
       <IncludeTaxToggle
         base={fee.base}
         onChange={b => onChange({ ...fee, base: b })}
-        disabled={!fee.amount.trim().endsWith('%')}
+        disabled={!splitAmountInput(fee.amount).isPercent}
       />
       {amountInvalid && (
         <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -220,16 +222,15 @@ function AmountInput({
 }) {
   // Parse into numeric portion and percent flag.
   // A trailing "%" in the stored value means percent mode is on.
-  const trimmed = value.trim()
-  const isPercent = trimmed.endsWith('%')
-  const numeric = isPercent ? trimmed.slice(0, -1) : trimmed
+  const { isPercent, numeric } = splitAmountInput(value)
   const equivalent = !invalid && base !== undefined ? getAmountEquivalent(value, base) : null
 
   function handleInputChange(raw: string) {
     // "%" typed directly acts as a toggle: turns percent mode on if off,
     // off if already on. This mirrors the behavior of the % button.
-    if (raw.endsWith('%')) {
-      onChange(raw.slice(0, -1) + (isPercent ? '' : '%'))
+    const { isPercent: rawIsPercent, numeric: rawNumeric } = splitAmountInput(raw)
+    if (rawIsPercent) {
+      onChange(rawNumeric + (isPercent ? '' : '%'))
     } else {
       onChange(raw + (isPercent ? '%' : ''))
     }

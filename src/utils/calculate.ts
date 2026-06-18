@@ -3,28 +3,37 @@ import type { BillState, FeesBase } from '../types'
 // ─── Parsing ────────────────────────────────────────────────────────────────
 
 /**
+ * Split a trimmed amount string into its percent flag and numeric part.
+ * A trailing "%" means percent mode; the numeric part has the "%" stripped.
+ */
+export function splitAmountInput(value: string): { isPercent: boolean; numeric: string } {
+  const trimmed = value.trim()
+  const isPercent = trimmed.endsWith('%')
+  return { isPercent, numeric: isPercent ? trimmed.slice(0, -1) : trimmed }
+}
+
+/**
  * Parse a user-entered amount string relative to a base dollar amount.
  * A trailing "%" means the value is a percentage of `base`.
  * Anything else is treated as a flat dollar amount.
  * Returns 0 for empty, unparseable, or NaN inputs.
  */
 export function parseAmount(value: string, base: number): number {
-  const trimmed = value.trim()
-  if (!trimmed) return 0
-  if (trimmed.endsWith('%')) {
-    const pct = Number(trimmed.slice(0, -1))
+  const { isPercent, numeric } = splitAmountInput(value)
+  if (!numeric && !isPercent) return 0
+  if (isPercent) {
+    const pct = Number(numeric)
     return isNaN(pct) ? 0 : (pct / 100) * base
   }
-  const n = Number(trimmed)
+  const n = Number(numeric)
   return isNaN(n) ? 0 : n
 }
 
 /** Returns true if a string is a syntactically valid amount ($ or %). */
 export function isValidAmount(value: string): boolean {
-  const trimmed = value.trim()
-  if (!trimmed) return true // empty is allowed (treated as 0)
-  const raw = trimmed.endsWith('%') ? trimmed.slice(0, -1) : trimmed
-  const n = Number(raw)
+  const { isPercent, numeric } = splitAmountInput(value)
+  if (!numeric && !isPercent) return true // empty is allowed (treated as 0)
+  const n = Number(numeric)
   return !isNaN(n) && isFinite(n)
 }
 
@@ -91,17 +100,15 @@ function formatPercent(n: number): string {
  * or a $-to-% conversion against a zero or negative base.
  */
 export function getAmountEquivalent(value: string, base: number): string | null {
-  const trimmed = value.trim()
-  if (!trimmed || !isFinite(base)) return null
-  const isPercent = trimmed.endsWith('%')
+  const { isPercent, numeric } = splitAmountInput(value)
+  if ((!numeric && !isPercent) || !isFinite(base)) return null
   if (isPercent) {
-    const numericPart = trimmed.slice(0, -1)
-    if (!numericPart) return null // bare "%" (e.g. mid-toggle with no digits yet)
-    const pct = Number(numericPart)
+    if (!numeric) return null // bare "%" (e.g. mid-toggle with no digits yet)
+    const pct = Number(numeric)
     if (isNaN(pct) || !isFinite(pct)) return null
     return formatDollar((pct / 100) * base)
   }
-  const n = Number(trimmed)
+  const n = Number(numeric)
   if (isNaN(n) || !isFinite(n) || base <= 0) return null
   return formatPercent((n / base) * 100)
 }
@@ -130,6 +137,12 @@ export interface BillBreakdown {
 /** Resolve the base amount for a proportional fee given its base setting. */
 export function getTotalFeeBase(base: FeesBase, totalSubtotal: number, totalTax: number): number {
   return base === 'post-tax' ? totalSubtotal + totalTax : totalSubtotal
+}
+
+/** Parse a paid-amount string; empty, undefined, non-numeric, or non-finite values become 0. */
+export function parsePaidAmount(value: string | undefined): number {
+  const n = Number(value ?? '')
+  return isFinite(n) ? n : 0
 }
 
 /**
@@ -227,18 +240,13 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     taxTotal,
   )
 
-  // Helper: resolve the base amount for a single person's proportional fee share
-  function getFeeBase(base: FeesBase, personSubtotal: number, personTax: number): number {
-    return base === 'post-tax' ? personSubtotal + personTax : personSubtotal
-  }
-
   // Tip
   const tipTotalBase = getTotalFeeBase(tipBase, totalSubtotal, taxTotal)
   const tipTotal = parseAmount(tip, tipTotalBase)
   const tipShares = reconcileCents(
     distributeProportionally(
       tipTotal,
-      participants.map((_p, i) => getFeeBase(tipBase, reconciledSubtotals[i], taxShares[i])),
+      participants.map((_p, i) => getTotalFeeBase(tipBase, reconciledSubtotals[i], taxShares[i])),
       tipTotalBase,
     ),
     tipTotal,
@@ -255,7 +263,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     return reconcileCents(
       distributeProportionally(
         totalAdditionalFees[fi],
-        participants.map((_p, i) => getFeeBase(fee.base, reconciledSubtotals[i], taxShares[i])),
+        participants.map((_p, i) => getTotalFeeBase(fee.base, reconciledSubtotals[i], taxShares[i])),
         feeBase,
       ),
       totalAdditionalFees[fi],
@@ -326,8 +334,7 @@ export function calculateSettlement(
     }
   } else {
     for (const p of participants) {
-      const val = Number(amountPaid[p.id] ?? '')
-      paid[p.id] = isNaN(val) ? 0 : val
+      paid[p.id] = parsePaidAmount(amountPaid[p.id])
     }
   }
 
