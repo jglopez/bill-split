@@ -25,9 +25,9 @@ interface Props {
  * and makes it easy to extract into an export/print view later.
  */
 export function SummarySection({ orderedParticipants, additionalFees, state, breakdown }: Props) {
-  if (orderedParticipants.length === 0 || breakdown.totalSubtotal === 0) return null
-
   const isMobile = useIsMobile()
+
+  if (orderedParticipants.length === 0 || breakdown.totalSubtotal === 0) return null
   const perPersonMap = new Map(breakdown.perPerson.map(p => [p.participantId, p]))
 
   function perPersonValue(participantId: string, field: 'subtotal' | 'tax' | 'tip' | 'grandTotal'): number {
