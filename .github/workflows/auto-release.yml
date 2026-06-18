@@ -3,6 +3,16 @@ name: Auto-release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to release (defaults to HEAD of main)"
+        required: false
+        type: string
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -19,7 +29,7 @@ jobs:
       - name: Get merged PR
         id: pr
         run: |
-          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0].number // empty')
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${{ github.event.inputs.sha || github.sha }}/pulls" --jq '.[0].number // empty')
           if [ -z "$PR_NUMBER" ]; then
             echo "No PR found; will create patch release from commit."
           else
@@ -68,15 +78,17 @@ jobs:
           if [ -n "$PR_NUMBER" ]; then
             printf '%s\n\n%s\n\nPR: #%s\n' "$TITLE" "$BODY" "$PR_NUMBER" > notes.md
           else
-            COMMIT_MSG=$(git log -1 --format='%s' "${{ github.sha }}")
-            printf '%s\n\nCommit: %s\n' "$COMMIT_MSG" "${{ github.sha }}" > notes.md
+            COMMIT_MSG=$(git log -1 --format='%s' "${{ github.event.inputs.sha || github.sha }}")
+            printf '%s\n\nCommit: %s\n' "$COMMIT_MSG" "${{ github.event.inputs.sha || github.sha }}" > notes.md
           fi
           gh release create "$TAG" \
             --title "$TAG" \
+            --target "$RELEASE_SHA" \
             --notes-file notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_SHA: ${{ github.event.inputs.sha || github.sha }}
           TITLE: ${{ steps.pr.outputs.title }}
           BODY: ${{ steps.pr.outputs.body }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
