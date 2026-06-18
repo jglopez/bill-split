@@ -39,6 +39,73 @@ export function isValidPrice(value: string): boolean {
   return !isNaN(n) && isFinite(n) && n >= 0
 }
 
+// ─── Equivalent display ────────────────────────────────────────────────────
+
+/**
+ * Number of decimal places that give ~3 significant figures for a percentage,
+ * capped at 3 decimals (so very small percentages may show fewer than 3 sig
+ * figs rather than growing decimals without bound).
+ */
+function significantDecimals(n: number): number {
+  const abs = Math.abs(n)
+  if (abs === 0 || abs >= 100) return 0
+  if (abs >= 10) return 1
+  if (abs >= 1) return 2
+  return 3
+}
+
+/**
+ * Round a dollar amount to 2 decimals, prefixed with "~" only when that
+ * rounding actually lost precision. Exact 2-decimal values are shown plain.
+ * Negative amounts (e.g. the dollar equivalent of a percent discount) are
+ * shown as "-$5.00", not "$-5.00".
+ */
+function formatDollar(n: number): string {
+  const rounded = Math.round(n * 100) / 100
+  const isExact = Math.abs(n - rounded) < 1e-9
+  const prefix = isExact ? '' : '~'
+  const sign = rounded < 0 ? '-' : ''
+  return `${prefix}${sign}$${Math.abs(rounded).toFixed(2)}`
+}
+
+/**
+ * Round a percentage to ~3 significant figures (see `significantDecimals`),
+ * prefixed with "~" only when that rounding actually lost precision.
+ */
+function formatPercent(n: number): string {
+  const decimals = significantDecimals(n)
+  const factor = 10 ** decimals
+  const rounded = Math.round(n * factor) / factor
+  const isExact = Math.abs(n - rounded) < 1e-9
+  const prefix = isExact ? '' : '~'
+  const fixed = rounded.toFixed(decimals)
+  const trimmed = fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed
+  return `${prefix}${trimmed}%`
+}
+
+/**
+ * Given a tax/tip/fee amount string and the dollar base it's calculated
+ * against, return the equivalent value in the other unit ($ if the input is
+ * a %, % if the input is a $ amount). Returns null when there's nothing
+ * sensible to show: empty/bare/invalid/non-finite input, a non-finite base,
+ * or a $-to-% conversion against a zero or negative base.
+ */
+export function getAmountEquivalent(value: string, base: number): string | null {
+  const trimmed = value.trim()
+  if (!trimmed || !isFinite(base)) return null
+  const isPercent = trimmed.endsWith('%')
+  if (isPercent) {
+    const numericPart = trimmed.slice(0, -1)
+    if (!numericPart) return null // bare "%" (e.g. mid-toggle with no digits yet)
+    const pct = Number(numericPart)
+    if (isNaN(pct) || !isFinite(pct)) return null
+    return formatDollar((pct / 100) * base)
+  }
+  const n = Number(trimmed)
+  if (isNaN(n) || !isFinite(n) || base <= 0) return null
+  return formatPercent((n / base) * 100)
+}
+
 // ─── Per-person breakdown ────────────────────────────────────────────────────
 
 export interface PersonBreakdown {
@@ -52,11 +119,17 @@ export interface PersonBreakdown {
 
 export interface BillBreakdown {
   totalSubtotal: number
+  totalTaxableSubtotal: number
   totalTax: number
   totalTip: number
   totalAdditionalFees: number[] // parallel to BillState.additionalFees
   totalGrandTotal: number
   perPerson: PersonBreakdown[]
+}
+
+/** Resolve the base amount for a proportional fee given its base setting. */
+export function getTotalFeeBase(base: FeesBase, totalSubtotal: number, totalTax: number): number {
+  return base === 'post-tax' ? totalSubtotal + totalTax : totalSubtotal
 }
 
 /**
@@ -118,16 +191,13 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     taxableTotal,
   )
 
-  // Helper: resolve the base amount for a proportional fee given its base setting
+  // Helper: resolve the base amount for a single person's proportional fee share
   function getFeeBase(base: FeesBase, personSubtotal: number, personTax: number): number {
     return base === 'post-tax' ? personSubtotal + personTax : personSubtotal
   }
-  function getTotalFeeBase(base: FeesBase): number {
-    return base === 'post-tax' ? totalSubtotal + taxTotal : totalSubtotal
-  }
 
   // Tip
-  const tipTotalBase = getTotalFeeBase(tipBase)
+  const tipTotalBase = getTotalFeeBase(tipBase, totalSubtotal, taxTotal)
   const tipTotal = parseAmount(tip, tipTotalBase)
   const tipShares = distributeProportionally(
     tipTotal,
@@ -137,7 +207,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
 
   // Additional fees (surcharges and discounts)
   const additionalFeeShares: number[][] = additionalFees.map(fee => {
-    const feeBase = getTotalFeeBase(fee.base)
+    const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
     const feeTotal = parseAmount(fee.amount, feeBase)
     return distributeProportionally(
       feeTotal,
@@ -147,7 +217,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   })
 
   const totalAdditionalFees = additionalFees.map(fee => {
-    const feeBase = getTotalFeeBase(fee.base)
+    const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
     return parseAmount(fee.amount, feeBase)
   })
 
@@ -172,6 +242,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
 
   return {
     totalSubtotal,
+    totalTaxableSubtotal: taxableTotal,
     totalTax: taxTotal,
     totalTip: tipTotal,
     totalAdditionalFees,

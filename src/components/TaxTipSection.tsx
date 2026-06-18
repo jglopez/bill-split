@@ -1,12 +1,15 @@
 import { useId } from 'react'
 import type { AdditionalFee, FeesBase } from '../types'
-import { isValidAmount } from '../utils/calculate'
+import { getAmountEquivalent, getTotalFeeBase, isValidAmount } from '../utils/calculate'
 
 interface Props {
   tax: string
   tip: string
   tipBase: FeesBase
   additionalFees: AdditionalFee[]
+  taxableSubtotal: number
+  totalSubtotal: number
+  totalTax: number
   onSetTax: (v: string) => void
   onSetTip: (v: string) => void
   onSetTipBase: (b: FeesBase) => void
@@ -35,6 +38,9 @@ export function TaxTipSection({
   tip,
   tipBase,
   additionalFees,
+  taxableSubtotal,
+  totalSubtotal,
+  totalTax,
   onSetTax,
   onSetTip,
   onSetTipBase,
@@ -44,6 +50,7 @@ export function TaxTipSection({
 }: Props) {
   const taxInvalid = tax !== '' && !isValidAmount(tax)
   const tipInvalid = tip !== '' && !isValidAmount(tip)
+  const tipFeeBase = getTotalFeeBase(tipBase, totalSubtotal, totalTax)
 
   return (
     <div className="space-y-2 mb-4">
@@ -56,6 +63,7 @@ export function TaxTipSection({
           invalid={taxInvalid}
           placeholder="e.g. 10"
           label="Tax amount"
+          base={taxableSubtotal}
         />
         {taxInvalid && (
           <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -71,6 +79,7 @@ export function TaxTipSection({
           invalid={tipInvalid}
           placeholder="e.g. 20"
           label="Tip amount"
+          base={tipFeeBase}
         />
         <IncludeTaxToggle
           base={tipBase}
@@ -87,6 +96,8 @@ export function TaxTipSection({
         <FeeRow
           key={fee.id}
           fee={fee}
+          totalSubtotal={totalSubtotal}
+          totalTax={totalTax}
           onChange={onUpdateFee}
           onRemove={onRemoveFee}
         />
@@ -107,14 +118,19 @@ export function TaxTipSection({
 
 function FeeRow({
   fee,
+  totalSubtotal,
+  totalTax,
   onChange,
   onRemove,
 }: {
   fee: AdditionalFee
+  totalSubtotal: number
+  totalTax: number
   onChange: (fee: AdditionalFee) => void
   onRemove: (id: string) => void
 }) {
   const amountInvalid = fee.amount !== '' && !isValidAmount(fee.amount)
+  const feeBase = getTotalFeeBase(fee.base, totalSubtotal, totalTax)
 
   // Detect whether the current amount is a discount (negative) so we can
   // label it clearly alongside any visual distinction.
@@ -151,6 +167,7 @@ function FeeRow({
         invalid={amountInvalid}
         placeholder="e.g. 5"
         label={`${fee.name || 'fee'} amount`}
+        base={feeBase}
       />
       <button
         type="button"
@@ -192,18 +209,21 @@ function AmountInput({
   invalid,
   placeholder,
   label,
+  base,
 }: {
   value: string
   onChange: (v: string) => void
   invalid: boolean
   placeholder: string
   label: string
+  base?: number
 }) {
   // Parse into numeric portion and percent flag.
   // A trailing "%" in the stored value means percent mode is on.
   const trimmed = value.trim()
   const isPercent = trimmed.endsWith('%')
   const numeric = isPercent ? trimmed.slice(0, -1) : trimmed
+  const equivalent = !invalid && base !== undefined ? getAmountEquivalent(value, base) : null
 
   function handleInputChange(raw: string) {
     // "%" typed directly acts as a toggle: turns percent mode on if off,
@@ -248,6 +268,9 @@ function AmountInput({
       >
         %
       </button>
+      {equivalent && (
+        <span className="text-xs text-gray-400 tabular-nums">{equivalent}</span>
+      )}
     </span>
   )
 }
