@@ -137,6 +137,19 @@ test('second load after save returns saved value', () => {
   assertEqual(store.load(), { x: 55 }, 'round-trip')
 })
 
+test('save returns true on success', () => {
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
+  const result = store.save({ x: 1 })
+  assert(result === true, 'save returns true when setItem succeeds')
+})
+
+test('save returns false when setItem throws (simulated quota exceeded)', () => {
+  const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
+  mockStorage.setItem = () => { throw new DOMException('QuotaExceededError') }
+  const result = store.save({ x: 99 })
+  assert(result === false, 'save returns false when setItem throws')
+})
+
 test('validate: valid current key passes through unchanged', () => {
   localStorage.setItem('key:v2', JSON.stringify({ x: 42 }))
   const isValid = (v: unknown): v is { x: number } =>

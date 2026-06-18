@@ -10,7 +10,7 @@ type Migration<T> = (raw: unknown) => T
 
 interface VersionedStore<T> {
   load: () => T
-  save: (value: T) => void
+  save: (value: T) => boolean
 }
 
 /** Read and JSON-parse a localStorage key. Returns null if absent, blocked, or corrupt. */
@@ -69,8 +69,8 @@ export function makeVersionedStore<T>(
       return fallback
     },
 
-    save(value: T): void {
-      writeJSON(currentKey, value)
+    save(value: T): boolean {
+      return writeJSON(currentKey, value)
     },
   }
 }

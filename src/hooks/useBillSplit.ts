@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode } from '../types'
 import { makeVersionedStore } from '../lib/versionedStore'
@@ -205,10 +205,12 @@ function reducer(state: BillState, action: Action): BillState {
 
 export function useBillSplit() {
   const [state, dispatch] = useReducer(reducer, undefined, loadState)
+  const [saveFailed, setSaveFailed] = useState(false)
 
   // Persist to localStorage on every state change
   useEffect(() => {
-    billStore.save(state)
+    const ok = billStore.save(state)
+    setSaveFailed(!ok)
   }, [state])
 
   const addParticipant = useCallback(
@@ -265,9 +267,11 @@ export function useBillSplit() {
       dispatch({ type: 'REORDER_ITEMS', fromIndex, toIndex }),
     [],
   )
+  const dismissSaveWarning = useCallback(() => setSaveFailed(false), [])
 
   return {
     state,
+    saveFailed,
     addParticipant,
     removeParticipant,
     renameParticipant,
@@ -284,5 +288,6 @@ export function useBillSplit() {
     setSinglePayer,
     setAmountPaid,
     reset,
+    dismissSaveWarning,
   }
 }
