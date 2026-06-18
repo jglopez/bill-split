@@ -139,6 +139,12 @@ export function getTotalFeeBase(base: FeesBase, totalSubtotal: number, totalTax:
   return base === 'post-tax' ? totalSubtotal + totalTax : totalSubtotal
 }
 
+/** Parse a paid-amount string, treating empty/null/undefined/NaN as 0. */
+export function parsePaidAmount(value: string | undefined): number {
+  const n = Number(value ?? '')
+  return isNaN(n) ? 0 : n
+}
+
 /**
  * Distribute a proportional fee across participants.
  * Each person's share is proportional to their `base` amount vs the pool total.
@@ -234,18 +240,13 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     taxTotal,
   )
 
-  // Helper: resolve the base amount for a single person's proportional fee share
-  function getFeeBase(base: FeesBase, personSubtotal: number, personTax: number): number {
-    return base === 'post-tax' ? personSubtotal + personTax : personSubtotal
-  }
-
   // Tip
   const tipTotalBase = getTotalFeeBase(tipBase, totalSubtotal, taxTotal)
   const tipTotal = parseAmount(tip, tipTotalBase)
   const tipShares = reconcileCents(
     distributeProportionally(
       tipTotal,
-      participants.map((_p, i) => getFeeBase(tipBase, reconciledSubtotals[i], taxShares[i])),
+      participants.map((_p, i) => getTotalFeeBase(tipBase, reconciledSubtotals[i], taxShares[i])),
       tipTotalBase,
     ),
     tipTotal,
@@ -262,7 +263,7 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     return reconcileCents(
       distributeProportionally(
         totalAdditionalFees[fi],
-        participants.map((_p, i) => getFeeBase(fee.base, reconciledSubtotals[i], taxShares[i])),
+        participants.map((_p, i) => getTotalFeeBase(fee.base, reconciledSubtotals[i], taxShares[i])),
         feeBase,
       ),
       totalAdditionalFees[fi],
@@ -333,8 +334,7 @@ export function calculateSettlement(
     }
   } else {
     for (const p of participants) {
-      const val = Number(amountPaid[p.id] ?? '')
-      paid[p.id] = isNaN(val) ? 0 : val
+      paid[p.id] = parsePaidAmount(amountPaid[p.id])
     }
   }
 

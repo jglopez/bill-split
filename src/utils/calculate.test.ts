@@ -4,6 +4,7 @@
 import {
   getAmountEquivalent,
   parseAmount,
+  parsePaidAmount,
   isValidAmount,
   isValidPrice,
   getTotalFeeBase,
@@ -642,6 +643,23 @@ test('pre-tax with zero tax is just subtotal', () => {
 })
 test('post-tax with zero tax is still subtotal', () => {
   assertEqual(getTotalFeeBase('post-tax', 50, 0), 50, 'post-tax zero tax = subtotal')
+})
+
+// ─── parsePaidAmount ──────────────────────────────────────────────────────────
+
+console.log('\nparsePaidAmount')
+
+test('valid number string', () => {
+  assertEqual(parsePaidAmount('12.50'), 12.5, 'parses valid amount')
+})
+test('undefined returns 0', () => {
+  assertEqual(parsePaidAmount(undefined), 0, 'undefined → 0')
+})
+test('empty string returns 0', () => {
+  assertEqual(parsePaidAmount(''), 0, 'empty → 0')
+})
+test('non-numeric string returns 0', () => {
+  assertEqual(parsePaidAmount('abc'), 0, 'non-numeric → 0')
 })
 
 // ─── splitAmountInput ─────────────────────────────────────────────────────────
