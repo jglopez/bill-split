@@ -1,5 +1,5 @@
-// Negative amounts use Unicode minus (U+2212) so the sign precedes $ and
-// meaning isn't conveyed by color alone (WCAG).
+// Negative amounts use Unicode minus (U+2212) so the sign precedes the currency
+// symbol when present, and meaning isn't conveyed by color alone (WCAG).
 
 function unsignedAmount(n: number): string {
   return Math.abs(n).toFixed(2)
