@@ -1,6 +1,7 @@
 import type { AdditionalFee, BillState, Participant } from '../types'
 import type { BillBreakdown } from '../utils/calculate'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { formatAmount } from '../utils/format'
 
 interface Props {
   orderedParticipants: Participant[]
@@ -212,8 +213,4 @@ function SummaryRow({
   )
 }
 
-function fmt(n: number): string {
-  // Show negative amounts with an explicit minus sign so meaning isn't
-  // conveyed by color alone (WCAG).
-  return (n < 0 ? '−' : '') + Math.abs(n).toFixed(2)
-}
+const fmt = formatAmount

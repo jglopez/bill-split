@@ -1,5 +1,6 @@
 import type { Participant } from '../types'
 import type { Transaction } from '../utils/calculate'
+import { formatMoney } from '../utils/format'
 
 interface Props {
   participants: Participant[]
@@ -31,7 +32,7 @@ export function SettlementSection({ participants, transactions }: Props) {
             <span className="font-medium">{nameById[t.toId] ?? '?'}</span>
             {' '}
             <span className="tabular-nums font-semibold text-teal-700">
-              ${t.amount.toFixed(2)}
+              {formatMoney(t.amount)}
             </span>
           </li>
         ))}

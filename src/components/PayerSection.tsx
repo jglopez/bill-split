@@ -1,5 +1,7 @@
 import type { BillState, Participant, PayerMode } from '../types'
+import { isValidPrice } from '../utils/calculate'
 import type { BillBreakdown } from '../utils/calculate'
+import { formatMoney } from '../utils/format'
 
 interface Props {
   participants: Participant[]
@@ -90,8 +92,7 @@ export function PayerSection({
         <div className="space-y-2">
           {participants.map(p => {
             const val = amountPaid[p.id] ?? ''
-            const numVal = Number(val)
-            const invalid = val !== '' && (isNaN(numVal) || numVal < 0)
+            const invalid = val !== '' && !isValidPrice(val)
             return (
               <div key={p.id} className="flex items-center gap-3 text-sm">
                 <span className="w-32 text-gray-700 truncate">{p.name}</span>
@@ -129,6 +130,4 @@ export function PayerSection({
   )
 }
 
-function fmt(n: number): string {
-  return '$' + n.toFixed(2)
-}
+const fmt = formatMoney

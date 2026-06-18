@@ -28,7 +28,17 @@ export function migrateV1toBillV2(raw: unknown): BillState {
     if (typeof item !== 'object' || item === null) {
       throw new Error('Invalid v1 bill state: each item must be an object')
     }
-    const { assignedTo, ...rest } = item as Record<string, unknown>
+    const obj = item as Record<string, unknown>
+    if (typeof obj['id'] !== 'string') {
+      throw new Error('Invalid v1 bill state: item.id must be a string')
+    }
+    if (typeof obj['price'] !== 'string') {
+      throw new Error('Invalid v1 bill state: item.price must be a string')
+    }
+    if (typeof obj['name'] !== 'string') {
+      throw new Error('Invalid v1 bill state: item.name must be a string')
+    }
+    const { assignedTo, ...rest } = obj
     let normalized: string[] | null
     if (assignedTo === null || assignedTo === undefined) {
       normalized = null
