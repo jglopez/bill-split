@@ -530,7 +530,7 @@ test('additional fee on post-tax base', () => {
   assertEqual(bd.totalAdditionalFees[0], 1.1, '10% of $11 post-tax = $1.10')
 })
 
-test('percentage fee when pool base is 0 splits evenly', () => {
+test('flat fee when pool base is 0 splits evenly', () => {
   // No items → subtotal = 0, fee base = 0, distributeProportionally falls back to even split
   const s = state({
     participants: [p('A'), p('B')],
