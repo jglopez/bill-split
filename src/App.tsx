@@ -86,6 +86,9 @@ export function App() {
                 tip={state.tip}
                 tipBase={state.tipBase}
                 additionalFees={state.additionalFees}
+                taxableSubtotal={breakdown.totalTaxableSubtotal}
+                totalSubtotal={breakdown.totalSubtotal}
+                totalTax={breakdown.totalTax}
                 onSetTax={setTax}
                 onSetTip={setTip}
                 onSetTipBase={setTipBase}
