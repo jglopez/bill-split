@@ -62,3 +62,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
+
+      - name: Dispatch deploy for merged Dependabot PR
+        if: >-
+          steps.pr.outputs.skip != 'true' &&
+          (steps.pr.outputs.actor == 'dependabot[bot]' ||
+           steps.pr.outputs.actor == 'app/dependabot')
+        run: |
+          MERGE_SHA=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')
+          if [ -z "$MERGE_SHA" ]; then
+            echo "Error: could not resolve merge commit SHA for PR #$PR_NUMBER — deploy dispatch failed."
+            exit 1
+          fi
+          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}

@@ -1,11 +1,17 @@
 name: Deploy
 
-# Depends on ci.yml — only runs after CI passes on main.
+# Runs after CI passes on main (workflow_run), or dispatched directly by bot workflows.
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (defaults to HEAD of main)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -19,13 +25,17 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.sha || github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v6
         with:
