@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "_versionNote": "not used at runtime; releases and version numbers are managed via PR labels (version:minor, version:major) and git tags by .github/workflows/auto-release.yml",
   "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
