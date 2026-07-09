@@ -33,6 +33,8 @@ Other scripts:
 npm run build      # production build → dist/
 npm run preview    # preview the production build locally
 npm run typecheck  # run TypeScript without emitting files
+npm run lint       # run ESLint on src/
+npm test           # run the unit tests
 ```
 
 ### Docker

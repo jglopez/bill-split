@@ -5,6 +5,20 @@ import { readJSON, writeJSON } from '../lib/versionedStore'
 const COLUMN_ORDER_KEY = 'bill-split-column-order:v1'
 
 /**
+ * Reconciles a stored column order against the current participant ids:
+ * deduplicates (so corrupt/duplicate localStorage data can't produce
+ * duplicate columns), drops ids of removed participants, and appends new
+ * participants at the end. Non-array input falls back to insertion order.
+ */
+export function reconcileColumnOrder(stored: unknown, participantIds: string[]): string[] {
+  if (!Array.isArray(stored)) return [...participantIds]
+  const ids = [...new Set(stored.filter((id): id is string => typeof id === 'string'))]
+  const filtered = ids.filter(id => participantIds.includes(id))
+  const added = participantIds.filter(id => !ids.includes(id))
+  return [...filtered, ...added]
+}
+
+/**
  * Manages participant column display order, persisted to localStorage.
  *
  * Defaults to insertion order. New participants are appended; removed
@@ -15,29 +29,18 @@ export function useColumnOrder(participants: Participant[]): {
   setColumnOrder: React.Dispatch<React.SetStateAction<string[]>>
   orderedParticipants: Participant[]
 } {
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    const allIds = participants.map(p => p.id)
-    const parsed = readJSON(COLUMN_ORDER_KEY)
-    if (Array.isArray(parsed)) {
-      // Deduplicate before filtering so corrupt/duplicate localStorage data
-      // can't produce duplicate columns.
-      const ids = [...new Set(parsed as string[])]
-      const filtered = ids.filter(id => allIds.includes(id))
-      const added = allIds.filter(id => !ids.includes(id))
-      return [...filtered, ...added]
-    }
-    return [...allIds]
-  })
+  const [columnOrder, setColumnOrder] = useState<string[]>(() =>
+    reconcileColumnOrder(readJSON(COLUMN_ORDER_KEY), participants.map(p => p.id))
+  )
 
   // Sync when participants are added or removed
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setColumnOrder(prev => {
-      const participantIds = participants.map(p => p.id)
-      const filtered = prev.filter(id => participantIds.includes(id))
-      const added = participantIds.filter(id => !prev.includes(id))
-      if (filtered.length === prev.length && added.length === 0) return prev
-      return [...filtered, ...added]
+      const next = reconcileColumnOrder(prev, participants.map(p => p.id))
+      // Keep the previous array when nothing changed so consumers don't re-render.
+      if (next.length === prev.length && next.every((id, i) => id === prev[i])) return prev
+      return next
     })
   }, [participants])
 

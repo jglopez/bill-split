@@ -4,13 +4,16 @@
   "version": "0.0.0",
   "_versionNote": "not used at runtime; releases and version numbers are managed via PR labels (version:minor, version:major) and git tags by .github/workflows/auto-release.yml",
   "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
-    "test": "tsx src/lib/versionedStore.test.ts && tsx src/utils/calculate.test.ts && tsx src/utils/format.test.ts && tsx src/hooks/useBillSplit.test.ts"
+    "test": "tsx src/test/run-all.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

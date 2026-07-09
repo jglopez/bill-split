@@ -7,6 +7,16 @@ updates:
     labels:
       - "version:patch"
     open-pull-requests-limit: 10
+    # One grouped PR per run instead of one PR per dependency, so a weekly
+    # update batch produces a single release + deploy (auto-release.yml runs
+    # per merged PR).
+    groups:
+      npm-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -15,3 +25,10 @@ updates:
     labels:
       - "version:patch"
     open-pull-requests-limit: 5
+    groups:
+      actions-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
