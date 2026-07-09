@@ -12,7 +12,7 @@ const COLUMN_ORDER_KEY = 'bill-split-column-order:v1'
  */
 export function reconcileColumnOrder(stored: unknown, participantIds: string[]): string[] {
   if (!Array.isArray(stored)) return [...participantIds]
-  const ids = [...new Set(stored as string[])]
+  const ids = [...new Set(stored.filter((id): id is string => typeof id === 'string'))]
   const filtered = ids.filter(id => participantIds.includes(id))
   const added = participantIds.filter(id => !ids.includes(id))
   return [...filtered, ...added]
