@@ -17,6 +17,14 @@ updates:
       npm-security:
         applies-to: security-updates
         patterns: ["*"]
+    ignore:
+      # typescript-eslint pins typescript to <6.1.0, so a TS 6.1 or 7.x bump
+      # breaks npm ci with ERESOLVE. Remove this once typescript-eslint
+      # raises its cap and bump both together.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
 
   - package-ecosystem: "github-actions"
     directory: "/"
