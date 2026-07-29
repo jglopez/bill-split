@@ -585,6 +585,17 @@ test('pre-tax surcharge increases the tax base', () => {
   assertEqual(bd.totalTax, 12, '10% of ($100 + $20) = $12')
 })
 
+test('pre-tax surcharge does not create a tax base when nothing is taxable', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100', null, false)], // non-taxable
+    tax: '10%',
+    additionalFees: [fee('svc', '20')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 0, 'no taxable items → $0 tax, even with a pre-tax surcharge')
+})
+
 test('flat fee when pool base is 0 splits evenly', () => {
   // No items → subtotal = 0, fee base = 0, distributeProportionally falls back to even split
   const s = state({
