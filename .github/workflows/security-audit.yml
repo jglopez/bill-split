@@ -33,11 +33,23 @@ jobs:
       - run: corepack enable
       - run: npm ci
 
+      # npm audit exits non-zero both for real findings and for operational
+      # failures (registry/network issues, etc). Distinguish via --json: a
+      # genuine failure reports an "error" key instead of "vulnerabilities",
+      # and should fail the job loudly rather than trigger npm audit fix.
       - name: Check for high-severity vulnerabilities
         id: audit
         run: |
-          if npm audit --audit-level=high; then
+          set +e
+          npm audit --audit-level=high --json > audit.json
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
+          elif jq -e 'has("error")' audit.json > /dev/null; then
+            echo "npm audit failed to run (not a vulnerability finding):"
+            jq -r '.error.summary // .error' audit.json
+            exit 1
           else
             echo "found=true" >> "$GITHUB_OUTPUT"
           fi
