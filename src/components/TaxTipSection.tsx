@@ -187,6 +187,7 @@ function FeeRow({
       <IncludeTaxToggle
         base={fee.base}
         onChange={b => onChange({ ...fee, base: b })}
+        affectsTaxBase
       />
       {amountInvalid && (
         <span role="alert" className="text-xs text-red-600">Invalid amount</span>
@@ -283,16 +284,25 @@ function IncludeTaxToggle({
   base,
   onChange,
   disabled = false,
+  affectsTaxBase = false,
 }: {
   base: FeesBase
   onChange: (b: FeesBase) => void
   disabled?: boolean
+  // True for fees/discounts, which adjust the tax base itself when pre-tax.
+  // False for tip, which only affects what its own amount is calculated
+  // against (and per-person distribution weight), not the tax base.
+  affectsTaxBase?: boolean
 }) {
   const id = useId()
 
   if (disabled) {
     return <Tooltip text="Switch to % to calculate this on the pre- or post-tax subtotal." />
   }
+
+  const tooltipText = affectsTaxBase
+    ? 'When checked, this is calculated after tax and doesn’t affect the tax owed. When unchecked (default), it’s calculated pre-tax and adjusts the amount tax is charged on.'
+    : 'When checked, this is calculated on the subtotal after tax. When unchecked, it uses the pre-tax subtotal.'
 
   return (
     <span className="flex items-center gap-1 text-xs text-gray-500">
@@ -306,7 +316,7 @@ function IncludeTaxToggle({
       <label htmlFor={id} className="cursor-pointer select-none">
         incl. tax
       </label>
-      <Tooltip text="When checked, this fee is calculated on the subtotal after tax. When unchecked, it uses the pre-tax subtotal." />
+      <Tooltip text={tooltipText} />
     </span>
   )
 }
