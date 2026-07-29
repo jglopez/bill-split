@@ -81,7 +81,7 @@ jobs:
             echo "npm audit fix made no changes; nothing to commit."
             exit 0
           fi
-          BRANCH="automated/npm-audit-fix-${{ github.run_id }}"
+          BRANCH="automated/npm-audit-fix-${{ github.run_id }}-${{ github.run_attempt }}"
           git checkout -b "$BRANCH"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -100,7 +100,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="automated/npm-audit-fix-${{ github.run_id }}"
+          BRANCH="automated/npm-audit-fix-${{ github.run_id }}-${{ github.run_attempt }}"
           MERGE_SHA=$(gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid' 2>/dev/null || true)
           if [ -z "$MERGE_SHA" ]; then
             echo "No merged PR found (nothing-to-commit case); skipping dispatch."
