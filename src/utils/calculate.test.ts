@@ -530,6 +530,72 @@ test('additional fee on post-tax base', () => {
   assertEqual(bd.totalAdditionalFees[0], 1.1, '10% of $11 post-tax = $1.10')
 })
 
+test('flat pre-tax discount reduces the tax base', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '10%',
+    additionalFees: [fee('coupon', '-20')], // pre-tax by default
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 8, '10% of ($100 - $20) = $8, not $10')
+})
+
+test('percentage pre-tax discount reduces the tax base', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '10%',
+    additionalFees: [fee('coupon', '-20%')], // -20% of $100 = -$20, pre-tax
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 8, '10% of ($100 - $20) = $8, not $10')
+})
+
+test('post-tax discount does not affect the tax base', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '10%',
+    additionalFees: [fee('coupon', '-20', 'post-tax')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 10, 'post-tax discount leaves tax at 10% of $100 = $10')
+})
+
+test('pre-tax discount larger than taxable subtotal clamps tax base to 0', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '10%',
+    additionalFees: [fee('coupon', '-150')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 0, 'tax base clamps to $0 instead of going negative')
+})
+
+test('pre-tax surcharge increases the tax base', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '10%',
+    additionalFees: [fee('svc', '20')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 12, '10% of ($100 + $20) = $12')
+})
+
+test('pre-tax surcharge does not create a tax base when nothing is taxable', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100', null, false)], // non-taxable
+    tax: '10%',
+    additionalFees: [fee('svc', '20')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 0, 'no taxable items → $0 tax, even with a pre-tax surcharge')
+})
+
 test('flat fee when pool base is 0 splits evenly', () => {
   // No items → subtotal = 0, fee base = 0, distributeProportionally falls back to even split
   const s = state({

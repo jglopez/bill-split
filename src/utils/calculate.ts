@@ -228,9 +228,19 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     totalSubtotal,
   )
 
-  // Tax: on taxable items only. When nothing is taxable the tax is $0 regardless
-  // of whether a flat or percentage amount was entered.
-  const taxTotal = taxableTotal === 0 ? 0 : parseAmount(tax, taxableTotal)
+  // Pre-tax fees/discounts adjust the taxable base itself before tax is
+  // calculated (a discount reduces it, a surcharge increases it). Post-tax
+  // fees are handled further down, after taxTotal exists, and never affect it.
+  const preTaxFeesTotal = additionalFees
+    .filter(fee => fee.base === 'pre-tax')
+    .reduce((sum, fee) => sum + parseAmount(fee.amount, totalSubtotal), 0)
+  const adjustedTaxableTotal = Math.max(0, taxableTotal + preTaxFeesTotal)
+
+  // Tax: on taxable items only, net of any pre-tax fees/discounts. When
+  // nothing is taxable the tax is $0 regardless of whether a flat or
+  // percentage amount was entered — even if a pre-tax surcharge would
+  // otherwise make adjustedTaxableTotal positive.
+  const taxTotal = taxableTotal === 0 ? 0 : parseAmount(tax, adjustedTaxableTotal)
   const taxShares = reconcileCents(
     distributeProportionally(
       taxTotal,

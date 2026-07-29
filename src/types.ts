@@ -32,7 +32,10 @@ export interface AdditionalFee {
   // "10%", "5.00", "-10%", or "-5.00". The % suffix signals percentage mode;
   // anything else is treated as a flat dollar amount.
   amount: string
-  // Per-fee toggle: whether this fee is based on the pre-tax or post-tax subtotal.
+  // Per-fee toggle: whether this fee is based on the pre-tax or post-tax
+  // subtotal. A pre-tax fee/discount also adjusts the taxable base itself
+  // (reducing or increasing what tax is calculated on); a post-tax fee is
+  // added on top after tax and never affects the tax calculation.
   base: FeesBase
 }
 
@@ -41,7 +44,8 @@ export type PayerMode = 'single' | 'multiple'
 export interface BillState {
   participants: Participant[]
   items: Item[]
-  // Tax is always calculated on the raw item subtotal.
+  // Tax is calculated on the raw taxable item subtotal, adjusted by any
+  // pre-tax fees/discounts in additionalFees (see AdditionalFee.base).
   tax: string
   tip: string
   // Whether tip is applied to the pre-tax or post-tax subtotal.
