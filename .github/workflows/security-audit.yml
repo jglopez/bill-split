@@ -1,0 +1,110 @@
+name: Security audit
+
+# Catches npm audit high-severity findings on main independently of
+# Dependabot's weekly version-bump PRs, which don't always re-resolve the
+# whole dependency tree. Self-contained: runs the same checks as CI inline
+# and dispatches auto-release/deploy by hand, since GITHUB_TOKEN-driven
+# pushes/PRs/merges don't trigger other workflows' push/pull_request events.
+on:
+  schedule:
+    - cron: '0 6 * * *' # daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: security-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - run: corepack enable
+      - run: npm ci
+
+      # npm audit exits non-zero both for real findings and for operational
+      # failures (registry/network issues, etc). Distinguish via --json: a
+      # genuine failure reports an "error" key instead of "vulnerabilities",
+      # and should fail the job loudly rather than trigger npm audit fix.
+      - name: Check for high-severity vulnerabilities
+        id: audit
+        run: |
+          set +e
+          npm audit --audit-level=high --json > audit.json
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          elif jq -e 'has("error")' audit.json > /dev/null; then
+            echo "npm audit failed to run (not a vulnerability finding):"
+            jq -r '.error.summary // .error' audit.json
+            exit 1
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attempt automatic fix
+        if: steps.audit.outputs.found == 'true'
+        run: npm audit fix
+
+      # Fails loudly (visible red run in Actions) if npm audit fix couldn't
+      # fully resolve it, e.g. no compatible patched version exists yet.
+      - name: Verify the fix actually resolved it
+        if: steps.audit.outputs.found == 'true'
+        run: npm audit --audit-level=high
+
+      - name: Verify nothing broke
+        if: steps.audit.outputs.found == 'true'
+        run: |
+          npm run typecheck
+          npm run lint
+          npx vite build
+          npm test
+
+      - name: Open and merge fix PR
+        if: steps.audit.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "npm audit fix made no changes; nothing to commit."
+            exit 0
+          fi
+          BRANCH="automated/npm-audit-fix-${{ github.run_id }}-${{ github.run_attempt }}"
+          git checkout -b "$BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "fix(deps): resolve npm audit high-severity findings
+
+          Automated fix from the scheduled security-audit workflow."
+          git push origin "$BRANCH"
+          gh pr create --title "fix(deps): resolve npm audit high-severity findings" \
+            --body "Automated: the scheduled security-audit workflow found high-severity \`npm audit\` findings on \`main\` and ran \`npm audit fix\`. typecheck/lint/build/test all pass." \
+            --label "version:patch" --base main --head "$BRANCH"
+          gh pr merge "$BRANCH" --squash --repo "$GITHUB_REPOSITORY"
+
+      - name: Dispatch auto-release and deploy for the merged fix
+        if: steps.audit.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="automated/npm-audit-fix-${{ github.run_id }}-${{ github.run_attempt }}"
+          MERGE_SHA=$(gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid' 2>/dev/null || true)
+          if [ -z "$MERGE_SHA" ]; then
+            echo "No merged PR found (nothing-to-commit case); skipping dispatch."
+            exit 0
+          fi
+          gh workflow run auto-release.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"
+          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"
