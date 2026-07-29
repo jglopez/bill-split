@@ -187,7 +187,6 @@ function FeeRow({
       <IncludeTaxToggle
         base={fee.base}
         onChange={b => onChange({ ...fee, base: b })}
-        disabled={!splitAmountInput(fee.amount).isPercent}
       />
       {amountInvalid && (
         <span role="alert" className="text-xs text-red-600">Invalid amount</span>
