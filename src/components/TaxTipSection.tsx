@@ -375,8 +375,8 @@ function IncludeTaxToggle({
 }
 
 /**
- * A small checkbox + label + tooltip, shared by IncludeDiscountToggle-shaped
- * tip toggles (whether tip nets out a pre-tax discount or surcharge).
+ * A small checkbox + label + tooltip, shared by the two tip-base toggles
+ * above (whether tip nets out a pre-tax discount or surcharge).
  */
 function BinaryFeeBaseToggle({
   checked,
