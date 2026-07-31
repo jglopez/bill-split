@@ -52,7 +52,11 @@ function isAdditionalFee(v: unknown): boolean {
   )
 }
 
-export function isBillState(v: unknown): v is BillState {
+// A plain boolean predicate, not a `v is BillState` guard: it intentionally
+// accepts tipDiscountBase/tipFeeBase being absent (older saved bills), which
+// BillState declares required. loadState() backfills those fields right after
+// billStore.load() returns, before anything else can observe the gap.
+export function isBillState(v: unknown): boolean {
   if (typeof v !== 'object' || v === null) return false
   const s = v as Record<string, unknown>
   return (
