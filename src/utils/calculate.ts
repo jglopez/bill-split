@@ -200,7 +200,7 @@ export function reconcileCents(shares: number[], total: number): number[] {
  * All math is pure; no side effects.
  */
 export function calculateBreakdown(state: BillState): BillBreakdown {
-  const { participants, items, tax, tip, tipBase, additionalFees } = state
+  const { participants, items, tax, tip, tipBase, tipDiscountBase, tipFeeBase, additionalFees } = state
 
   // Per-person item subtotals (all items) and taxable-only subtotals
   const subtotals: Record<string, number> = {}
@@ -244,6 +244,16 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     .reduce((sum, fee) => sum + parseAmount(fee.amount, totalSubtotal), 0)
   const adjustedTaxableTotal = Math.max(0, taxableTotal + preTaxFeesTotal)
 
+  // Split the same pre-tax total by sign so tip can independently opt in to
+  // netting out discounts vs surcharges (see tipDiscountBase/tipFeeBase).
+  const preTaxDiscountsTotal = additionalFees
+    .filter(fee => fee.base === 'pre-tax')
+    .reduce((sum, fee) => sum + Math.min(0, parseAmount(fee.amount, totalSubtotal)), 0)
+  const preTaxSurchargesTotal = additionalFees
+    .filter(fee => fee.base === 'pre-tax')
+    .reduce((sum, fee) => sum + Math.max(0, parseAmount(fee.amount, totalSubtotal)), 0)
+  const adjustedTotalSubtotal = Math.max(0, totalSubtotal + preTaxFeesTotal)
+
   // Tax: on taxable items only, net of any pre-tax fees/discounts. When
   // nothing is taxable the tax is $0 regardless of whether a flat or
   // percentage amount was entered — even if a pre-tax surcharge would
@@ -258,22 +268,42 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
     taxTotal,
   )
 
-  // Tip
-  const tipTotalBase = getTotalFeeBase(tipBase, totalSubtotal, taxTotal)
-  const tipTotal = parseAmount(tip, tipTotalBase)
+  // Tip. Sized off the subtotal adjusted per tipDiscountBase/tipFeeBase, but
+  // distributed using the raw (unadjusted) pool and per-person weights below —
+  // those two must stay on the same basis as each other, or reconcileCents
+  // can't reconcile the mismatch (it only ever adds pennies to cover a
+  // shortfall; it can't remove an overshoot). Same split PR #114 already uses
+  // for tax: adjusted base sizes the dollar amount, raw base distributes it.
+  const tipSubtotal = Math.max(
+    0,
+    totalSubtotal
+      + (tipDiscountBase === 'post-discount' ? preTaxDiscountsTotal : 0)
+      + (tipFeeBase === 'post-fee' ? preTaxSurchargesTotal : 0),
+  )
+  const tipAmountBase = getTotalFeeBase(tipBase, tipSubtotal, taxTotal)
+  const tipDistributionBase = getTotalFeeBase(tipBase, totalSubtotal, taxTotal)
+  const tipTotal = parseAmount(tip, tipAmountBase)
   const tipShares = reconcileCents(
     distributeProportionally(
       tipTotal,
       participants.map((_p, i) => getTotalFeeBase(tipBase, reconciledSubtotals[i], taxShares[i])),
-      tipTotalBase,
+      tipDistributionBase,
     ),
     tipTotal,
   )
 
-  // Additional fees (surcharges and discounts)
+  // Additional fees (surcharges and discounts). A pre-tax fee's own amount
+  // stays on the raw subtotal (matches preTaxFeesTotal above — pre-tax fees
+  // don't cascade off each other); a post-tax fee's amount nets out any
+  // pre-tax discount/surcharge that already happened, since post-tax fees
+  // apply to what's actually being charged after those adjustments.
   const totalAdditionalFees = additionalFees.map(fee => {
-    const feeBase = getTotalFeeBase(fee.base, totalSubtotal, taxTotal)
-    return parseAmount(fee.amount, feeBase)
+    const feeAmountBase = getTotalFeeBase(
+      fee.base,
+      fee.base === 'pre-tax' ? totalSubtotal : adjustedTotalSubtotal,
+      taxTotal,
+    )
+    return parseAmount(fee.amount, feeAmountBase)
   })
 
   const additionalFeeShares: number[][] = additionalFees.map((fee, fi) => {
