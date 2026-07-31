@@ -106,6 +106,8 @@ export function App() {
                 additionalFees={state.additionalFees}
                 taxableSubtotal={breakdown.totalTaxableSubtotal}
                 totalSubtotal={breakdown.totalSubtotal}
+                adjustedTotalSubtotal={breakdown.adjustedTotalSubtotal}
+                tipAmountBase={breakdown.tipAmountBase}
                 totalTax={breakdown.totalTax}
                 onSetTax={setTax}
                 onSetTip={setTip}

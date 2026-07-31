@@ -135,6 +135,14 @@ export interface PersonBreakdown {
 export interface BillBreakdown {
   totalSubtotal: number
   totalTaxableSubtotal: number
+  // Subtotal net of pre-tax fees/discounts, i.e. what a post-tax fee is
+  // actually sized against. Exposed so the UI can show a percent/dollar
+  // equivalent for a post-tax fee that matches its real calculated amount.
+  adjustedTotalSubtotal: number
+  // The resolved base tip's own amount is sized against (post tipBase/
+  // tipDiscountBase/tipFeeBase). Exposed so the UI's tip equivalent display
+  // matches the real calculated tip instead of always using the raw subtotal.
+  tipAmountBase: number
   totalTax: number
   totalTip: number
   totalAdditionalFees: number[] // parallel to BillState.additionalFees
@@ -342,6 +350,8 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   return {
     totalSubtotal,
     totalTaxableSubtotal: taxableTotal,
+    adjustedTotalSubtotal,
+    tipAmountBase,
     totalTax: taxTotal,
     totalTip: tipTotal,
     totalAdditionalFees,

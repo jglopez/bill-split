@@ -5,6 +5,7 @@ import {
   getTotalFeeBase,
   isDiscountAmount,
   isValidAmount,
+  parseAmount,
   splitAmountInput,
 } from '../utils/calculate'
 import { NAME_MAX_LENGTH } from '../constants'
@@ -18,6 +19,12 @@ interface Props {
   additionalFees: AdditionalFee[]
   taxableSubtotal: number
   totalSubtotal: number
+  // Subtotal net of pre-tax fees/discounts; used for a post-tax fee's own
+  // equivalent display so it matches its real calculated amount.
+  adjustedTotalSubtotal: number
+  // The resolved base tip's own amount is sized against (post tipBase/
+  // tipDiscountBase/tipFeeBase); used for tip's equivalent display.
+  tipAmountBase: number
   totalTax: number
   onSetTax: (v: string) => void
   onSetTip: (v: string) => void
@@ -53,6 +60,8 @@ export function TaxTipSection({
   additionalFees,
   taxableSubtotal,
   totalSubtotal,
+  adjustedTotalSubtotal,
+  tipAmountBase,
   totalTax,
   onSetTax,
   onSetTip,
@@ -65,12 +74,15 @@ export function TaxTipSection({
 }: Props) {
   const taxInvalid = tax !== '' && !isValidAmount(tax)
   const tipInvalid = tip !== '' && !isValidAmount(tip)
-  const tipAmountBase = getTotalFeeBase(tipBase, totalSubtotal, totalTax)
+  // Only a genuinely negative/positive parsed amount counts — a freshly
+  // added, still-blank fee row (amount: '') would otherwise register as a
+  // surcharge (isDiscountAmount('') is false) and prematurely reveal the
+  // "after fee" toggle before the user has entered anything.
   const hasPreTaxDiscount = additionalFees.some(
-    f => f.base === 'pre-tax' && isDiscountAmount(f.amount),
+    f => f.base === 'pre-tax' && parseAmount(f.amount, totalSubtotal) < 0,
   )
   const hasPreTaxSurcharge = additionalFees.some(
-    f => f.base === 'pre-tax' && !isDiscountAmount(f.amount),
+    f => f.base === 'pre-tax' && parseAmount(f.amount, totalSubtotal) > 0,
   )
 
   return (
@@ -134,6 +146,7 @@ export function TaxTipSection({
           key={fee.id}
           fee={fee}
           totalSubtotal={totalSubtotal}
+          adjustedTotalSubtotal={adjustedTotalSubtotal}
           totalTax={totalTax}
           onChange={onUpdateFee}
           onRemove={onRemoveFee}
@@ -156,18 +169,27 @@ export function TaxTipSection({
 function FeeRow({
   fee,
   totalSubtotal,
+  adjustedTotalSubtotal,
   totalTax,
   onChange,
   onRemove,
 }: {
   fee: AdditionalFee
   totalSubtotal: number
+  adjustedTotalSubtotal: number
   totalTax: number
   onChange: (fee: AdditionalFee) => void
   onRemove: (id: string) => void
 }) {
   const amountInvalid = fee.amount !== '' && !isValidAmount(fee.amount)
-  const feeBase = getTotalFeeBase(fee.base, totalSubtotal, totalTax)
+  // A pre-tax fee's own amount is sized against the raw subtotal (fees don't
+  // cascade off each other); a post-tax fee nets out any pre-tax discount/
+  // surcharge already applied, matching calculateBreakdown's totalAdditionalFees.
+  const feeBase = getTotalFeeBase(
+    fee.base,
+    fee.base === 'pre-tax' ? totalSubtotal : adjustedTotalSubtotal,
+    totalTax,
+  )
   const isDiscount = isDiscountAmount(fee.amount)
 
   function toggleSign() {
