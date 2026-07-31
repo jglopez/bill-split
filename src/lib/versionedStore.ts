@@ -37,7 +37,12 @@ export function makeVersionedStore<T>(
   currentKey: string,
   migrations: [oldKey: string, migrate: Migration<T>][],
   fallback: T,
-  validate?: (v: unknown) => v is T,
+  // A plain boolean predicate, not a `v is T` type guard: validators may
+  // accept an object missing fields that T declares required (e.g. an
+  // optional-field backfill applied after load), so asserting the full type
+  // here would be a false guarantee. `current as T` below is the one place
+  // that cast happens, deliberately visible rather than hidden in the guard.
+  validate?: (v: unknown) => boolean,
 ): VersionedStore<T> {
   return {
     load(): T {

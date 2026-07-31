@@ -7,6 +7,8 @@ const BILL_V2_DEFAULTS: Omit<BillState, 'items'> = {
   tax: '',
   tip: '',
   tipBase: 'pre-tax',
+  tipDiscountBase: 'pre-discount',
+  tipFeeBase: 'pre-fee',
   additionalFees: [],
   payerMode: 'single',
   singlePayerId: '',

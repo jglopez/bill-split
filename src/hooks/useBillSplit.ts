@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import { nanoid } from 'nanoid'
-import type { BillState, Item, AdditionalFee, FeesBase, PayerMode } from '../types'
+import type { BillState, Item, AdditionalFee, FeesBase, PayerMode, TipDiscountBase, TipFeeBase } from '../types'
 import { makeVersionedStore } from '../lib/versionedStore'
 import { migrateV1toBillV2 } from '../lib/billMigrations'
 
@@ -12,6 +12,8 @@ const DEFAULT_STATE: BillState = {
   tax: '',
   tip: '',
   tipBase: 'pre-tax',
+  tipDiscountBase: 'pre-discount',
+  tipFeeBase: 'pre-fee',
   additionalFees: [],
   payerMode: 'single',
   singlePayerId: '',
@@ -50,7 +52,11 @@ function isAdditionalFee(v: unknown): boolean {
   )
 }
 
-export function isBillState(v: unknown): v is BillState {
+// A plain boolean predicate, not a `v is BillState` guard: it intentionally
+// accepts tipDiscountBase/tipFeeBase being absent (older saved bills), which
+// BillState declares required. loadState() backfills those fields right after
+// billStore.load() returns, before anything else can observe the gap.
+export function isBillState(v: unknown): boolean {
   if (typeof v !== 'object' || v === null) return false
   const s = v as Record<string, unknown>
   return (
@@ -61,6 +67,8 @@ export function isBillState(v: unknown): v is BillState {
     typeof s.tax === 'string' &&
     typeof s.tip === 'string' &&
     (s.tipBase === 'pre-tax' || s.tipBase === 'post-tax') &&
+    (s.tipDiscountBase === undefined || s.tipDiscountBase === 'pre-discount' || s.tipDiscountBase === 'post-discount') &&
+    (s.tipFeeBase === undefined || s.tipFeeBase === 'pre-fee' || s.tipFeeBase === 'post-fee') &&
     Array.isArray(s.additionalFees) &&
     s.additionalFees.every(isAdditionalFee) &&
     (s.payerMode === 'single' || s.payerMode === 'multiple') &&
@@ -78,8 +86,15 @@ const billStore = makeVersionedStore<BillState>(
 
 function loadState(): BillState {
   const state = billStore.load()
+  // Backfill fields older saved bills predate (isBillState above accepts
+  // them being absent so those bills aren't rejected wholesale).
+  const withDefaults: BillState = {
+    ...state,
+    tipDiscountBase: state.tipDiscountBase ?? 'pre-discount',
+    tipFeeBase: state.tipFeeBase ?? 'pre-fee',
+  }
   // Ensure the trailing blank row always exists after a restore
-  return ensureTrailingBlankRow(state)
+  return ensureTrailingBlankRow(withDefaults)
 }
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -93,6 +108,8 @@ type Action =
   | { type: 'SET_TAX'; value: string }
   | { type: 'SET_TIP'; value: string }
   | { type: 'SET_TIP_BASE'; base: FeesBase }
+  | { type: 'SET_TIP_DISCOUNT_BASE'; base: TipDiscountBase }
+  | { type: 'SET_TIP_FEE_BASE'; base: TipFeeBase }
   | { type: 'ADD_FEE' }
   | { type: 'UPDATE_FEE'; fee: AdditionalFee }
   | { type: 'REMOVE_FEE'; id: string }
@@ -184,6 +201,12 @@ function reducer(state: BillState, action: Action): BillState {
     case 'SET_TIP_BASE':
       return { ...state, tipBase: action.base }
 
+    case 'SET_TIP_DISCOUNT_BASE':
+      return { ...state, tipDiscountBase: action.base }
+
+    case 'SET_TIP_FEE_BASE':
+      return { ...state, tipFeeBase: action.base }
+
     case 'ADD_FEE':
       return {
         ...state,
@@ -273,6 +296,14 @@ export function useBillSplit() {
     (base: FeesBase) => dispatch({ type: 'SET_TIP_BASE', base }),
     [],
   )
+  const setTipDiscountBase = useCallback(
+    (base: TipDiscountBase) => dispatch({ type: 'SET_TIP_DISCOUNT_BASE', base }),
+    [],
+  )
+  const setTipFeeBase = useCallback(
+    (base: TipFeeBase) => dispatch({ type: 'SET_TIP_FEE_BASE', base }),
+    [],
+  )
   const addFee = useCallback(() => dispatch({ type: 'ADD_FEE' }), [])
   const updateFee = useCallback(
     (fee: AdditionalFee) => dispatch({ type: 'UPDATE_FEE', fee }),
@@ -315,6 +346,8 @@ export function useBillSplit() {
     setTax,
     setTip,
     setTipBase,
+    setTipDiscountBase,
+    setTipFeeBase,
     addFee,
     updateFee,
     removeFee,
