@@ -1,12 +1,20 @@
 import { useId } from 'react'
-import type { AdditionalFee, FeesBase } from '../types'
-import { getAmountEquivalent, getTotalFeeBase, isValidAmount, splitAmountInput } from '../utils/calculate'
+import type { AdditionalFee, FeesBase, TipDiscountBase, TipFeeBase } from '../types'
+import {
+  getAmountEquivalent,
+  getTotalFeeBase,
+  isDiscountAmount,
+  isValidAmount,
+  splitAmountInput,
+} from '../utils/calculate'
 import { NAME_MAX_LENGTH } from '../constants'
 
 interface Props {
   tax: string
   tip: string
   tipBase: FeesBase
+  tipDiscountBase: TipDiscountBase
+  tipFeeBase: TipFeeBase
   additionalFees: AdditionalFee[]
   taxableSubtotal: number
   totalSubtotal: number
@@ -14,6 +22,8 @@ interface Props {
   onSetTax: (v: string) => void
   onSetTip: (v: string) => void
   onSetTipBase: (b: FeesBase) => void
+  onSetTipDiscountBase: (b: TipDiscountBase) => void
+  onSetTipFeeBase: (b: TipFeeBase) => void
   onAddFee: () => void
   onUpdateFee: (fee: AdditionalFee) => void
   onRemoveFee: (id: string) => void
@@ -38,6 +48,8 @@ export function TaxTipSection({
   tax,
   tip,
   tipBase,
+  tipDiscountBase,
+  tipFeeBase,
   additionalFees,
   taxableSubtotal,
   totalSubtotal,
@@ -45,13 +57,21 @@ export function TaxTipSection({
   onSetTax,
   onSetTip,
   onSetTipBase,
+  onSetTipDiscountBase,
+  onSetTipFeeBase,
   onAddFee,
   onUpdateFee,
   onRemoveFee,
 }: Props) {
   const taxInvalid = tax !== '' && !isValidAmount(tax)
   const tipInvalid = tip !== '' && !isValidAmount(tip)
-  const tipFeeBase = getTotalFeeBase(tipBase, totalSubtotal, totalTax)
+  const tipAmountBase = getTotalFeeBase(tipBase, totalSubtotal, totalTax)
+  const hasPreTaxDiscount = additionalFees.some(
+    f => f.base === 'pre-tax' && isDiscountAmount(f.amount),
+  )
+  const hasPreTaxSurcharge = additionalFees.some(
+    f => f.base === 'pre-tax' && !isDiscountAmount(f.amount),
+  )
 
   return (
     <div className="space-y-2 mb-4">
@@ -80,13 +100,29 @@ export function TaxTipSection({
           invalid={tipInvalid}
           placeholder="e.g. 20"
           label="Tip amount"
-          base={tipFeeBase}
+          base={tipAmountBase}
         />
         <IncludeTaxToggle
           base={tipBase}
           onChange={onSetTipBase}
           disabled={!splitAmountInput(tip).isPercent}
         />
+        {hasPreTaxDiscount && (
+          <BinaryFeeBaseToggle
+            checked={tipDiscountBase === 'post-discount'}
+            onCheckedChange={checked => onSetTipDiscountBase(checked ? 'post-discount' : 'pre-discount')}
+            label="after discount"
+            tooltipText="When checked, tip is calculated on the subtotal after pre-tax discounts (e.g. a coupon) are netted out. When unchecked (default), tip is calculated on the full subtotal before discounts, so a discount doesn’t reduce what your server is tipped on."
+          />
+        )}
+        {hasPreTaxSurcharge && (
+          <BinaryFeeBaseToggle
+            checked={tipFeeBase === 'post-fee'}
+            onCheckedChange={checked => onSetTipFeeBase(checked ? 'post-fee' : 'pre-fee')}
+            label="after fee"
+            tooltipText="When checked, tip is calculated on the subtotal after pre-tax fees/surcharges are netted in. When unchecked (default), tip is calculated before those fees are added, so a surcharge doesn’t inflate what your server is tipped on."
+          />
+        )}
         {tipInvalid && (
           <span role="alert" className="text-xs text-red-600">Invalid amount</span>
         )}
@@ -132,12 +168,7 @@ function FeeRow({
 }) {
   const amountInvalid = fee.amount !== '' && !isValidAmount(fee.amount)
   const feeBase = getTotalFeeBase(fee.base, totalSubtotal, totalTax)
-
-  // Detect whether the current amount is a discount (negative) so we can
-  // label it clearly alongside any visual distinction.
-  const trimmedAmount = fee.amount.trim()
-  const numAmount = Number(splitAmountInput(trimmedAmount).numeric)
-  const isDiscount = trimmedAmount.startsWith('-') || (!isNaN(numAmount) && numAmount < 0)
+  const isDiscount = isDiscountAmount(fee.amount)
 
   function toggleSign() {
     const t = fee.amount.trim()
@@ -315,6 +346,40 @@ function IncludeTaxToggle({
       />
       <label htmlFor={id} className="cursor-pointer select-none">
         incl. tax
+      </label>
+      <Tooltip text={tooltipText} />
+    </span>
+  )
+}
+
+/**
+ * A small checkbox + label + tooltip, shared by IncludeDiscountToggle-shaped
+ * tip toggles (whether tip nets out a pre-tax discount or surcharge).
+ */
+function BinaryFeeBaseToggle({
+  checked,
+  onCheckedChange,
+  label,
+  tooltipText,
+}: {
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+  label: string
+  tooltipText: string
+}) {
+  const id = useId()
+
+  return (
+    <span className="flex items-center gap-1 text-xs text-gray-500">
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={e => onCheckedChange(e.target.checked)}
+        className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-3.5 w-3.5"
+      />
+      <label htmlFor={id} className="cursor-pointer select-none">
+        {label}
       </label>
       <Tooltip text={tooltipText} />
     </span>

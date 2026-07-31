@@ -23,6 +23,8 @@ export function App() {
     setTax,
     setTip,
     setTipBase,
+    setTipDiscountBase,
+    setTipFeeBase,
     addFee,
     updateFee,
     removeFee,
@@ -99,6 +101,8 @@ export function App() {
                 tax={state.tax}
                 tip={state.tip}
                 tipBase={state.tipBase}
+                tipDiscountBase={state.tipDiscountBase}
+                tipFeeBase={state.tipFeeBase}
                 additionalFees={state.additionalFees}
                 taxableSubtotal={breakdown.totalTaxableSubtotal}
                 totalSubtotal={breakdown.totalSubtotal}
@@ -106,6 +110,8 @@ export function App() {
                 onSetTax={setTax}
                 onSetTip={setTip}
                 onSetTipBase={setTipBase}
+                onSetTipDiscountBase={setTipDiscountBase}
+                onSetTipFeeBase={setTipFeeBase}
                 onAddFee={addFee}
                 onUpdateFee={updateFee}
                 onRemoveFee={removeFee}
