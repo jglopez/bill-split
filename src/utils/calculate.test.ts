@@ -37,6 +37,8 @@ function state(overrides: Partial<BillState> = {}): BillState {
     tax: '',
     tip: '',
     tipBase: 'pre-tax',
+    tipDiscountBase: 'pre-discount',
+    tipFeeBase: 'pre-fee',
     additionalFees: [],
     payerMode: 'single',
     singlePayerId: '',
@@ -631,6 +633,138 @@ test('item assigned to id not in participants is silently skipped', () => {
   assertEqual(bd.totalSubtotal, 0, 'item with non-participant assignee contributes nothing')
   assertEqual(bd.perPerson[0].subtotal, 0, 'A gets nothing')
   assertEqual(bd.perPerson[1].subtotal, 0, 'B gets nothing')
+})
+
+// ─── tip discount/fee base ────────────────────────────────────────────────────
+
+test('tip defaults ignore a pre-tax discount', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '0%',
+    tip: '10%',
+    additionalFees: [fee('coupon', '-20')], // pre-tax by default
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTip, 10, '10% of $100, unaffected by the coupon')
+})
+
+test('post-discount toggle nets the coupon out of the tip base', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '0%',
+    tip: '10%',
+    tipDiscountBase: 'post-discount',
+    additionalFees: [fee('coupon', '-20')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTip, 8, '10% of ($100 - $20) = $8')
+})
+
+test('tip defaults ignore a pre-tax surcharge', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '0%',
+    tip: '10%',
+    additionalFees: [fee('svc', '20')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTip, 10, '10% of $100, unaffected by the surcharge')
+})
+
+test('post-fee toggle nets the surcharge into the tip base', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '0%',
+    tip: '10%',
+    tipFeeBase: 'post-fee',
+    additionalFees: [fee('svc', '20')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTip, 12, '10% of ($100 + $20) = $12')
+})
+
+test('post-tax fee base is corrected by a coexisting pre-tax discount', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '10%',
+    additionalFees: [fee('coupon', '-20'), fee('svc', '10%', 'post-tax')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTax, 8, '10% of ($100 - $20) = $8')
+  assertEqual(bd.totalAdditionalFees[1], 8.8, '10% of ($80 + $8) = $8.80, not 10% of ($100 + $8)')
+})
+
+test('percentage-based discount exercises the same %-parsing path as flat amounts', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '0%',
+    tip: '10%',
+    tipDiscountBase: 'post-discount',
+    additionalFees: [fee('coupon', '-20%')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTip, 8, 'same result as the flat -20 case')
+})
+
+test('percentage-based surcharge exercises the same %-parsing path as flat amounts', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('x', '100')],
+    tax: '0%',
+    tip: '10%',
+    tipFeeBase: 'post-fee',
+    additionalFees: [fee('svc', '20%')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTip, 12, 'same result as the flat 20 case')
+})
+
+test('multi-participant tip distribution stays proportional to raw shares', () => {
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [item('a', '60', ['A']), item('b', '40', ['B'])],
+    tax: '0%',
+    tip: '10%',
+    tipDiscountBase: 'post-discount',
+    additionalFees: [fee('coupon', '-20')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalTip, 8, '10% of the discounted $80')
+  assertEqual(bd.perPerson[0].tip, 4.8, "A's raw 60/100 share of the $8 tip")
+  assertEqual(bd.perPerson[1].tip, 3.2, "B's raw 40/100 share of the $8 tip")
+})
+
+test('multi-participant post-tax fee distribution stays proportional with a coexisting discount', () => {
+  const s = state({
+    participants: [p('A'), p('B')],
+    items: [item('a', '50', ['A']), item('b', '50', ['B'])],
+    tax: '10%',
+    additionalFees: [fee('coupon', '-20'), fee('svc', '10%', 'post-tax')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.totalAdditionalFees[1], 8.8, '10% of ($80 + $8) = $8.80')
+  assertEqual(bd.perPerson[0].additionalFees[1], 4.4, 'equal raw shares split the fee evenly')
+  assertEqual(bd.perPerson[1].additionalFees[1], 4.4, 'equal raw shares split the fee evenly')
+})
+
+test('reproduces the real Kura Sushi receipt end-to-end', () => {
+  const s = state({
+    participants: [p('A')],
+    items: [item('plates', '112.05'), item('soup', '4.95')],
+    tax: '9.75%',
+    tip: '10%',
+    tipDiscountBase: 'post-discount',
+    additionalFees: [fee('coupon', '-10')],
+  })
+  const bd = calculateBreakdown(s)
+  assertEqual(bd.perPerson[0].tax, 10.43, '9.75% of ($117 - $10) = $10.4325 -> $10.43')
+  assertEqual(bd.perPerson[0].tip, 10.7, '10% of the discounted $107 subtotal')
 })
 
 // ─── isValidAmount ────────────────────────────────────────────────────────────
