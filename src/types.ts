@@ -41,6 +41,18 @@ export interface AdditionalFee {
 
 export type PayerMode = 'single' | 'multiple'
 
+// Whether tip is calculated on the subtotal before or after pre-tax
+// discounts (negative-amount fees, e.g. a coupon) are netted out. Defaults
+// to 'pre-discount' so a diner's coupon doesn't reduce what the server is
+// tipped on. Independent of tipFeeBase and tipBase.
+export type TipDiscountBase = 'pre-discount' | 'post-discount'
+
+// Whether tip is calculated on the subtotal before or after pre-tax
+// surcharges (positive-amount fees) are netted in. Defaults to 'pre-fee' so
+// an incidental surcharge doesn't inflate what the server is tipped on.
+// Independent of tipDiscountBase and tipBase.
+export type TipFeeBase = 'pre-fee' | 'post-fee'
+
 export interface BillState {
   participants: Participant[]
   items: Item[]
@@ -50,6 +62,10 @@ export interface BillState {
   tip: string
   // Whether tip is applied to the pre-tax or post-tax subtotal.
   tipBase: FeesBase
+  // Whether tip nets out pre-tax discounts/surcharges. See TipDiscountBase
+  // and TipFeeBase; independent of each other and of tipBase.
+  tipDiscountBase: TipDiscountBase
+  tipFeeBase: TipFeeBase
   // Zero or more additional surcharges/discounts, each with their own base toggle.
   additionalFees: AdditionalFee[]
   // How the bill was paid. 'single': one person fronted everything.

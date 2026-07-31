@@ -37,6 +37,14 @@ export function isValidAmount(value: string): boolean {
   return !isNaN(n) && isFinite(n)
 }
 
+/** True if an amount string represents a discount (negative), matching the sign heuristic used to render fee rows. */
+export function isDiscountAmount(value: string): boolean {
+  const trimmed = value.trim()
+  const { numeric } = splitAmountInput(trimmed)
+  const n = Number(numeric)
+  return trimmed.startsWith('-') || (!isNaN(n) && n < 0)
+}
+
 /**
  * Returns true if a string is a valid item price (non-negative plain number, no % suffix).
  * Item prices are always dollar amounts; percentage inputs are not valid here.
