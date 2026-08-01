@@ -1,9 +1,10 @@
 // Pure-function tests for isBillState and the useBillSplit reducer.
 // Run with: npm test
 
-import { isBillState, reducer, DEFAULT_STATE } from './useBillSplit'
+import { isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
 import type { BillState } from '../types'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
 
 const validState = {
   participants: [{ id: 'a', name: 'Alice' }],
@@ -288,5 +289,51 @@ describe('reducer', () => {
     expect(next.items.map(i => i.id).slice(0, 3)).toEqual(['i2', 'i3', 'i1'])
     expect(next.items[3].name).toEqual('')
     expect(next.items[3].price).toEqual('')
+  })
+})
+
+describe('useBillSplit (hook)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('initial state matches DEFAULT_STATE', () => {
+    const { result } = renderHook(() => useBillSplit())
+    expect(result.current.state).toEqual(DEFAULT_STATE)
+    expect(result.current.saveFailed).toBe(false)
+  })
+
+  it('dispatches through the reducer and re-renders with updated state', () => {
+    const { result } = renderHook(() => useBillSplit())
+    act(() => {
+      result.current.addParticipant('Alice')
+    })
+    expect(result.current.state.participants.length).toEqual(1)
+    expect(result.current.state.participants[0].name).toEqual('Alice')
+  })
+
+  it('persists state to localStorage on every change', () => {
+    const { result } = renderHook(() => useBillSplit())
+    act(() => {
+      result.current.addParticipant('Alice')
+    })
+    const stored = localStorage.getItem('bill-split:v2')
+    expect(stored).not.toBeNull()
+    const parsed = JSON.parse(stored!)
+    expect(parsed.participants[0].name).toEqual('Alice')
+  })
+
+  it('sets saveFailed when persistence throws, and dismissSaveWarning clears it', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError')
+    })
+    const { result } = renderHook(() => useBillSplit())
+    expect(result.current.saveFailed).toBe(true)
+    setItemSpy.mockRestore()
+
+    act(() => {
+      result.current.dismissSaveWarning()
+    })
+    expect(result.current.saveFailed).toBe(false)
   })
 })
