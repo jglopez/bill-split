@@ -16,7 +16,7 @@ export default tseslint.config(
   },
   {
     // Test scripts run in Node and use console intentionally.
-    files: ['src/**/*.test.ts'],
+    files: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     rules: { 'no-console': 'off' },
   },
   {

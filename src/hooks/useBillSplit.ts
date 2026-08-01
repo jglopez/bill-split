@@ -6,7 +6,7 @@ import { migrateV1toBillV2 } from '../lib/billMigrations'
 
 // ─── Default state ────────────────────────────────────────────────────────────
 
-const DEFAULT_STATE: BillState = {
+export const DEFAULT_STATE: BillState = {
   participants: [],
   items: [{ id: nanoid(), name: '', price: '', assignedTo: null }],
   tax: '',
@@ -99,7 +99,7 @@ function loadState(): BillState {
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
-type Action =
+export type Action =
   | { type: 'ADD_PARTICIPANT'; name: string }
   | { type: 'REMOVE_PARTICIPANT'; id: string }
   | { type: 'RENAME_PARTICIPANT'; id: string; name: string }
@@ -136,7 +136,7 @@ function ensureTrailingBlankRow(state: BillState): BillState {
   return state
 }
 
-function reducer(state: BillState, action: Action): BillState {
+export function reducer(state: BillState, action: Action): BillState {
   switch (action.type) {
     case 'ADD_PARTICIPANT': {
       const id = nanoid()

@@ -1,56 +1,107 @@
 // Pure-function tests for reconcileColumnOrder.
 // Run with: npm test
 
-import { reconcileColumnOrder } from './useColumnOrder'
-import { test, assertEqual, summary } from '../test/harness'
+import { reconcileColumnOrder, useColumnOrder } from './useColumnOrder'
+import type { Participant } from '../types'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
 
-console.log('\nreconcileColumnOrder')
+const COLUMN_ORDER_KEY = 'bill-split-column-order:v1'
 
-test('null (no stored order) falls back to insertion order', () => {
-  assertEqual(reconcileColumnOrder(null, ['a', 'b', 'c']), ['a', 'b', 'c'], 'insertion order')
+describe('reconcileColumnOrder', () => {
+  it('null (no stored order) falls back to insertion order', () => {
+    expect(reconcileColumnOrder(null, ['a', 'b', 'c'])).toEqual(['a', 'b', 'c'])
+  })
+
+  it('non-array stored value falls back to insertion order', () => {
+    expect(reconcileColumnOrder('garbage', ['a', 'b'])).toEqual(['a', 'b'])
+    expect(reconcileColumnOrder({ a: 1 }, ['a', 'b'])).toEqual(['a', 'b'])
+    expect(reconcileColumnOrder(42, ['a', 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('stored custom order is preserved', () => {
+    expect(reconcileColumnOrder(['c', 'a', 'b'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
+  })
+
+  it('duplicate ids in storage are deduplicated', () => {
+    expect(reconcileColumnOrder(['a', 'b', 'a', 'b'], ['a', 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('ids of removed participants are dropped', () => {
+    expect(reconcileColumnOrder(['gone', 'a', 'b'], ['a', 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('new participants are appended at the end', () => {
+    expect(reconcileColumnOrder(['b', 'a'], ['a', 'b', 'new'])).toEqual(['b', 'a', 'new'])
+  })
+
+  it('drop and append combine with order preserved', () => {
+    expect(reconcileColumnOrder(['gone', 'c', 'a'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
+  })
+
+  it('non-string garbage in a stored array is filtered out', () => {
+    expect(reconcileColumnOrder([1, null, 'a'], ['a', 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('empty stored array yields insertion order', () => {
+    expect(reconcileColumnOrder([], ['a', 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('no participants yields empty order', () => {
+    expect(reconcileColumnOrder(['a', 'b'], [])).toEqual([])
+    expect(reconcileColumnOrder(null, [])).toEqual([])
+  })
 })
 
-test('non-array stored value falls back to insertion order', () => {
-  assertEqual(reconcileColumnOrder('garbage', ['a', 'b']), ['a', 'b'], 'string rejected')
-  assertEqual(reconcileColumnOrder({ a: 1 }, ['a', 'b']), ['a', 'b'], 'object rejected')
-  assertEqual(reconcileColumnOrder(42, ['a', 'b']), ['a', 'b'], 'number rejected')
-})
+describe('useColumnOrder', () => {
+  const a: Participant = { id: 'a', name: 'Alice' }
+  const b: Participant = { id: 'b', name: 'Bob' }
+  const c: Participant = { id: 'c', name: 'Carol' }
 
-test('stored custom order is preserved', () => {
-  assertEqual(reconcileColumnOrder(['c', 'a', 'b'], ['a', 'b', 'c']), ['c', 'a', 'b'], 'custom order kept')
-})
+  beforeEach(() => {
+    localStorage.clear()
+  })
 
-test('duplicate ids in storage are deduplicated', () => {
-  assertEqual(reconcileColumnOrder(['a', 'b', 'a', 'b'], ['a', 'b']), ['a', 'b'], 'no duplicate columns')
-})
+  it('seeds insertion order when nothing is stored', () => {
+    const { result } = renderHook(() => useColumnOrder([a, b]))
+    expect(result.current.columnOrder).toEqual(['a', 'b'])
+    expect(result.current.orderedParticipants).toEqual([a, b])
+  })
 
-test('ids of removed participants are dropped', () => {
-  assertEqual(reconcileColumnOrder(['gone', 'a', 'b'], ['a', 'b']), ['a', 'b'], 'stale id dropped')
-})
+  it('seeds from a stored order, reconciled against current participants', () => {
+    localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(['b', 'a']))
+    const { result } = renderHook(() => useColumnOrder([a, b]))
+    expect(result.current.columnOrder).toEqual(['b', 'a'])
+    expect(result.current.orderedParticipants).toEqual([b, a])
+  })
 
-test('new participants are appended at the end', () => {
-  assertEqual(reconcileColumnOrder(['b', 'a'], ['a', 'b', 'new']), ['b', 'a', 'new'], 'new id appended')
-})
+  it('appends a newly added participant when participants change', () => {
+    const { result, rerender } = renderHook(
+      ({ participants }) => useColumnOrder(participants),
+      { initialProps: { participants: [a, b] } },
+    )
+    expect(result.current.columnOrder).toEqual(['a', 'b'])
 
-test('drop and append combine with order preserved', () => {
-  assertEqual(
-    reconcileColumnOrder(['gone', 'c', 'a'], ['a', 'b', 'c']),
-    ['c', 'a', 'b'],
-    'stale dropped, order kept, new appended'
-  )
-})
+    rerender({ participants: [a, b, c] })
+    expect(result.current.columnOrder).toEqual(['a', 'b', 'c'])
+  })
 
-test('non-string garbage in a stored array is filtered out', () => {
-  assertEqual(reconcileColumnOrder([1, null, 'a'], ['a', 'b']), ['a', 'b'], 'garbage entries dropped')
-})
+  it('drops a removed participant when participants change', () => {
+    const { result, rerender } = renderHook(
+      ({ participants }) => useColumnOrder(participants),
+      { initialProps: { participants: [a, b, c] } },
+    )
+    rerender({ participants: [a, c] })
+    expect(result.current.columnOrder).toEqual(['a', 'c'])
+    expect(result.current.orderedParticipants).toEqual([a, c])
+  })
 
-test('empty stored array yields insertion order', () => {
-  assertEqual(reconcileColumnOrder([], ['a', 'b']), ['a', 'b'], 'all appended')
+  it('setColumnOrder persists the new order to localStorage', () => {
+    const { result } = renderHook(() => useColumnOrder([a, b]))
+    act(() => {
+      result.current.setColumnOrder(['b', 'a'])
+    })
+    expect(result.current.columnOrder).toEqual(['b', 'a'])
+    expect(JSON.parse(localStorage.getItem(COLUMN_ORDER_KEY)!)).toEqual(['b', 'a'])
+  })
 })
-
-test('no participants yields empty order', () => {
-  assertEqual(reconcileColumnOrder(['a', 'b'], []), [], 'empty result')
-  assertEqual(reconcileColumnOrder(null, []), [], 'empty fallback')
-})
-
-summary()
