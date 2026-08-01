@@ -1,8 +1,12 @@
 // Pure-function tests for reconcileColumnOrder.
 // Run with: npm test
 
-import { reconcileColumnOrder } from './useColumnOrder'
-import { describe, it, expect } from 'vitest'
+import { reconcileColumnOrder, useColumnOrder } from './useColumnOrder'
+import type { Participant } from '../types'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
+
+const COLUMN_ORDER_KEY = 'bill-split-column-order:v1'
 
 describe('reconcileColumnOrder', () => {
   it('null (no stored order) falls back to insertion order', () => {
@@ -46,5 +50,58 @@ describe('reconcileColumnOrder', () => {
   it('no participants yields empty order', () => {
     expect(reconcileColumnOrder(['a', 'b'], [])).toEqual([])
     expect(reconcileColumnOrder(null, [])).toEqual([])
+  })
+})
+
+describe('useColumnOrder', () => {
+  const a: Participant = { id: 'a', name: 'Alice' }
+  const b: Participant = { id: 'b', name: 'Bob' }
+  const c: Participant = { id: 'c', name: 'Carol' }
+
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('seeds insertion order when nothing is stored', () => {
+    const { result } = renderHook(() => useColumnOrder([a, b]))
+    expect(result.current.columnOrder).toEqual(['a', 'b'])
+    expect(result.current.orderedParticipants).toEqual([a, b])
+  })
+
+  it('seeds from a stored order, reconciled against current participants', () => {
+    localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(['b', 'a']))
+    const { result } = renderHook(() => useColumnOrder([a, b]))
+    expect(result.current.columnOrder).toEqual(['b', 'a'])
+    expect(result.current.orderedParticipants).toEqual([b, a])
+  })
+
+  it('appends a newly added participant when participants change', () => {
+    const { result, rerender } = renderHook(
+      ({ participants }) => useColumnOrder(participants),
+      { initialProps: { participants: [a, b] } },
+    )
+    expect(result.current.columnOrder).toEqual(['a', 'b'])
+
+    rerender({ participants: [a, b, c] })
+    expect(result.current.columnOrder).toEqual(['a', 'b', 'c'])
+  })
+
+  it('drops a removed participant when participants change', () => {
+    const { result, rerender } = renderHook(
+      ({ participants }) => useColumnOrder(participants),
+      { initialProps: { participants: [a, b, c] } },
+    )
+    rerender({ participants: [a, c] })
+    expect(result.current.columnOrder).toEqual(['a', 'c'])
+    expect(result.current.orderedParticipants).toEqual([a, c])
+  })
+
+  it('setColumnOrder persists the new order to localStorage', () => {
+    const { result } = renderHook(() => useColumnOrder([a, b]))
+    act(() => {
+      result.current.setColumnOrder(['b', 'a'])
+    })
+    expect(result.current.columnOrder).toEqual(['b', 'a'])
+    expect(JSON.parse(localStorage.getItem(COLUMN_ORDER_KEY)!)).toEqual(['b', 'a'])
   })
 })
