@@ -14,7 +14,7 @@ import {
   calculateSettlement,
 } from './calculate'
 import type { BillState, Item, Participant, AdditionalFee } from '../types'
-import { test, assertEqual, summary } from '../test/harness'
+import { it, expect } from 'vitest'
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -54,201 +54,193 @@ function sumCents(values: number[]): number {
 
 // ─── getAmountEquivalent ───────────────────────────────────────────────────
 
-console.log('\ngetAmountEquivalent')
-
-test('percent -> dollar, exact', () => {
-  assertEqual(getAmountEquivalent('20%', 200), '$40.00', 'no tilde when exact to 2 decimals')
+it('percent -> dollar, exact', () => {
+  expect(getAmountEquivalent('20%', 200)).toEqual('$40.00')
 })
 
-test('dollar -> percent, exact', () => {
-  assertEqual(getAmountEquivalent('40', 200), '20%', 'no tilde when exact to 2 decimals')
+it('dollar -> percent, exact', () => {
+  expect(getAmountEquivalent('40', 200)).toEqual('20%')
 })
 
-test('dollar -> percent, rounded (1/3), 3 sig figs at 2 digits -> 1 decimal', () => {
-  assertEqual(getAmountEquivalent('1', 3), '~33.3%', '3 sig figs caps 33.333...% at one decimal')
+it('dollar -> percent, rounded (1/3), 3 sig figs at 2 digits -> 1 decimal', () => {
+  expect(getAmountEquivalent('1', 3)).toEqual('~33.3%')
 })
 
-test('dollar -> percent, 3 sig figs at 1 digit -> 2 decimals', () => {
-  assertEqual(getAmountEquivalent('1', 30), '~3.33%', '3.333...% shown with 2 decimals for 3 sig figs')
+it('dollar -> percent, 3 sig figs at 1 digit -> 2 decimals', () => {
+  expect(getAmountEquivalent('1', 30)).toEqual('~3.33%')
 })
 
-test('dollar -> percent, 3 sig figs below 1% -> 3 decimals', () => {
-  assertEqual(getAmountEquivalent('1', 300), '~0.333%', '0.333...% shown with 3 decimals for 3 sig figs')
+it('dollar -> percent, 3 sig figs below 1% -> 3 decimals', () => {
+  expect(getAmountEquivalent('1', 300)).toEqual('~0.333%')
 })
 
-test('dollar -> percent, very small % caps at 3 decimals (fewer than 3 sig figs)', () => {
-  assertEqual(getAmountEquivalent('1', 3000), '~0.033%', 'capped at 3 decimals rather than growing further')
+it('dollar -> percent, very small % caps at 3 decimals (fewer than 3 sig figs)', () => {
+  expect(getAmountEquivalent('1', 3000)).toEqual('~0.033%')
 })
 
-test('dollar -> percent, 3 sig figs at 3+ digits -> 0 decimals', () => {
-  assertEqual(getAmountEquivalent('150.5', 100), '~151%', 'values >= 100 round to a whole percent')
+it('dollar -> percent, 3 sig figs at 3+ digits -> 0 decimals', () => {
+  expect(getAmountEquivalent('150.5', 100)).toEqual('~151%')
 })
 
-test('dollar -> percent, exact 100% keeps all digits', () => {
-  assertEqual(getAmountEquivalent('100', 100), '100%', '$100 of $100 base should show 100%, not 1%')
+it('dollar -> percent, exact 100% keeps all digits', () => {
+  expect(getAmountEquivalent('100', 100)).toEqual('100%')
 })
 
-test('dollar -> percent, exact 200% keeps all digits', () => {
-  assertEqual(getAmountEquivalent('200', 100), '200%', '$200 of $100 base should show 200%, not 2%')
+it('dollar -> percent, exact 200% keeps all digits', () => {
+  expect(getAmountEquivalent('200', 100)).toEqual('200%')
 })
 
-test('dollar -> percent, $0 shows 0% not bare %', () => {
-  assertEqual(getAmountEquivalent('0', 100), '0%', '$0 should show 0%, not a bare %')
+it('dollar -> percent, $0 shows 0% not bare %', () => {
+  expect(getAmountEquivalent('0', 100)).toEqual('0%')
 })
 
-test('percent -> dollar, rounded', () => {
-  assertEqual(getAmountEquivalent('33.333%', 3), '~$1.00', 'tilde when rounding loses precision')
+it('percent -> dollar, rounded', () => {
+  expect(getAmountEquivalent('33.333%', 3)).toEqual('~$1.00')
 })
 
-test('zero base, percent input -> dollar is always computable', () => {
-  assertEqual(getAmountEquivalent('20%', 0), '$0.00', '20% of $0 is $0, not hidden')
+it('zero base, percent input -> dollar is always computable', () => {
+  expect(getAmountEquivalent('20%', 0)).toEqual('$0.00')
 })
 
-test('zero base, dollar input -> percent is undefined, hidden', () => {
-  assertEqual(getAmountEquivalent('10', 0), null, 'cannot express $ as % of a zero base')
+it('zero base, dollar input -> percent is undefined, hidden', () => {
+  expect(getAmountEquivalent('10', 0)).toEqual(null)
 })
 
-test('negative base, dollar input -> hidden', () => {
-  assertEqual(getAmountEquivalent('10', -5), null, 'cannot express $ as % of a negative base')
+it('negative base, dollar input -> hidden', () => {
+  expect(getAmountEquivalent('10', -5)).toEqual(null)
 })
 
-test('empty input -> hidden', () => {
-  assertEqual(getAmountEquivalent('', 100), null, 'empty input has no equivalent')
+it('empty input -> hidden', () => {
+  expect(getAmountEquivalent('', 100)).toEqual(null)
 })
 
-test('bare "%" (mid-toggle, no digits yet) -> hidden', () => {
-  assertEqual(getAmountEquivalent('%', 100), null, 'no digits to convert yet')
+it('bare "%" (mid-toggle, no digits yet) -> hidden', () => {
+  expect(getAmountEquivalent('%', 100)).toEqual(null)
 })
 
-test('negative percent -> dollar shows sign before $, not after', () => {
-  assertEqual(getAmountEquivalent('-5%', 100), '-$5.00', 'discount equivalents read as -$5.00, not $-5.00')
+it('negative percent -> dollar shows sign before $, not after', () => {
+  expect(getAmountEquivalent('-5%', 100)).toEqual('-$5.00')
 })
 
-test('non-finite percent input -> hidden', () => {
-  assertEqual(getAmountEquivalent('Infinity%', 100), null, 'non-finite percent has no sensible dollar equivalent')
+it('non-finite percent input -> hidden', () => {
+  expect(getAmountEquivalent('Infinity%', 100)).toEqual(null)
 })
 
-test('non-finite dollar input -> hidden', () => {
-  assertEqual(getAmountEquivalent('Infinity', 100), null, 'non-finite dollar amount has no sensible percent equivalent')
+it('non-finite dollar input -> hidden', () => {
+  expect(getAmountEquivalent('Infinity', 100)).toEqual(null)
 })
 
-test('non-finite base -> hidden', () => {
-  assertEqual(getAmountEquivalent('20%', Infinity), null, 'a non-finite base has no sensible equivalent either direction')
+it('non-finite base -> hidden', () => {
+  expect(getAmountEquivalent('20%', Infinity)).toEqual(null)
 })
 
-test('invalid percent input -> hidden', () => {
-  assertEqual(getAmountEquivalent('abc%', 100), null, 'unparseable percent is hidden')
+it('invalid percent input -> hidden', () => {
+  expect(getAmountEquivalent('abc%', 100)).toEqual(null)
 })
 
-test('invalid dollar input -> hidden', () => {
-  assertEqual(getAmountEquivalent('abc', 100), null, 'unparseable dollar amount is hidden')
+it('invalid dollar input -> hidden', () => {
+  expect(getAmountEquivalent('abc', 100)).toEqual(null)
 })
 
-test('trims whitespace', () => {
-  assertEqual(getAmountEquivalent('  20%  ', 100), '$20.00', 'whitespace is trimmed before parsing')
+it('trims whitespace', () => {
+  expect(getAmountEquivalent('  20%  ', 100)).toEqual('$20.00')
 })
 
-test('trailing-zero percent equivalents are trimmed', () => {
-  assertEqual(getAmountEquivalent('20.10', 100), '20.1%', 'trailing zero dropped, kept significant digit')
+it('trailing-zero percent equivalents are trimmed', () => {
+  expect(getAmountEquivalent('20.10', 100)).toEqual('20.1%')
 })
 
 // ─── parseAmount ──────────────────────────────────────────────────────────────
 
-console.log('\nparseAmount')
-
-test('empty string → 0', () => {
-  assertEqual(parseAmount('', 100), 0, 'empty is 0')
+it('empty string → 0', () => {
+  expect(parseAmount('', 100)).toEqual(0)
 })
-test('whitespace-only → 0', () => {
-  assertEqual(parseAmount('   ', 100), 0, 'whitespace-only is 0')
+it('whitespace-only → 0', () => {
+  expect(parseAmount('   ', 100)).toEqual(0)
 })
-test('plain number', () => {
-  assertEqual(parseAmount('10.50', 100), 10.5, 'flat dollar amount')
+it('plain number', () => {
+  expect(parseAmount('10.50', 100)).toEqual(10.5)
 })
-test('percentage of base', () => {
-  assertEqual(parseAmount('20%', 100), 20, '20% of $100 = $20')
+it('percentage of base', () => {
+  expect(parseAmount('20%', 100)).toEqual(20)
 })
-test('percentage of zero base', () => {
-  assertEqual(parseAmount('20%', 0), 0, '20% of $0 = $0')
+it('percentage of zero base', () => {
+  expect(parseAmount('20%', 0)).toEqual(0)
 })
-test('negative flat amount', () => {
-  assertEqual(parseAmount('-5', 100), -5, 'negative flat = discount')
+it('negative flat amount', () => {
+  expect(parseAmount('-5', 100)).toEqual(-5)
 })
-test('negative percentage', () => {
-  assertEqual(parseAmount('-10%', 100), -10, '-10% of $100 = -$10')
+it('negative percentage', () => {
+  expect(parseAmount('-10%', 100)).toEqual(-10)
 })
-test('invalid string → 0', () => {
-  assertEqual(parseAmount('abc', 100), 0, 'non-numeric is 0')
+it('invalid string → 0', () => {
+  expect(parseAmount('abc', 100)).toEqual(0)
 })
-test('invalid percent → 0', () => {
-  assertEqual(parseAmount('abc%', 100), 0, 'non-numeric % is 0')
+it('invalid percent → 0', () => {
+  expect(parseAmount('abc%', 100)).toEqual(0)
 })
-test('bare "%" → 0', () => {
-  assertEqual(parseAmount('%', 100), 0, 'bare % is 0')
+it('bare "%" → 0', () => {
+  expect(parseAmount('%', 100)).toEqual(0)
 })
 
 // ─── reconcileCents ───────────────────────────────────────────────────────────
 
-console.log('\nreconcileCents')
-
-test('even split needs no adjustment', () => {
+it('even split needs no adjustment', () => {
   const result = reconcileCents([5, 5], 10)
-  assertEqual(result, [5, 5], 'exact halves unchanged')
+  expect(result).toEqual([5, 5])
 })
-test('three-way split: sum of rounded shares equals total in cents', () => {
+it('three-way split: sum of rounded shares equals total in cents', () => {
   const result = reconcileCents([10 / 3, 10 / 3, 10 / 3], 10)
-  assertEqual(sumCents(result), 1000, 'cents sum to 1000')
-  assertEqual(result.length, 3, 'three shares')
+  expect(sumCents(result)).toEqual(1000)
+  expect(result.length).toEqual(3)
 })
-test('three-way split: each share is either 3.33 or 3.34', () => {
+it('three-way split: each share is either 3.33 or 3.34', () => {
   const result = reconcileCents([10 / 3, 10 / 3, 10 / 3], 10)
   for (const v of result) {
     const cents = Math.round(v * 100)
     if (cents !== 333 && cents !== 334) throw new Error(`unexpected share ${v}`)
   }
 })
-test('empty array → empty array', () => {
-  assertEqual(reconcileCents([], 0), [], 'no participants')
+it('empty array → empty array', () => {
+  expect(reconcileCents([], 0)).toEqual([])
 })
-test('single participant: floating-point residue rounded to total', () => {
+it('single participant: floating-point residue rounded to total', () => {
   // 10 / 3 * 3 = 10.000000000000002 in IEEE 754; reconcile to clean $10.00
   const rawTotal = 10 / 3 * 3
   const result = reconcileCents([rawTotal], rawTotal)
-  assertEqual(Math.round(result[0] * 100), 1000, 'sole participant gets $10.00')
+  expect(Math.round(result[0] * 100)).toEqual(1000)
 })
-test('four-way even split unchanged', () => {
+it('four-way even split unchanged', () => {
   const result = reconcileCents([2.5, 2.5, 2.5, 2.5], 10)
-  assertEqual(result, [2.5, 2.5, 2.5, 2.5], 'quarters unchanged')
+  expect(result).toEqual([2.5, 2.5, 2.5, 2.5])
 })
 
 // ─── calculateBreakdown ───────────────────────────────────────────────────────
 
-console.log('\ncalculateBreakdown')
-
-test('two people, one item, no tax/tip', () => {
+it('two people, one item, no tax/tip', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalSubtotal, 10, 'totalSubtotal')
-  assertEqual(bd.totalGrandTotal, 10, 'totalGrandTotal')
-  assertEqual(bd.perPerson.length, 2, 'two entries')
-  assertEqual(bd.perPerson[0].subtotal, 5, 'A subtotal')
-  assertEqual(bd.perPerson[1].subtotal, 5, 'B subtotal')
+  expect(bd.totalSubtotal).toEqual(10)
+  expect(bd.totalGrandTotal).toEqual(10)
+  expect(bd.perPerson.length).toEqual(2)
+  expect(bd.perPerson[0].subtotal).toEqual(5)
+  expect(bd.perPerson[1].subtotal).toEqual(5)
 })
 
-test('three-way split: per-person subtotals sum to total in cents', () => {
+it('three-way split: per-person subtotals sum to total in cents', () => {
   const s = state({
     participants: [p('A'), p('B'), p('C')],
     items: [item('x', '10')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(sumCents(bd.perPerson.map(pp => pp.subtotal)), 1000, 'cents sum to 1000')
-  assertEqual(bd.totalSubtotal.toFixed(2), (10.000000000000002).toFixed(2), 'totalSubtotal ≈ 10')
+  expect(sumCents(bd.perPerson.map(pp => pp.subtotal))).toEqual(1000)
+  expect(bd.totalSubtotal.toFixed(2)).toEqual((10.000000000000002).toFixed(2))
 })
 
-test('item assigned to explicit subset', () => {
+it('item assigned to explicit subset', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10', ['A'])],
@@ -256,29 +248,29 @@ test('item assigned to explicit subset', () => {
   const bd = calculateBreakdown(s)
   const a = bd.perPerson.find(pp => pp.participantId === 'A')!
   const b = bd.perPerson.find(pp => pp.participantId === 'B')!
-  assertEqual(a.subtotal, 10, 'A gets full item')
-  assertEqual(b.subtotal, 0, 'B gets nothing')
+  expect(a.subtotal).toEqual(10)
+  expect(b.subtotal).toEqual(0)
 })
 
-test('item assigned to nobody (assignedTo=[]) is skipped', () => {
+it('item assigned to nobody (assignedTo=[]) is skipped', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10', [])],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalSubtotal, 0, 'unassigned item contributes nothing')
+  expect(bd.totalSubtotal).toEqual(0)
 })
 
-test('item with invalid price is skipped', () => {
+it('item with invalid price is skipped', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', 'abc')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalSubtotal, 0, 'invalid price → 0 subtotal')
+  expect(bd.totalSubtotal).toEqual(0)
 })
 
-test('tax applies to taxable items only', () => {
+it('tax applies to taxable items only', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [
@@ -288,24 +280,24 @@ test('tax applies to taxable items only', () => {
     tax: '10%',
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalSubtotal, 16, 'subtotal includes both items')
-  assertEqual(bd.totalTaxableSubtotal, 10, 'only taxable item in tax base')
-  assertEqual(bd.totalTax, 1, '10% of $10 taxable = $1 tax')
-  assertEqual(bd.totalGrandTotal, 17, '$16 subtotal + $1 tax')
+  expect(bd.totalSubtotal).toEqual(16)
+  expect(bd.totalTaxableSubtotal).toEqual(10)
+  expect(bd.totalTax).toEqual(1)
+  expect(bd.totalGrandTotal).toEqual(17)
 })
 
-test('all items non-taxable → tax is $0 even with a tax value set', () => {
+it('all items non-taxable → tax is $0 even with a tax value set', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10', null, false)],
     tax: '10%',
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 0, 'tax is 0 when nothing is taxable')
-  assertEqual(bd.perPerson[0].tax, 0, 'per-person tax is 0')
+  expect(bd.totalTax).toEqual(0)
+  expect(bd.perPerson[0].tax).toEqual(0)
 })
 
-test('flat tax splits proportionally by taxable subtotal', () => {
+it('flat tax splits proportionally by taxable subtotal', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [
@@ -315,14 +307,14 @@ test('flat tax splits proportionally by taxable subtotal', () => {
     tax: '1',
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 1, '$1 flat tax')
+  expect(bd.totalTax).toEqual(1)
   const a = bd.perPerson.find(pp => pp.participantId === 'A')!
   const b = bd.perPerson.find(pp => pp.participantId === 'B')!
-  assertEqual(a.tax, 0.6, 'A pays 60% of tax (6/10)')
-  assertEqual(b.tax, 0.4, 'B pays 40% of tax (4/10)')
+  expect(a.tax).toEqual(0.6)
+  expect(b.tax).toEqual(0.4)
 })
 
-test('tip pre-tax base', () => {
+it('tip pre-tax base', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10')],
@@ -331,10 +323,10 @@ test('tip pre-tax base', () => {
     tipBase: 'pre-tax',
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 1, '10% of $10 pre-tax subtotal = $1')
+  expect(bd.totalTip).toEqual(1)
 })
 
-test('tip post-tax base', () => {
+it('tip post-tax base', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10')],
@@ -343,40 +335,40 @@ test('tip post-tax base', () => {
     tipBase: 'post-tax',
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 1.1, '10% of $11 post-tax amount = $1.10')
+  expect(bd.totalTip).toEqual(1.1)
 })
 
-test('additional fee (surcharge)', () => {
+it('additional fee (surcharge)', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10')],
     additionalFees: [fee('svc', '2')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalAdditionalFees[0], 2, '$2 surcharge')
-  assertEqual(bd.perPerson[0].additionalFees[0], 1, 'A pays half')
-  assertEqual(bd.perPerson[1].additionalFees[0], 1, 'B pays half')
+  expect(bd.totalAdditionalFees[0]).toEqual(2)
+  expect(bd.perPerson[0].additionalFees[0]).toEqual(1)
+  expect(bd.perPerson[1].additionalFees[0]).toEqual(1)
 })
 
-test('additional fee as discount (negative amount)', () => {
+it('additional fee as discount (negative amount)', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10')],
     additionalFees: [fee('coupon', '-2')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalAdditionalFees[0], -2, '-$2 discount')
-  assertEqual(bd.perPerson[0].additionalFees[0], -1, 'A saves $1')
+  expect(bd.totalAdditionalFees[0]).toEqual(-2)
+  expect(bd.perPerson[0].additionalFees[0]).toEqual(-1)
 })
 
-test('no participants → empty perPerson', () => {
+it('no participants → empty perPerson', () => {
   const s = state({ items: [item('x', '10')] })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.perPerson.length, 0, 'no participants → no rows')
-  assertEqual(bd.totalSubtotal, 0, 'nothing assigned')
+  expect(bd.perPerson.length).toEqual(0)
+  expect(bd.totalSubtotal).toEqual(0)
 })
 
-test('grand totals: sum of per-person grands equals totalGrandTotal', () => {
+it('grand totals: sum of per-person grands equals totalGrandTotal', () => {
   const s = state({
     participants: [p('A'), p('B'), p('C')],
     items: [item('x', '10'), item('y', '7')],
@@ -385,14 +377,12 @@ test('grand totals: sum of per-person grands equals totalGrandTotal', () => {
   })
   const bd = calculateBreakdown(s)
   const sumGrand = bd.perPerson.reduce((a, pp) => a + pp.grandTotal, 0)
-  assertEqual(Math.round(sumGrand * 100), Math.round(bd.totalGrandTotal * 100), 'per-person totals sum to grand total')
+  expect(Math.round(sumGrand * 100)).toEqual(Math.round(bd.totalGrandTotal * 100))
 })
 
 // ─── calculateSettlement ──────────────────────────────────────────────────────
 
-console.log('\ncalculateSettlement')
-
-test('single payer: other participants owe their share', () => {
+it('single payer: other participants owe their share', () => {
   const participants = [p('A'), p('B')]
   const s = state({
     participants,
@@ -402,13 +392,13 @@ test('single payer: other participants owe their share', () => {
   })
   const bd = calculateBreakdown(s)
   const txns = calculateSettlement(s, bd)
-  assertEqual(txns.length, 1, 'one transaction')
-  assertEqual(txns[0].fromId, 'B', 'B pays')
-  assertEqual(txns[0].toId, 'A', 'pays A')
-  assertEqual(txns[0].amount, 5, 'B owes $5')
+  expect(txns.length).toEqual(1)
+  expect(txns[0].fromId).toEqual('B')
+  expect(txns[0].toId).toEqual('A')
+  expect(txns[0].amount).toEqual(5)
 })
 
-test('multiple payers: net difference settles correctly', () => {
+it('multiple payers: net difference settles correctly', () => {
   const participants = [p('A'), p('B')]
   const s = state({
     participants,
@@ -418,13 +408,13 @@ test('multiple payers: net difference settles correctly', () => {
   })
   const bd = calculateBreakdown(s)
   const txns = calculateSettlement(s, bd)
-  assertEqual(txns.length, 1, 'one transaction')
-  assertEqual(txns[0].fromId, 'B', 'B pays')
-  assertEqual(txns[0].toId, 'A', 'to A')
-  assertEqual(txns[0].amount, 3, 'B owes A $3')
+  expect(txns.length).toEqual(1)
+  expect(txns[0].fromId).toEqual('B')
+  expect(txns[0].toId).toEqual('A')
+  expect(txns[0].amount).toEqual(3)
 })
 
-test('already settled: no transactions', () => {
+it('already settled: no transactions', () => {
   const participants = [p('A'), p('B')]
   const s = state({
     participants,
@@ -434,10 +424,10 @@ test('already settled: no transactions', () => {
   })
   const bd = calculateBreakdown(s)
   const txns = calculateSettlement(s, bd)
-  assertEqual(txns.length, 0, 'no transactions when all settled')
+  expect(txns.length).toEqual(0)
 })
 
-test('three-way: transaction amounts are whole cents', () => {
+it('three-way: transaction amounts are whole cents', () => {
   const participants = [p('A'), p('B'), p('C')]
   const s = state({
     participants,
@@ -448,11 +438,11 @@ test('three-way: transaction amounts are whole cents', () => {
   const bd = calculateBreakdown(s)
   const txns = calculateSettlement(s, bd)
   for (const t of txns) {
-    assertEqual(Math.round(t.amount * 100) / 100, t.amount, `transaction ${t.fromId}→${t.toId} is whole cents`)
+    expect(Math.round(t.amount * 100) / 100).toEqual(t.amount)
   }
 })
 
-test('three-way: settlement transactions sum to total owed by non-payers', () => {
+it('three-way: settlement transactions sum to total owed by non-payers', () => {
   const participants = [p('A'), p('B'), p('C')]
   const s = state({
     participants,
@@ -466,10 +456,10 @@ test('three-way: settlement transactions sum to total owed by non-payers', () =>
   // A paid everything; B and C each owe their reconciled share
   const bShare = bd.perPerson.find(pp => pp.participantId === 'B')!.grandTotal
   const cShare = bd.perPerson.find(pp => pp.participantId === 'C')!.grandTotal
-  assertEqual(Math.round(totalPaid * 100), Math.round((bShare + cShare) * 100), 'B+C payments to A cover their shares')
+  expect(Math.round(totalPaid * 100)).toEqual(Math.round((bShare + cShare) * 100))
 })
 
-test('singlePayerId not in participants → no paid credit assigned', () => {
+it('singlePayerId not in participants → no paid credit assigned', () => {
   const participants = [p('A'), p('B')]
   const s = state({
     participants,
@@ -481,10 +471,10 @@ test('singlePayerId not in participants → no paid credit assigned', () => {
   const txns = calculateSettlement(s, bd)
   // No one is credited as having paid, so everyone owes their full share to "nobody"
   // — net for both A and B is positive (they owe) but there's no creditor.
-  assertEqual(txns.length, 0, 'no creditor → no transactions')
+  expect(txns.length).toEqual(0)
 })
 
-test('settlement with overpayment: payer is owed the difference', () => {
+it('settlement with overpayment: payer is owed the difference', () => {
   const participants = [p('A'), p('B')]
   const s = state({
     participants,
@@ -497,13 +487,13 @@ test('settlement with overpayment: payer is owed the difference', () => {
   // A's grandTotal = 5, A paid 12, so net = 5-12 = -7 (owed $7)
   // B's grandTotal = 5, B paid 0, so net = 5-0 = +5 (owes $5)
   // Only B→A transaction because overpayment doesn't create a second creditor
-  assertEqual(txns.length, 1, 'one transaction')
-  assertEqual(txns[0].fromId, 'B', 'B pays')
-  assertEqual(txns[0].toId, 'A', 'to A')
-  assertEqual(txns[0].amount, 5, 'B pays their share')
+  expect(txns.length).toEqual(1)
+  expect(txns[0].fromId).toEqual('B')
+  expect(txns[0].toId).toEqual('A')
+  expect(txns[0].amount).toEqual(5)
 })
 
-test('settlement nets all within 0.005 threshold: no transactions', () => {
+it('settlement nets all within 0.005 threshold: no transactions', () => {
   const participants = [p('A'), p('B')]
   const s = state({
     participants,
@@ -513,14 +503,12 @@ test('settlement nets all within 0.005 threshold: no transactions', () => {
   })
   const bd = calculateBreakdown(s)
   const txns = calculateSettlement(s, bd)
-  assertEqual(txns.length, 0, 'sub-cent nets produce no transactions')
+  expect(txns.length).toEqual(0)
 })
 
 // ─── calculateBreakdown (edge cases) ─────────────────────────────────────────
 
-console.log('\ncalculateBreakdown (edge cases)')
-
-test('additional fee on post-tax base', () => {
+it('additional fee on post-tax base', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10')],
@@ -528,11 +516,11 @@ test('additional fee on post-tax base', () => {
     additionalFees: [fee('svc', '10%', 'post-tax')], // 10% of $11 = $1.10
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 1, '$1 tax')
-  assertEqual(bd.totalAdditionalFees[0], 1.1, '10% of $11 post-tax = $1.10')
+  expect(bd.totalTax).toEqual(1)
+  expect(bd.totalAdditionalFees[0]).toEqual(1.1)
 })
 
-test('flat pre-tax discount reduces the tax base', () => {
+it('flat pre-tax discount reduces the tax base', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -540,10 +528,10 @@ test('flat pre-tax discount reduces the tax base', () => {
     additionalFees: [fee('coupon', '-20')], // pre-tax by default
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 8, '10% of ($100 - $20) = $8, not $10')
+  expect(bd.totalTax).toEqual(8)
 })
 
-test('percentage pre-tax discount reduces the tax base', () => {
+it('percentage pre-tax discount reduces the tax base', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -551,10 +539,10 @@ test('percentage pre-tax discount reduces the tax base', () => {
     additionalFees: [fee('coupon', '-20%')], // -20% of $100 = -$20, pre-tax
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 8, '10% of ($100 - $20) = $8, not $10')
+  expect(bd.totalTax).toEqual(8)
 })
 
-test('post-tax discount does not affect the tax base', () => {
+it('post-tax discount does not affect the tax base', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -562,10 +550,10 @@ test('post-tax discount does not affect the tax base', () => {
     additionalFees: [fee('coupon', '-20', 'post-tax')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 10, 'post-tax discount leaves tax at 10% of $100 = $10')
+  expect(bd.totalTax).toEqual(10)
 })
 
-test('pre-tax discount larger than taxable subtotal clamps tax base to 0', () => {
+it('pre-tax discount larger than taxable subtotal clamps tax base to 0', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -573,10 +561,10 @@ test('pre-tax discount larger than taxable subtotal clamps tax base to 0', () =>
     additionalFees: [fee('coupon', '-150')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 0, 'tax base clamps to $0 instead of going negative')
+  expect(bd.totalTax).toEqual(0)
 })
 
-test('pre-tax surcharge increases the tax base', () => {
+it('pre-tax surcharge increases the tax base', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -584,10 +572,10 @@ test('pre-tax surcharge increases the tax base', () => {
     additionalFees: [fee('svc', '20')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 12, '10% of ($100 + $20) = $12')
+  expect(bd.totalTax).toEqual(12)
 })
 
-test('pre-tax surcharge does not create a tax base when nothing is taxable', () => {
+it('pre-tax surcharge does not create a tax base when nothing is taxable', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100', null, false)], // non-taxable
@@ -595,10 +583,10 @@ test('pre-tax surcharge does not create a tax base when nothing is taxable', () 
     additionalFees: [fee('svc', '20')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 0, 'no taxable items → $0 tax, even with a pre-tax surcharge')
+  expect(bd.totalTax).toEqual(0)
 })
 
-test('flat fee when pool base is 0 splits evenly', () => {
+it('flat fee when pool base is 0 splits evenly', () => {
   // No items → subtotal = 0, fee base = 0, distributeProportionally falls back to even split
   const s = state({
     participants: [p('A'), p('B')],
@@ -606,38 +594,38 @@ test('flat fee when pool base is 0 splits evenly', () => {
     additionalFees: [fee('svc', '2')], // $2 flat fee with zero pool
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalAdditionalFees[0], 2, '$2 fee')
-  assertEqual(bd.perPerson[0].additionalFees[0], 1, 'A pays half (even split)')
-  assertEqual(bd.perPerson[1].additionalFees[0], 1, 'B pays half (even split)')
+  expect(bd.totalAdditionalFees[0]).toEqual(2)
+  expect(bd.perPerson[0].additionalFees[0]).toEqual(1)
+  expect(bd.perPerson[1].additionalFees[0]).toEqual(1)
 })
 
-test('3-way negative discount splits proportionally', () => {
+it('3-way negative discount splits proportionally', () => {
   const s = state({
     participants: [p('A'), p('B'), p('C')],
     items: [item('x', '30')], // $10 each
     additionalFees: [fee('coupon', '-3')], // -$3 total = -$1 each
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalAdditionalFees[0], -3, '-$3 discount')
+  expect(bd.totalAdditionalFees[0]).toEqual(-3)
   for (const pp of bd.perPerson) {
-    assertEqual(pp.additionalFees[0], -1, 'each person saves $1')
+    expect(pp.additionalFees[0]).toEqual(-1)
   }
 })
 
-test('item assigned to id not in participants is silently skipped', () => {
+it('item assigned to id not in participants is silently skipped', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('x', '10', ['ghost'])], // 'ghost' is not a participant
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalSubtotal, 0, 'item with non-participant assignee contributes nothing')
-  assertEqual(bd.perPerson[0].subtotal, 0, 'A gets nothing')
-  assertEqual(bd.perPerson[1].subtotal, 0, 'B gets nothing')
+  expect(bd.totalSubtotal).toEqual(0)
+  expect(bd.perPerson[0].subtotal).toEqual(0)
+  expect(bd.perPerson[1].subtotal).toEqual(0)
 })
 
 // ─── tip discount/fee base ────────────────────────────────────────────────────
 
-test('tip defaults ignore a pre-tax discount', () => {
+it('tip defaults ignore a pre-tax discount', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -646,10 +634,10 @@ test('tip defaults ignore a pre-tax discount', () => {
     additionalFees: [fee('coupon', '-20')], // pre-tax by default
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 10, '10% of $100, unaffected by the coupon')
+  expect(bd.totalTip).toEqual(10)
 })
 
-test('post-discount toggle nets the coupon out of the tip base', () => {
+it('post-discount toggle nets the coupon out of the tip base', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -659,10 +647,10 @@ test('post-discount toggle nets the coupon out of the tip base', () => {
     additionalFees: [fee('coupon', '-20')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 8, '10% of ($100 - $20) = $8')
+  expect(bd.totalTip).toEqual(8)
 })
 
-test('tip defaults ignore a pre-tax surcharge', () => {
+it('tip defaults ignore a pre-tax surcharge', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -671,10 +659,10 @@ test('tip defaults ignore a pre-tax surcharge', () => {
     additionalFees: [fee('svc', '20')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 10, '10% of $100, unaffected by the surcharge')
+  expect(bd.totalTip).toEqual(10)
 })
 
-test('post-fee toggle nets the surcharge into the tip base', () => {
+it('post-fee toggle nets the surcharge into the tip base', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -684,10 +672,10 @@ test('post-fee toggle nets the surcharge into the tip base', () => {
     additionalFees: [fee('svc', '20')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 12, '10% of ($100 + $20) = $12')
+  expect(bd.totalTip).toEqual(12)
 })
 
-test('post-tax fee base is corrected by a coexisting pre-tax discount', () => {
+it('post-tax fee base is corrected by a coexisting pre-tax discount', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -695,11 +683,11 @@ test('post-tax fee base is corrected by a coexisting pre-tax discount', () => {
     additionalFees: [fee('coupon', '-20'), fee('svc', '10%', 'post-tax')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTax, 8, '10% of ($100 - $20) = $8')
-  assertEqual(bd.totalAdditionalFees[1], 8.8, '10% of ($80 + $8) = $8.80, not 10% of ($100 + $8)')
+  expect(bd.totalTax).toEqual(8)
+  expect(bd.totalAdditionalFees[1]).toEqual(8.8)
 })
 
-test('percentage-based discount exercises the same %-parsing path as flat amounts', () => {
+it('percentage-based discount exercises the same %-parsing path as flat amounts', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -709,10 +697,10 @@ test('percentage-based discount exercises the same %-parsing path as flat amount
     additionalFees: [fee('coupon', '-20%')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 8, 'same result as the flat -20 case')
+  expect(bd.totalTip).toEqual(8)
 })
 
-test('percentage-based surcharge exercises the same %-parsing path as flat amounts', () => {
+it('percentage-based surcharge exercises the same %-parsing path as flat amounts', () => {
   const s = state({
     participants: [p('A')],
     items: [item('x', '100')],
@@ -722,10 +710,10 @@ test('percentage-based surcharge exercises the same %-parsing path as flat amoun
     additionalFees: [fee('svc', '20%')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 12, 'same result as the flat 20 case')
+  expect(bd.totalTip).toEqual(12)
 })
 
-test('multi-participant tip distribution stays proportional to raw shares', () => {
+it('multi-participant tip distribution stays proportional to raw shares', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('a', '60', ['A']), item('b', '40', ['B'])],
@@ -735,12 +723,12 @@ test('multi-participant tip distribution stays proportional to raw shares', () =
     additionalFees: [fee('coupon', '-20')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalTip, 8, '10% of the discounted $80')
-  assertEqual(bd.perPerson[0].tip, 4.8, "A's raw 60/100 share of the $8 tip")
-  assertEqual(bd.perPerson[1].tip, 3.2, "B's raw 40/100 share of the $8 tip")
+  expect(bd.totalTip).toEqual(8)
+  expect(bd.perPerson[0].tip).toEqual(4.8)
+  expect(bd.perPerson[1].tip).toEqual(3.2)
 })
 
-test('multi-participant post-tax fee distribution stays proportional with a coexisting discount', () => {
+it('multi-participant post-tax fee distribution stays proportional with a coexisting discount', () => {
   const s = state({
     participants: [p('A'), p('B')],
     items: [item('a', '50', ['A']), item('b', '50', ['B'])],
@@ -748,12 +736,12 @@ test('multi-participant post-tax fee distribution stays proportional with a coex
     additionalFees: [fee('coupon', '-20'), fee('svc', '10%', 'post-tax')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.totalAdditionalFees[1], 8.8, '10% of ($80 + $8) = $8.80')
-  assertEqual(bd.perPerson[0].additionalFees[1], 4.4, 'equal raw shares split the fee evenly')
-  assertEqual(bd.perPerson[1].additionalFees[1], 4.4, 'equal raw shares split the fee evenly')
+  expect(bd.totalAdditionalFees[1]).toEqual(8.8)
+  expect(bd.perPerson[0].additionalFees[1]).toEqual(4.4)
+  expect(bd.perPerson[1].additionalFees[1]).toEqual(4.4)
 })
 
-test('reproduces the real Kura Sushi receipt end-to-end', () => {
+it('reproduces the real Kura Sushi receipt end-to-end', () => {
   const s = state({
     participants: [p('A')],
     items: [item('plates', '112.05'), item('soup', '4.95')],
@@ -763,134 +751,120 @@ test('reproduces the real Kura Sushi receipt end-to-end', () => {
     additionalFees: [fee('coupon', '-10')],
   })
   const bd = calculateBreakdown(s)
-  assertEqual(bd.perPerson[0].tax, 10.43, '9.75% of ($117 - $10) = $10.4325 -> $10.43')
-  assertEqual(bd.perPerson[0].tip, 10.7, '10% of the discounted $107 subtotal')
+  expect(bd.perPerson[0].tax).toEqual(10.43)
+  expect(bd.perPerson[0].tip).toEqual(10.7)
 })
 
 // ─── isValidAmount ────────────────────────────────────────────────────────────
 
-console.log('\nisValidAmount')
-
-test('empty string is valid (treated as 0)', () => {
-  assertEqual(isValidAmount(''), true, 'empty allowed')
+it('empty string is valid (treated as 0)', () => {
+  expect(isValidAmount('')).toEqual(true)
 })
-test('whitespace-only is valid', () => {
-  assertEqual(isValidAmount('   '), true, 'whitespace allowed')
+it('whitespace-only is valid', () => {
+  expect(isValidAmount('   ')).toEqual(true)
 })
-test('plain number is valid', () => {
-  assertEqual(isValidAmount('12.50'), true, 'flat dollar')
+it('plain number is valid', () => {
+  expect(isValidAmount('12.50')).toEqual(true)
 })
-test('negative number is valid (discount)', () => {
-  assertEqual(isValidAmount('-5'), true, 'negative allowed')
+it('negative number is valid (discount)', () => {
+  expect(isValidAmount('-5')).toEqual(true)
 })
-test('percentage is valid', () => {
-  assertEqual(isValidAmount('20%'), true, 'percent allowed')
+it('percentage is valid', () => {
+  expect(isValidAmount('20%')).toEqual(true)
 })
-test('negative percentage is valid', () => {
-  assertEqual(isValidAmount('-10%'), true, 'negative percent allowed')
+it('negative percentage is valid', () => {
+  expect(isValidAmount('-10%')).toEqual(true)
 })
-test('non-numeric string is invalid', () => {
-  assertEqual(isValidAmount('abc'), false, 'text rejected')
+it('non-numeric string is invalid', () => {
+  expect(isValidAmount('abc')).toEqual(false)
 })
-test('non-numeric percent is invalid', () => {
-  assertEqual(isValidAmount('abc%'), false, 'text% rejected')
+it('non-numeric percent is invalid', () => {
+  expect(isValidAmount('abc%')).toEqual(false)
 })
-test('Infinity is invalid', () => {
-  assertEqual(isValidAmount('Infinity'), false, 'Infinity rejected')
+it('Infinity is invalid', () => {
+  expect(isValidAmount('Infinity')).toEqual(false)
 })
-test('Infinity% is invalid', () => {
-  assertEqual(isValidAmount('Infinity%'), false, 'Infinity% rejected')
+it('Infinity% is invalid', () => {
+  expect(isValidAmount('Infinity%')).toEqual(false)
 })
 
 // ─── isValidPrice ─────────────────────────────────────────────────────────────
 
-console.log('\nisValidPrice')
-
-test('empty string is valid', () => {
-  assertEqual(isValidPrice(''), true, 'empty allowed')
+it('empty string is valid', () => {
+  expect(isValidPrice('')).toEqual(true)
 })
-test('positive number is valid', () => {
-  assertEqual(isValidPrice('9.99'), true, 'positive price')
+it('positive number is valid', () => {
+  expect(isValidPrice('9.99')).toEqual(true)
 })
-test('zero is valid', () => {
-  assertEqual(isValidPrice('0'), true, 'zero price')
+it('zero is valid', () => {
+  expect(isValidPrice('0')).toEqual(true)
 })
-test('negative number is invalid (prices are non-negative)', () => {
-  assertEqual(isValidPrice('-5'), false, 'negative price rejected')
+it('negative number is invalid (prices are non-negative)', () => {
+  expect(isValidPrice('-5')).toEqual(false)
 })
-test('percentage string is invalid for prices', () => {
-  assertEqual(isValidPrice('10%'), false, '% rejected for price')
+it('percentage string is invalid for prices', () => {
+  expect(isValidPrice('10%')).toEqual(false)
 })
-test('non-numeric string is invalid', () => {
-  assertEqual(isValidPrice('abc'), false, 'text rejected')
+it('non-numeric string is invalid', () => {
+  expect(isValidPrice('abc')).toEqual(false)
 })
-test('Infinity is invalid', () => {
-  assertEqual(isValidPrice('Infinity'), false, 'Infinity rejected')
+it('Infinity is invalid', () => {
+  expect(isValidPrice('Infinity')).toEqual(false)
 })
 
 // ─── getTotalFeeBase ──────────────────────────────────────────────────────────
 
-console.log('\ngetTotalFeeBase')
-
-test('pre-tax base returns subtotal only', () => {
-  assertEqual(getTotalFeeBase('pre-tax', 100, 10), 100, 'pre-tax ignores tax')
+it('pre-tax base returns subtotal only', () => {
+  expect(getTotalFeeBase('pre-tax', 100, 10)).toEqual(100)
 })
-test('post-tax base returns subtotal + tax', () => {
-  assertEqual(getTotalFeeBase('post-tax', 100, 10), 110, 'post-tax adds tax')
+it('post-tax base returns subtotal + tax', () => {
+  expect(getTotalFeeBase('post-tax', 100, 10)).toEqual(110)
 })
-test('pre-tax with zero tax is just subtotal', () => {
-  assertEqual(getTotalFeeBase('pre-tax', 50, 0), 50, 'pre-tax zero tax')
+it('pre-tax with zero tax is just subtotal', () => {
+  expect(getTotalFeeBase('pre-tax', 50, 0)).toEqual(50)
 })
-test('post-tax with zero tax is still subtotal', () => {
-  assertEqual(getTotalFeeBase('post-tax', 50, 0), 50, 'post-tax zero tax = subtotal')
+it('post-tax with zero tax is still subtotal', () => {
+  expect(getTotalFeeBase('post-tax', 50, 0)).toEqual(50)
 })
 
 // ─── parsePaidAmount ──────────────────────────────────────────────────────────
 
-console.log('\nparsePaidAmount')
-
-test('valid number string', () => {
-  assertEqual(parsePaidAmount('12.50'), 12.5, 'parses valid amount')
+it('valid number string', () => {
+  expect(parsePaidAmount('12.50')).toEqual(12.5)
 })
-test('undefined returns 0', () => {
-  assertEqual(parsePaidAmount(undefined), 0, 'undefined → 0')
+it('undefined returns 0', () => {
+  expect(parsePaidAmount(undefined)).toEqual(0)
 })
-test('empty string returns 0', () => {
-  assertEqual(parsePaidAmount(''), 0, 'empty → 0')
+it('empty string returns 0', () => {
+  expect(parsePaidAmount('')).toEqual(0)
 })
-test('non-numeric string returns 0', () => {
-  assertEqual(parsePaidAmount('abc'), 0, 'non-numeric → 0')
+it('non-numeric string returns 0', () => {
+  expect(parsePaidAmount('abc')).toEqual(0)
 })
-test('Infinity string returns 0', () => {
-  assertEqual(parsePaidAmount('Infinity'), 0, 'Infinity → 0')
+it('Infinity string returns 0', () => {
+  expect(parsePaidAmount('Infinity')).toEqual(0)
 })
-test('-Infinity string returns 0', () => {
-  assertEqual(parsePaidAmount('-Infinity'), 0, '-Infinity → 0')
+it('-Infinity string returns 0', () => {
+  expect(parsePaidAmount('-Infinity')).toEqual(0)
 })
 
 // ─── splitAmountInput ─────────────────────────────────────────────────────────
 
-console.log('\nsplitAmountInput')
-
-test('plain number: not percent, numeric preserved', () => {
-  assertEqual(splitAmountInput('10.50'), { isPercent: false, numeric: '10.50' }, 'flat dollar')
+it('plain number: not percent, numeric preserved', () => {
+  expect(splitAmountInput('10.50')).toEqual({ isPercent: false, numeric: '10.50' })
 })
-test('percent string: isPercent true, % stripped', () => {
-  assertEqual(splitAmountInput('20%'), { isPercent: true, numeric: '20' }, 'percent')
+it('percent string: isPercent true, % stripped', () => {
+  expect(splitAmountInput('20%')).toEqual({ isPercent: true, numeric: '20' })
 })
-test('bare %: isPercent true, numeric empty', () => {
-  assertEqual(splitAmountInput('%'), { isPercent: true, numeric: '' }, 'bare %')
+it('bare %: isPercent true, numeric empty', () => {
+  expect(splitAmountInput('%')).toEqual({ isPercent: true, numeric: '' })
 })
-test('empty string: not percent, numeric empty', () => {
-  assertEqual(splitAmountInput(''), { isPercent: false, numeric: '' }, 'empty')
+it('empty string: not percent, numeric empty', () => {
+  expect(splitAmountInput('')).toEqual({ isPercent: false, numeric: '' })
 })
-test('whitespace trimmed', () => {
-  assertEqual(splitAmountInput('  15%  '), { isPercent: true, numeric: '15' }, 'trims before parsing')
+it('whitespace trimmed', () => {
+  expect(splitAmountInput('  15%  ')).toEqual({ isPercent: true, numeric: '15' })
 })
-test('negative percent', () => {
-  assertEqual(splitAmountInput('-10%'), { isPercent: true, numeric: '-10' }, 'negative percent')
+it('negative percent', () => {
+  expect(splitAmountInput('-10%')).toEqual({ isPercent: true, numeric: '-10' })
 })
-
-// ─── Summary ──────────────────────────────────────────────────────────────────
-
-summary()

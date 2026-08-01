@@ -2,55 +2,48 @@
 // Run with: npm test
 
 import { reconcileColumnOrder } from './useColumnOrder'
-import { test, assertEqual, summary } from '../test/harness'
+import { it, expect } from 'vitest'
 
-console.log('\nreconcileColumnOrder')
-
-test('null (no stored order) falls back to insertion order', () => {
-  assertEqual(reconcileColumnOrder(null, ['a', 'b', 'c']), ['a', 'b', 'c'], 'insertion order')
+it('null (no stored order) falls back to insertion order', () => {
+  expect(reconcileColumnOrder(null, ['a', 'b', 'c'])).toEqual(['a', 'b', 'c'])
 })
 
-test('non-array stored value falls back to insertion order', () => {
-  assertEqual(reconcileColumnOrder('garbage', ['a', 'b']), ['a', 'b'], 'string rejected')
-  assertEqual(reconcileColumnOrder({ a: 1 }, ['a', 'b']), ['a', 'b'], 'object rejected')
-  assertEqual(reconcileColumnOrder(42, ['a', 'b']), ['a', 'b'], 'number rejected')
+it('non-array stored value falls back to insertion order', () => {
+  expect(reconcileColumnOrder('garbage', ['a', 'b'])).toEqual(['a', 'b'])
+  expect(reconcileColumnOrder({ a: 1 }, ['a', 'b'])).toEqual(['a', 'b'])
+  expect(reconcileColumnOrder(42, ['a', 'b'])).toEqual(['a', 'b'])
 })
 
-test('stored custom order is preserved', () => {
-  assertEqual(reconcileColumnOrder(['c', 'a', 'b'], ['a', 'b', 'c']), ['c', 'a', 'b'], 'custom order kept')
+it('stored custom order is preserved', () => {
+  expect(reconcileColumnOrder(['c', 'a', 'b'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
 })
 
-test('duplicate ids in storage are deduplicated', () => {
-  assertEqual(reconcileColumnOrder(['a', 'b', 'a', 'b'], ['a', 'b']), ['a', 'b'], 'no duplicate columns')
+it('duplicate ids in storage are deduplicated', () => {
+  expect(reconcileColumnOrder(['a', 'b', 'a', 'b'], ['a', 'b'])).toEqual(['a', 'b'])
 })
 
-test('ids of removed participants are dropped', () => {
-  assertEqual(reconcileColumnOrder(['gone', 'a', 'b'], ['a', 'b']), ['a', 'b'], 'stale id dropped')
+it('ids of removed participants are dropped', () => {
+  expect(reconcileColumnOrder(['gone', 'a', 'b'], ['a', 'b'])).toEqual(['a', 'b'])
 })
 
-test('new participants are appended at the end', () => {
-  assertEqual(reconcileColumnOrder(['b', 'a'], ['a', 'b', 'new']), ['b', 'a', 'new'], 'new id appended')
+it('new participants are appended at the end', () => {
+  expect(reconcileColumnOrder(['b', 'a'], ['a', 'b', 'new'])).toEqual(['b', 'a', 'new'])
 })
 
-test('drop and append combine with order preserved', () => {
-  assertEqual(
-    reconcileColumnOrder(['gone', 'c', 'a'], ['a', 'b', 'c']),
-    ['c', 'a', 'b'],
-    'stale dropped, order kept, new appended'
-  )
+it('drop and append combine with order preserved', () => {
+  expect(reconcileColumnOrder(['gone', 'c', 'a'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
 })
 
-test('non-string garbage in a stored array is filtered out', () => {
-  assertEqual(reconcileColumnOrder([1, null, 'a'], ['a', 'b']), ['a', 'b'], 'garbage entries dropped')
+it('non-string garbage in a stored array is filtered out', () => {
+  expect(reconcileColumnOrder([1, null, 'a'], ['a', 'b'])).toEqual(['a', 'b'])
 })
 
-test('empty stored array yields insertion order', () => {
-  assertEqual(reconcileColumnOrder([], ['a', 'b']), ['a', 'b'], 'all appended')
+it('empty stored array yields insertion order', () => {
+  expect(reconcileColumnOrder([], ['a', 'b'])).toEqual(['a', 'b'])
 })
 
-test('no participants yields empty order', () => {
-  assertEqual(reconcileColumnOrder(['a', 'b'], []), [], 'empty result')
-  assertEqual(reconcileColumnOrder(null, []), [], 'empty fallback')
+it('no participants yields empty order', () => {
+  expect(reconcileColumnOrder(['a', 'b'], [])).toEqual([])
+  expect(reconcileColumnOrder(null, [])).toEqual([])
 })
 
-summary()

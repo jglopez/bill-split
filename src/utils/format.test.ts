@@ -2,51 +2,43 @@
 // Run with: npm test
 
 import { formatAmount, formatMoney } from './format'
-import { test, assertEqual, summary } from '../test/harness'
+import { it, expect } from 'vitest'
 
 // ─── formatAmount ─────────────────────────────────────────────────────────────
 
-console.log('\nformatAmount')
-
-test('positive number, no $ prefix', () => {
-  assertEqual(formatAmount(5), '5.00', 'positive value')
+it('positive number, no $ prefix', () => {
+  expect(formatAmount(5)).toEqual('5.00')
 })
-test('zero', () => {
-  assertEqual(formatAmount(0), '0.00', 'zero')
+it('zero', () => {
+  expect(formatAmount(0)).toEqual('0.00')
 })
-test('negative uses U+2212 minus (not ASCII hyphen)', () => {
-  assertEqual(formatAmount(-5), '−5.00', 'Unicode minus before digits')
+it('negative uses U+2212 minus (not ASCII hyphen)', () => {
+  expect(formatAmount(-5)).toEqual('−5.00')
 })
-test('negative: sign precedes digits, no $', () => {
+it('negative: sign precedes digits, no $', () => {
   // U+2212 is the Unicode minus sign
   const result = formatAmount(-3.50)
-  assertEqual(result, '−3.50', '−3.50')
+  expect(result).toEqual('−3.50')
 })
-test('rounding to 2 decimal places', () => {
-  assertEqual(formatAmount(1.005), '1.00', 'rounds to 2 decimals')
+it('rounding to 2 decimal places', () => {
+  expect(formatAmount(1.005)).toEqual('1.00')
 })
 
 // ─── formatMoney ──────────────────────────────────────────────────────────────
 
-console.log('\nformatMoney')
-
-test('positive number with $ prefix', () => {
-  assertEqual(formatMoney(5), '$5.00', 'positive value')
+it('positive number with $ prefix', () => {
+  expect(formatMoney(5)).toEqual('$5.00')
 })
-test('zero', () => {
-  assertEqual(formatMoney(0), '$0.00', 'zero')
+it('zero', () => {
+  expect(formatMoney(0)).toEqual('$0.00')
 })
-test('negative: Unicode minus precedes $, not after', () => {
+it('negative: Unicode minus precedes $, not after', () => {
   // Should be −$5.00, not $-5.00
-  assertEqual(formatMoney(-5), '−$5.00', 'sign before $')
+  expect(formatMoney(-5)).toEqual('−$5.00')
 })
-test('negative large amount', () => {
-  assertEqual(formatMoney(-100), '−$100.00', '−$100.00')
+it('negative large amount', () => {
+  expect(formatMoney(-100)).toEqual('−$100.00')
 })
-test('rounding to 2 decimal places', () => {
-  assertEqual(formatMoney(1.005), '$1.00', 'rounds to 2 decimals')
+it('rounding to 2 decimal places', () => {
+  expect(formatMoney(1.005)).toEqual('$1.00')
 })
-
-// ─── Summary ──────────────────────────────────────────────────────────────────
-
-summary()

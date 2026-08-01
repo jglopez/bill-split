@@ -2,9 +2,7 @@
 // Run with: npm test
 
 import { isBillState } from './useBillSplit'
-import { test, assert, summary } from '../test/harness'
-
-console.log('\nisBillState')
+import { it, expect } from 'vitest'
 
 const validState = {
   participants: [{ id: 'a', name: 'Alice' }],
@@ -18,79 +16,78 @@ const validState = {
   amountPaid: {},
 }
 
-test('valid fully-populated state returns true', () => {
-  assert(isBillState(validState), 'valid state accepted')
+it('valid fully-populated state returns true', () => {
+  expect(isBillState(validState)).toBe(true)
 })
 
-test('valid state with empty arrays returns true', () => {
-  assert(isBillState({ ...validState, participants: [], items: [], additionalFees: [] }), 'empty arrays ok')
+it('valid state with empty arrays returns true', () => {
+  expect(isBillState({ ...validState, participants: [], items: [], additionalFees: [] })).toBe(true)
 })
 
-test('null returns false', () => {
-  assert(!isBillState(null), 'null rejected')
+it('null returns false', () => {
+  expect(!isBillState(null)).toBe(true)
 })
 
-test('non-object returns false', () => {
-  assert(!isBillState('string'), 'string rejected')
-  assert(!isBillState(42), 'number rejected')
+it('non-object returns false', () => {
+  expect(!isBillState('string')).toBe(true)
+  expect(!isBillState(42)).toBe(true)
 })
 
-test('missing top-level field returns false', () => {
+it('missing top-level field returns false', () => {
   const { tax: _tax, ...noTax } = validState
-  assert(!isBillState(noTax), 'missing tax rejected')
+  expect(!isBillState(noTax)).toBe(true)
 })
 
-test('items: [null] returns false', () => {
-  assert(!isBillState({ ...validState, items: [null] }), 'null item rejected')
+it('items: [null] returns false', () => {
+  expect(!isBillState({ ...validState, items: [null] })).toBe(true)
 })
 
-test('items: [{ garbage: 1 }] returns false', () => {
-  assert(!isBillState({ ...validState, items: [{ garbage: 1 }] }), 'garbage item rejected')
+it('items: [{ garbage: 1 }] returns false', () => {
+  expect(!isBillState({ ...validState, items: [{ garbage: 1 }] })).toBe(true)
 })
 
-test('item with non-string price returns false', () => {
+it('item with non-string price returns false', () => {
   const badItem = { id: 'i1', name: 'x', price: 10, assignedTo: null }
-  assert(!isBillState({ ...validState, items: [badItem] }), 'numeric price rejected')
+  expect(!isBillState({ ...validState, items: [badItem] })).toBe(true)
 })
 
-test('item with string assignedTo returns false', () => {
+it('item with string assignedTo returns false', () => {
   const badItem = { id: 'i1', name: 'x', price: '10', assignedTo: 'alice' }
-  assert(!isBillState({ ...validState, items: [badItem] }), 'string assignedTo rejected')
+  expect(!isBillState({ ...validState, items: [badItem] })).toBe(true)
 })
 
-test('item with boolean taxable value is valid', () => {
+it('item with boolean taxable value is valid', () => {
   const itemWithTaxable = { id: 'i1', name: 'x', price: '10', assignedTo: null, taxable: false }
-  assert(isBillState({ ...validState, items: [itemWithTaxable] }), 'boolean taxable accepted')
+  expect(isBillState({ ...validState, items: [itemWithTaxable] })).toBe(true)
 })
 
-test('item with non-boolean taxable returns false', () => {
+it('item with non-boolean taxable returns false', () => {
   const badItem = { id: 'i1', name: 'x', price: '10', assignedTo: null, taxable: 'yes' }
-  assert(!isBillState({ ...validState, items: [badItem] }), 'string taxable rejected')
+  expect(!isBillState({ ...validState, items: [badItem] })).toBe(true)
 })
 
-test('participants: [null] returns false', () => {
-  assert(!isBillState({ ...validState, participants: [null] }), 'null participant rejected')
+it('participants: [null] returns false', () => {
+  expect(!isBillState({ ...validState, participants: [null] })).toBe(true)
 })
 
-test('participant missing id returns false', () => {
-  assert(!isBillState({ ...validState, participants: [{ name: 'Alice' }] }), 'participant without id rejected')
+it('participant missing id returns false', () => {
+  expect(!isBillState({ ...validState, participants: [{ name: 'Alice' }] })).toBe(true)
 })
 
-test('additionalFees: [null] returns false', () => {
-  assert(!isBillState({ ...validState, additionalFees: [null] }), 'null fee rejected')
+it('additionalFees: [null] returns false', () => {
+  expect(!isBillState({ ...validState, additionalFees: [null] })).toBe(true)
 })
 
-test('fee with invalid base returns false', () => {
+it('fee with invalid base returns false', () => {
   const badFee = { id: 'f1', name: 'x', amount: '2', base: 'with-tax' }
-  assert(!isBillState({ ...validState, additionalFees: [badFee] }), 'invalid fee base rejected')
+  expect(!isBillState({ ...validState, additionalFees: [badFee] })).toBe(true)
 })
 
-test('invalid tipBase returns false', () => {
-  assert(!isBillState({ ...validState, tipBase: 'with-tax' }), 'invalid tipBase rejected')
+it('invalid tipBase returns false', () => {
+  expect(!isBillState({ ...validState, tipBase: 'with-tax' })).toBe(true)
 })
 
-test('invalid payerMode returns false', () => {
-  assert(!isBillState({ ...validState, payerMode: 'group' }), 'invalid payerMode rejected')
+it('invalid payerMode returns false', () => {
+  expect(!isBillState({ ...validState, payerMode: 'group' })).toBe(true)
 })
 
-summary()

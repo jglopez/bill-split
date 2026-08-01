@@ -6,7 +6,7 @@
 
 import { makeVersionedStore } from './versionedStore'
 import { migrateV1toBillV2 } from './billMigrations'
-import { test as baseTest, assert, assertEqual, summary } from '../test/harness'
+import { it, expect } from 'vitest'
 
 // ─── localStorage mock ────────────────────────────────────────────────────────
 
@@ -36,17 +36,15 @@ function resetStorage() {
 
 // Wrap the shared test() to reset storage before each case.
 function test(name: string, fn: () => void) {
-  baseTest(name, () => { resetStorage(); fn() })
+  it(name, () => { resetStorage(); fn() })
 }
 
 // ─── makeVersionedStore tests ─────────────────────────────────────────────────
 
-console.log('\nmakeVersionedStore')
-
 test('returns fallback when no keys exist', () => {
   const store = makeVersionedStore('key:v2', [], { x: 0 })
-  assertEqual(store.load(), { x: 0 }, 'load()')
-  assert(localStorage.getItem('key:v2') === null, 'should not write when returning fallback')
+  expect(store.load()).toEqual({ x: 0 })
+  expect(localStorage.getItem('key:v2') === null).toBe(true)
 })
 
 test('returns current key value without running migrations', () => {
@@ -58,8 +56,8 @@ test('returns current key value without running migrations', () => {
     [['key:v1', raw => { migrateCalled.value = true; return raw as { x: number } }]],
     { x: 0 },
   )
-  assertEqual(store.load(), { x: 42 }, 'load()')
-  assert(!migrateCalled.value, 'migrate should not be called when current key exists')
+  expect(store.load()).toEqual({ x: 42 })
+  expect(!migrateCalled.value).toBe(true)
 })
 
 test('migrates from old key, writes to current, removes old', () => {
@@ -70,10 +68,10 @@ test('migrates from old key, writes to current, removes old', () => {
     { x: 0, migrated: false },
   )
   const result = store.load()
-  assertEqual(result, { x: 1, migrated: true }, 'migrated value')
-  assert(localStorage.getItem('key:v2') !== null, 'current key written')
-  assertEqual(JSON.parse(localStorage.getItem('key:v2')!), { x: 1, migrated: true }, 'current key content')
-  assert(localStorage.getItem('key:v1') === null, 'old key removed')
+  expect(result).toEqual({ x: 1, migrated: true })
+  expect(localStorage.getItem('key:v2') !== null).toBe(true)
+  expect(JSON.parse(localStorage.getItem('key:v2')!)).toEqual({ x: 1, migrated: true })
+  expect(localStorage.getItem('key:v1') === null).toBe(true)
 })
 
 test('chained migrations: only the matching old key runs', () => {
@@ -88,8 +86,8 @@ test('chained migrations: only the matching old key runs', () => {
     { x: 0, step: 'none' },
   )
   const result = store.load()
-  assertEqual(result.step, 'v1', 'only v1 migration ran')
-  assert(localStorage.getItem('key:v0') === null, 'v0 key untouched (was absent)')
+  expect(result.step).toEqual('v1')
+  expect(localStorage.getItem('key:v0') === null).toBe(true)
 })
 
 test('skips to second migration when first old key is absent', () => {
@@ -103,8 +101,8 @@ test('skips to second migration when first old key is absent', () => {
     { x: 0, step: 'none' },
   )
   const result = store.load()
-  assertEqual(result.step, 'v0', 'v0 migration ran as fallback')
-  assert(localStorage.getItem('key:v0') === null, 'v0 key removed')
+  expect(result.step).toEqual('v0')
+  expect(localStorage.getItem('key:v0') === null).toBe(true)
 })
 
 test('corrupt current key falls back to migration', () => {
@@ -116,38 +114,38 @@ test('corrupt current key falls back to migration', () => {
     { x: 0, migrated: false },
   )
   const result = store.load()
-  assertEqual(result, { x: 7, migrated: true }, 'migrated from old key')
+  expect(result).toEqual({ x: 7, migrated: true })
 })
 
 test('corrupt current key, no valid old key returns fallback', () => {
   localStorage.setItem('key:v2', 'bad-json')
   const store = makeVersionedStore('key:v2', [], { x: -1 })
-  assertEqual(store.load(), { x: -1 }, 'fallback returned')
+  expect(store.load()).toEqual({ x: -1 })
 })
 
 test('save writes to current key', () => {
   const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
   store.save({ x: 100 })
-  assertEqual(JSON.parse(localStorage.getItem('key:v2')!), { x: 100 }, 'saved value')
+  expect(JSON.parse(localStorage.getItem('key:v2')!)).toEqual({ x: 100 })
 })
 
 test('second load after save returns saved value', () => {
   const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
   store.save({ x: 55 })
-  assertEqual(store.load(), { x: 55 }, 'round-trip')
+  expect(store.load()).toEqual({ x: 55 })
 })
 
 test('save returns true on success', () => {
   const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
   const result = store.save({ x: 1 })
-  assert(result === true, 'save returns true when setItem succeeds')
+  expect(result === true).toBe(true)
 })
 
 test('save returns false when setItem throws (simulated quota exceeded)', () => {
   const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 })
   mockStorage.setItem = () => { throw new DOMException('QuotaExceededError') }
   const result = store.save({ x: 99 })
-  assert(result === false, 'save returns false when setItem throws')
+  expect(result === false).toBe(true)
 })
 
 test('validate: valid current key passes through unchanged', () => {
@@ -155,7 +153,7 @@ test('validate: valid current key passes through unchanged', () => {
   const isValid = (v: unknown): v is { x: number } =>
     typeof (v as Record<string, unknown>).x === 'number'
   const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: 0 }, isValid)
-  assertEqual(store.load(), { x: 42 }, 'valid value returned directly')
+  expect(store.load()).toEqual({ x: 42 })
 })
 
 test('validate: invalid-shape current key falls back to fallback', () => {
@@ -163,7 +161,7 @@ test('validate: invalid-shape current key falls back to fallback', () => {
   const isValid = (v: unknown): v is { x: number } =>
     typeof (v as Record<string, unknown>).x === 'number'
   const store = makeVersionedStore<{ x: number }>('key:v2', [], { x: -1 }, isValid)
-  assertEqual(store.load(), { x: -1 }, 'invalid shape falls back to fallback')
+  expect(store.load()).toEqual({ x: -1 })
 })
 
 test('validate: invalid-shape current key falls back to migration when available', () => {
@@ -177,7 +175,7 @@ test('validate: invalid-shape current key falls back to migration when available
     { x: -1 },
     isValid,
   )
-  assertEqual(store.load(), { x: 7 }, 'migrated value returned when current key fails validation')
+  expect(store.load()).toEqual({ x: 7 })
 })
 
 test('migration succeeds and returns migrated value even when removeItem throws', () => {
@@ -190,12 +188,10 @@ test('migration succeeds and returns migrated value even when removeItem throws'
     { x: 0, migrated: false },
   )
   const result = store.load()
-  assertEqual(result, { x: 7, migrated: true }, 'migrated value returned despite removeItem failure')
+  expect(result).toEqual({ x: 7, migrated: true })
 })
 
 // ─── migrateV1toBillV2 fuzz tests ─────────────────────────────────────────────
-
-console.log('\nmigrateV1toBillV2 (fuzz)')
 
 type V1Item = { id: string; name: string; price: string; assignedTo: string[] | null }
 
@@ -231,10 +227,7 @@ test('fuzz: assignedTo is never [] after migration (50 payloads × up to 10 item
     const result = migrateV1toBillV2(payload)
 
     for (const item of result.items) {
-      assert(
-        !(Array.isArray(item.assignedTo) && item.assignedTo.length === 0),
-        `item ${item.id} has assignedTo: [] after migration (payload index ${i})`,
-      )
+      expect(!(Array.isArray(item.assignedTo) && item.assignedTo.length === 0)).toBe(true)
     }
   }
 })
@@ -253,11 +246,7 @@ test('fuzz: non-empty arrays and null are preserved exactly (50 payloads)', () =
     const result = migrateV1toBillV2(payload)
 
     for (let j = 0; j < items.length; j++) {
-      assertEqual(
-        result.items[j].assignedTo,
-        items[j].assignedTo,
-        `item[${j}] assignedTo preserved (payload index ${i})`,
-      )
+      expect(result.items[j].assignedTo).toEqual(items[j].assignedTo)
     }
   }
 })
@@ -265,28 +254,26 @@ test('fuzz: non-empty arrays and null are preserved exactly (50 payloads)', () =
 test('fuzz: empty items array produces empty items (20 payloads)', () => {
   for (let i = 0; i < 20; i++) {
     const result = migrateV1toBillV2({ items: [] })
-    assertEqual(result.items, [], `empty items (payload index ${i})`)
+    expect(result.items).toEqual([])
   }
 })
 
 test('fuzz: missing items field produces empty items array', () => {
   const result = migrateV1toBillV2({ tax: '5.00' })
-  assertEqual(result.items, [], 'items defaults to []')
+  expect(result.items).toEqual([])
 })
 
 test('fuzz: null payload fields do not crash migration', () => {
   const result = migrateV1toBillV2({ items: undefined, participants: undefined })
-  assert(Array.isArray(result.items), 'items is array even when input items is undefined')
+  expect(Array.isArray(result.items)).toBe(true)
 })
 
 // ─── migrateV1toBillV2 validation tests ──────────────────────────────────────
 
-console.log('\nmigrateV1toBillV2 (validation)')
-
 function assertThrows(fn: () => unknown, label: string) {
   let threw = false
   try { fn() } catch { threw = true }
-  assert(threw, label)
+  expect(threw).toBe(true)
 }
 
 test('throws when assignedTo is a string', () => {
@@ -316,7 +303,3 @@ test('throws when price is a number instead of string', () => {
     'should throw for numeric price',
   )
 })
-
-// ─── Summary ──────────────────────────────────────────────────────────────────
-
-summary()
