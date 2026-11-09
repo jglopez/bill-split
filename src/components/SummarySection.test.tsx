@@ -204,4 +204,19 @@ describe('SummarySection', () => {
       formatAmount(breakdown.totalGrandTotal),
     )
   })
+  it('shows only the bill total card on mobile when there is one participant', () => {
+    setInnerWidth(500)
+    const state = billState({ participants: [alice], tax: '10%' })
+    render(
+      <SummarySection
+        orderedParticipants={[alice]}
+        additionalFees={[]}
+        state={state}
+        breakdown={calculateBreakdown(state)}
+      />,
+    )
+    const cards = screen.getAllByRole('region')
+    expect(cards.map(c => c.getAttribute('aria-label'))).toEqual(['Bill total'])
+    expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+  })
 })

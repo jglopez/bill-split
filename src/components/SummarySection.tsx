@@ -20,7 +20,8 @@ interface Props {
  *
  * On narrow screens (below sm breakpoint) the table becomes stacked cards:
  * a "Bill total" card first (the equivalent of the table's Total column),
- * then one card per participant.
+ * then one card per participant. With a single participant only the
+ * "Bill total" card is shown, since their card would be identical.
  *
  * Display-only; all interactive inputs live in the sections above.
  */
@@ -54,7 +55,8 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
           breakdown={breakdown}
           highlight
         />
-        {orderedParticipants.map(p => (
+        {/* A lone participant's card would repeat the bill total line for line. */}
+        {orderedParticipants.length > 1 && orderedParticipants.map(p => (
           <SummaryCard
             key={p.id}
             title={p.name}
