@@ -18,8 +18,9 @@ interface Props {
  * useColumnOrder in App). Per-person values are looked up by participantId
  * rather than relying on parallel index ordering.
  *
- * On narrow screens (below sm breakpoint) each participant is rendered as
- * a stacked card instead of a column in the table.
+ * On narrow screens (below sm breakpoint) the table becomes stacked cards:
+ * a "Bill total" card first (the equivalent of the table's Total column),
+ * then one card per participant.
  *
  * Display-only; all interactive inputs live in the sections above.
  */
@@ -40,47 +41,34 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
   if (isMobile) {
     return (
       <div className="mt-4 space-y-3">
-        {orderedParticipants.map(p => {
-          const subtotal = perPersonValue(p.id, 'subtotal')
-          const tax = perPersonValue(p.id, 'tax')
-          const tip = perPersonValue(p.id, 'tip')
-          const grandTotal = perPersonValue(p.id, 'grandTotal')
-          return (
-            <div key={p.id} className="rounded-lg border border-gray-200 px-4 py-3 text-sm">
-              <div className="font-medium text-gray-800 mb-2">{p.name}</div>
-              <CardRow label="Subtotal" value={subtotal} />
-              {breakdown.totalTax !== 0 && (
-                <CardRow
-                  label={`+ Tax${state.tax ? ` (${state.tax})` : ''}`}
-                  value={tax}
-                />
-              )}
-              {breakdown.totalTip !== 0 && (
-                <CardRow
-                  label={`+ Tip${state.tip ? ` (${state.tip})` : ''}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
-                  value={tip}
-                />
-              )}
-              {additionalFees.map((fee, i) => {
-                const feeAmount = perPersonFee(p.id, i)
-                if (breakdown.totalAdditionalFees[i] === 0) return null
-                const isDiscount = feeAmount < 0
-                return (
-                  <CardRow
-                    key={fee.id}
-                    label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${fee.amount ? ` (${fee.amount})` : ''}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
-                    value={feeAmount}
-                    isDiscount={isDiscount}
-                  />
-                )
-              })}
-              <div className="flex justify-between border-t border-gray-300 mt-2 pt-2 font-semibold text-gray-800">
-                <span>Total</span>
-                <span className="tabular-nums">{formatAmount(grandTotal)}</span>
-              </div>
-            </div>
-          )
-        })}
+        <SummaryCard
+          title="Bill total"
+          totalLabel="Grand total"
+          subtotal={breakdown.totalSubtotal}
+          tax={breakdown.totalTax}
+          tip={breakdown.totalTip}
+          feeAmounts={breakdown.totalAdditionalFees}
+          total={breakdown.totalGrandTotal}
+          state={state}
+          additionalFees={additionalFees}
+          breakdown={breakdown}
+          highlight
+        />
+        {orderedParticipants.map(p => (
+          <SummaryCard
+            key={p.id}
+            title={p.name}
+            totalLabel="Total"
+            subtotal={perPersonValue(p.id, 'subtotal')}
+            tax={perPersonValue(p.id, 'tax')}
+            tip={perPersonValue(p.id, 'tip')}
+            feeAmounts={additionalFees.map((_, i) => perPersonFee(p.id, i))}
+            total={perPersonValue(p.id, 'grandTotal')}
+            state={state}
+            additionalFees={additionalFees}
+            breakdown={breakdown}
+          />
+        ))}
       </div>
     )
   }
@@ -161,6 +149,78 @@ export function SummarySection({ orderedParticipants, additionalFees, state, bre
         </tbody>
       </table>
     </div>
+  )
+}
+
+// ─── Mobile card ──────────────────────────────────────────────────────────────
+
+/**
+ * One stacked card in the mobile summary: either the whole bill or a single
+ * participant's share. Rows are shown or hidden based on the bill-level
+ * totals so every card lists the same lines.
+ */
+function SummaryCard({
+  title,
+  totalLabel,
+  subtotal,
+  tax,
+  tip,
+  feeAmounts,
+  total,
+  state,
+  additionalFees,
+  breakdown,
+  highlight = false,
+}: {
+  title: string
+  totalLabel: string
+  subtotal: number
+  tax: number
+  tip: number
+  feeAmounts: number[]
+  total: number
+  state: BillState
+  additionalFees: AdditionalFee[]
+  breakdown: BillBreakdown
+  highlight?: boolean
+}) {
+  const containerClass = highlight
+    ? 'border-gray-300 bg-gray-50'
+    : 'border-gray-200'
+  return (
+    <section aria-label={title} className={`rounded-lg border px-4 py-3 text-sm ${containerClass}`}>
+      <div className="font-medium text-gray-800 mb-2">{title}</div>
+      <CardRow label="Subtotal" value={subtotal} />
+      {breakdown.totalTax !== 0 && (
+        <CardRow
+          label={`+ Tax${state.tax ? ` (${state.tax})` : ''}`}
+          value={tax}
+        />
+      )}
+      {breakdown.totalTip !== 0 && (
+        <CardRow
+          label={`+ Tip${state.tip ? ` (${state.tip})` : ''}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+          value={tip}
+        />
+      )}
+      {additionalFees.map((fee, i) => {
+        if (breakdown.totalAdditionalFees[i] === 0) return null
+        const feeAmount = feeAmounts[i] ?? 0
+        const isDiscount = feeAmount < 0
+        return (
+          <CardRow
+            key={fee.id}
+            label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${fee.amount ? ` (${fee.amount})` : ''}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
+            value={feeAmount}
+            isDiscount={isDiscount}
+          />
+        )
+      })}
+      <div className="flex justify-between border-t border-gray-300 mt-2 pt-2 font-semibold text-gray-800">
+        <span>{totalLabel}</span>
+        <span className="tabular-nums">{formatAmount(total)}</span>
+      </div>
+    </section>
   )
 }
 

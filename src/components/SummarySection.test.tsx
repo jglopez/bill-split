@@ -1,7 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { SummarySection } from './SummarySection'
 import { calculateBreakdown } from '../utils/calculate'
+import { formatAmount } from '../utils/format'
 import type { AdditionalFee, BillState, Participant } from '../types'
 
 const alice: Participant = { id: 'a', name: 'Alice' }
@@ -152,5 +153,55 @@ describe('SummarySection', () => {
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.getAllByText('Total')).toHaveLength(2)
+  })
+  it('shows a bill total card above the participant cards on mobile', () => {
+    setInnerWidth(500)
+    const state = billState({ tax: '10%' })
+    render(
+      <SummarySection
+        orderedParticipants={[alice, bob]}
+        additionalFees={[]}
+        state={state}
+        breakdown={calculateBreakdown(state)}
+      />,
+    )
+    const cards = screen.getAllByRole('region')
+    expect(cards.map(c => c.getAttribute('aria-label'))).toEqual(['Bill total', 'Alice', 'Bob'])
+  })
+
+  it('shows bill-level tax, tip, fee and grand total in the mobile bill total card', () => {
+    setInnerWidth(500)
+    const fees: AdditionalFee[] = [
+      { id: 'f1', name: 'Service', amount: '2.00', base: 'pre-tax' },
+      { id: 'f2', name: 'Coupon', amount: '-4.00', base: 'pre-tax' },
+    ]
+    const state = billState({
+      items: [{ id: 'i1', name: 'Dinner', price: '40', assignedTo: null }],
+      tax: '10%',
+      tip: '20%',
+      additionalFees: fees,
+    })
+    const breakdown = calculateBreakdown(state)
+    render(
+      <SummarySection
+        orderedParticipants={[alice, bob]}
+        additionalFees={fees}
+        state={state}
+        breakdown={breakdown}
+      />,
+    )
+    const billCard = within(screen.getByRole('region', { name: 'Bill total' }))
+    expect(billCard.getByText('Subtotal').nextSibling).toHaveTextContent(formatAmount(breakdown.totalSubtotal))
+    expect(billCard.getByText('+ Tax (10%)').nextSibling).toHaveTextContent(formatAmount(breakdown.totalTax))
+    expect(billCard.getByText('+ Tip (20%)').nextSibling).toHaveTextContent(formatAmount(breakdown.totalTip))
+    expect(billCard.getByText('+ Service (2.00)').nextSibling).toHaveTextContent(
+      formatAmount(breakdown.totalAdditionalFees[0]),
+    )
+    const coupon = billCard.getByText('− Coupon (-4.00)')
+    expect(coupon.nextSibling).toHaveTextContent(formatAmount(breakdown.totalAdditionalFees[1]))
+    expect(coupon.parentElement).toHaveClass('text-green-700')
+    expect(billCard.getByText('Grand total').nextSibling).toHaveTextContent(
+      formatAmount(breakdown.totalGrandTotal),
+    )
   })
 })
