@@ -20,6 +20,11 @@ describe('App', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
+  it('shows the release version and build ID in the footer', () => {
+    render(<App />)
+    expect(screen.getByRole('contentinfo')).toHaveTextContent(`${__APP_VERSION__} · ${__BUILD_ID__}`)
+  })
+
   it('adding participants reveals the items table and payer section', async () => {
     const user = userEvent.setup()
     render(<App />)
