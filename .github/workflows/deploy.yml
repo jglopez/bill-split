@@ -50,9 +50,13 @@ jobs:
       # version; the tag is display-only, so give up rather than block the deploy.
       - name: Resolve release version
         run: |
+          HEAD_SHA=$(git rev-parse HEAD)
           for _ in $(seq 1 18); do
-            git fetch --quiet --tags --force origin
-            TAG=$(git tag --points-at HEAD --list 'v*' --sort=-v:refname | head -1)
+            # Query the remote directly; the checkout is shallow and has no tags.
+            # Annotated tags appear twice; the "^{}" line carries the commit SHA.
+            TAG=$(git ls-remote --tags origin 'refs/tags/v*' \
+              | awk -v sha="$HEAD_SHA" '$1 == sha { sub("refs/tags/", "", $2); sub(/\^\{\}$/, "", $2); print $2 }' \
+              | sort -V | tail -1)
             if [ -n "$TAG" ]; then
               echo "APP_VERSION=$TAG" >> "$GITHUB_ENV"
               echo "Release version: $TAG"
