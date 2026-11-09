@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useBillSplit } from './hooks/useBillSplit'
 import { useColumnOrder } from './hooks/useColumnOrder'
+import { useAutoUpdate } from './hooks/useAutoUpdate'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
 import { ParticipantSection } from './components/ParticipantSection'
 import { ItemsTable } from './components/ItemsTable'
@@ -34,6 +35,9 @@ export function App() {
     reset,
     dismissSaveWarning,
   } = useBillSplit()
+
+  // A reload would discard unsaved state, so only auto-update while saving works.
+  useAutoUpdate({ enabled: !saveFailed })
 
   const { columnOrder, setColumnOrder, orderedParticipants } = useColumnOrder(state.participants)
   const [showResetModal, setShowResetModal] = useState(false)
@@ -145,6 +149,10 @@ export function App() {
             transactions={transactions}
           />
         </div>
+
+        <footer className="mt-6 text-center text-xs text-gray-400">
+          {__APP_VERSION__} · {__BUILD_ID__}
+        </footer>
       </div>
       {showResetModal && (
         <ConfirmModal
