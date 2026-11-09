@@ -301,6 +301,7 @@ describe('useBillSplit (hook)', () => {
     const { result } = renderHook(() => useBillSplit())
     expect(result.current.state).toEqual(DEFAULT_STATE)
     expect(result.current.saveFailed).toBe(false)
+    expect(result.current.isPersisted).toBe(true)
   })
 
   it('dispatches through the reducer and re-renders with updated state', () => {
@@ -335,5 +336,24 @@ describe('useBillSplit (hook)', () => {
       result.current.dismissSaveWarning()
     })
     expect(result.current.saveFailed).toBe(false)
+  })
+
+  it('keeps isPersisted false after the warning is dismissed while saves still fail', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError')
+    })
+    const { result } = renderHook(() => useBillSplit())
+    expect(result.current.isPersisted).toBe(false)
+
+    act(() => {
+      result.current.dismissSaveWarning()
+    })
+    expect(result.current.isPersisted).toBe(false)
+
+    setItemSpy.mockRestore()
+    act(() => {
+      result.current.addParticipant('Alice')
+    })
+    expect(result.current.isPersisted).toBe(true)
   })
 })

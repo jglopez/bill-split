@@ -15,6 +15,7 @@ export function App() {
   const {
     state,
     saveFailed,
+    isPersisted,
     addParticipant,
     removeParticipant,
     renameParticipant,
@@ -37,7 +38,7 @@ export function App() {
   } = useBillSplit()
 
   // A reload would discard unsaved state, so only auto-update while saving works.
-  useAutoUpdate({ enabled: !saveFailed })
+  useAutoUpdate({ enabled: isPersisted })
 
   const { columnOrder, setColumnOrder, orderedParticipants } = useColumnOrder(state.participants)
   const [showResetModal, setShowResetModal] = useState(false)

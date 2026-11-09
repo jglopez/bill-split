@@ -262,12 +262,16 @@ export function reducer(state: BillState, action: Action): BillState {
 export function useBillSplit() {
   const [state, dispatch] = useReducer(reducer, undefined, loadState)
   const [saveFailed, setSaveFailed] = useState(false)
+  // Whether the latest save succeeded. Unlike saveFailed (which drives a
+  // dismissable warning), dismissing the warning doesn't change this.
+  const [isPersisted, setIsPersisted] = useState(true)
 
   // Persist to localStorage on every state change
   useEffect(() => {
     const ok = billStore.save(state)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveFailed(!ok)
+    setIsPersisted(ok)
   }, [state])
 
   const addParticipant = useCallback(
@@ -337,6 +341,7 @@ export function useBillSplit() {
   return {
     state,
     saveFailed,
+    isPersisted,
     addParticipant,
     removeParticipant,
     renameParticipant,
