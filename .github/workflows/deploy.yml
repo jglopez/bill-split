@@ -45,6 +45,23 @@ jobs:
 
       - run: npm ci
 
+      # Auto-release tags this commit in parallel with CI and deploy, so the tag
+      # may not exist yet. Wait briefly for it so the footer can show the release
+      # version; the tag is display-only, so give up rather than block the deploy.
+      - name: Resolve release version
+        run: |
+          for _ in $(seq 1 18); do
+            git fetch --quiet --tags --force origin
+            TAG=$(git tag --points-at HEAD --list 'v*' --sort=-v:refname | head -1)
+            if [ -n "$TAG" ]; then
+              echo "APP_VERSION=$TAG" >> "$GITHUB_ENV"
+              echo "Release version: $TAG"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "No release tag on HEAD yet; building as unreleased."
+
       - run: npm run build
 
       - uses: actions/upload-pages-artifact@v5
