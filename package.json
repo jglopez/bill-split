@@ -45,6 +45,7 @@
     "vitest": "^5.1.0"
   },
   "packageManager": "npm@11.11.0+sha512.f36811c4aae1fde639527368ae44c571d050006a608d67a191f195a801a52637a312d259186254aa3a3799b05335b7390539cf28656d18f0591a1125ba35f973",
+  "_overridesNote": "minimatch is forced past the release range eslint and typescript-eslint still declare, to clear a security advisory npm audit reports on every install. Remove the override once both depend on a patched minimatch themselves.",
   "overrides": {
     "minimatch": "^11.0.1"
   }
