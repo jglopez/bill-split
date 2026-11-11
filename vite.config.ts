@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { appVersion, buildId, versionFile } from './vite-plugins/version'
+import { appVersion, buildId, versionFile } from './vite-plugins/version.ts'
 
 // The base path must match the deployment path (repo name).
 // Override with BASE_PATH env var when serving from a different root (e.g., Docker).
