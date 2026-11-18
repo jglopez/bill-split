@@ -13,6 +13,8 @@ const validState = {
   tax: '8%',
   tip: '18%',
   tipBase: 'pre-tax',
+  tipDiscountBase: 'pre-discount',
+  tipFeeBase: 'pre-fee',
   additionalFees: [{ id: 'f1', name: 'Service', amount: '2', base: 'pre-tax' }],
   payerMode: 'single',
   singlePayerId: 'a',
@@ -40,6 +42,18 @@ describe('isBillState', () => {
   it('missing top-level field returns false', () => {
     const { tax: _tax, ...noTax } = validState
     expect(!isBillState(noTax)).toBe(true)
+  })
+
+  it('missing tip bases return false (older bills are upgraded before this check)', () => {
+    const { tipDiscountBase: _d, ...noDiscountBase } = validState
+    const { tipFeeBase: _f, ...noFeeBase } = validState
+    expect(isBillState(noDiscountBase)).toBe(false)
+    expect(isBillState(noFeeBase)).toBe(false)
+  })
+
+  it('invalid tip bases return false', () => {
+    expect(isBillState({ ...validState, tipDiscountBase: 'sometimes' })).toBe(false)
+    expect(isBillState({ ...validState, tipFeeBase: 42 })).toBe(false)
   })
 
   it('items: [null] returns false', () => {

@@ -52,11 +52,9 @@ function isAdditionalFee(v: unknown): boolean {
   )
 }
 
-// A plain boolean predicate, not a `v is BillState` guard: it intentionally
-// accepts tipDiscountBase/tipFeeBase being absent (older saved bills), which
-// BillState declares required. loadState() backfills those fields right after
-// billStore.load() returns, before anything else can observe the gap.
-export function isBillState(v: unknown): boolean {
+// Checks a bill at the current schema version. Older bills are upgraded by
+// the steps in src/lib/migrations/ before they reach this check.
+export function isBillState(v: unknown): v is BillState {
   if (typeof v !== 'object' || v === null) return false
   const s = v as Record<string, unknown>
   return (
@@ -67,8 +65,8 @@ export function isBillState(v: unknown): boolean {
     typeof s.tax === 'string' &&
     typeof s.tip === 'string' &&
     (s.tipBase === 'pre-tax' || s.tipBase === 'post-tax') &&
-    (s.tipDiscountBase === undefined || s.tipDiscountBase === 'pre-discount' || s.tipDiscountBase === 'post-discount') &&
-    (s.tipFeeBase === undefined || s.tipFeeBase === 'pre-fee' || s.tipFeeBase === 'post-fee') &&
+    (s.tipDiscountBase === 'pre-discount' || s.tipDiscountBase === 'post-discount') &&
+    (s.tipFeeBase === 'pre-fee' || s.tipFeeBase === 'post-fee') &&
     Array.isArray(s.additionalFees) &&
     s.additionalFees.every(isAdditionalFee) &&
     (s.payerMode === 'single' || s.payerMode === 'multiple') &&
@@ -103,16 +101,8 @@ export function prepareBillStore(): Promise<void> {
 }
 
 function loadState(): BillState {
-  const state = billStore.load()
-  // Backfill fields older saved bills predate (isBillState above accepts
-  // them being absent so those bills aren't rejected wholesale).
-  const withDefaults: BillState = {
-    ...state,
-    tipDiscountBase: state.tipDiscountBase ?? 'pre-discount',
-    tipFeeBase: state.tipFeeBase ?? 'pre-fee',
-  }
   // Ensure the trailing blank row always exists after a restore
-  return ensureTrailingBlankRow(withDefaults)
+  return ensureTrailingBlankRow(billStore.load())
 }
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
