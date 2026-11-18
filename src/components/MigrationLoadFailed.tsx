@@ -1,7 +1,4 @@
-import type { ReactNode } from 'react'
-import type { Root } from 'react-dom/client'
-import { MigrationLoadError } from './lib/migrations'
-import { refreshCachedPage } from './lib/refreshCachedPage'
+import { refreshCachedPage } from '../lib/refreshCachedPage'
 
 // A stale cached page is one reason the migration chunk can be missing (it
 // points at a chunk a newer deploy removed), so refresh the page before reloading.
@@ -10,6 +7,7 @@ async function reloadFresh() {
   window.location.reload()
 }
 
+/** Shown instead of the app when the code to upgrade a saved bill couldn't be fetched. */
 export function MigrationLoadFailed() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -26,17 +24,5 @@ export function MigrationLoadFailed() {
         </button>
       </div>
     </div>
-  )
-}
-
-/**
- * Render the app once saved data is ready. If upgrading an old saved bill
- * fails because its code couldn't be fetched, show a reload prompt instead of
- * the app: the app saves on mount, which would replace the old bill.
- */
-export function bootstrap(root: Root, prepare: () => Promise<void>, app: ReactNode): Promise<void> {
-  return prepare().then(
-    () => root.render(app),
-    (err: unknown) => root.render(err instanceof MigrationLoadError ? <MigrationLoadFailed /> : app),
   )
 }
