@@ -24,9 +24,11 @@ jobs:
 
       - run: npm ci
 
-      # Block on high/critical only. Moderate vulns (e.g. dev-only build tool
-      # advisories) are surfaced via Dependabot PRs instead of breaking CI.
-      - run: npm audit --audit-level=high
+      # Block on high/critical advisories in shipped (runtime) dependencies
+      # only. Dev-only tooling advisories can have no patched release yet and
+      # would otherwise block every PR; the scheduled Security audit workflow
+      # still checks the full tree, and Dependabot surfaces the rest.
+      - run: npm audit --omit=dev --audit-level=high
 
       - run: npm run typecheck
 
