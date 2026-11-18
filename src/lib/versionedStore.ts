@@ -48,11 +48,9 @@ export function makeVersionedStore<T>(
   // Most recent first.
   legacyKeys: [oldKey: string, version: number][],
   fallback: T,
-  // A plain boolean predicate, not a `v is T` type guard: validators may
-  // accept an object missing fields that T declares required (e.g. an
-  // optional-field backfill applied after load), so asserting the full type
-  // here would be a false guarantee. The `as T` casts below are the one place
-  // that happens, deliberately visible rather than hidden in the guard.
+  // A plain boolean predicate, so the store doesn't dictate how callers check
+  // their data. The `as T` casts below trust it, deliberately visible rather
+  // than hidden in a type guard.
   validate: (v: unknown) => boolean = () => true,
   upgrade: (raw: unknown, fromVersion: number) => Promise<unknown> = () =>
     Promise.reject(new Error('No migrations configured')),

@@ -3,6 +3,7 @@
 
 import { isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
 import type { BillState } from '../types'
+import { CURRENT_BILL_VERSION } from '../lib/migrations'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
@@ -12,6 +13,8 @@ const validState = {
   tax: '8%',
   tip: '18%',
   tipBase: 'pre-tax',
+  tipDiscountBase: 'pre-discount',
+  tipFeeBase: 'pre-fee',
   additionalFees: [{ id: 'f1', name: 'Service', amount: '2', base: 'pre-tax' }],
   payerMode: 'single',
   singlePayerId: 'a',
@@ -39,6 +42,18 @@ describe('isBillState', () => {
   it('missing top-level field returns false', () => {
     const { tax: _tax, ...noTax } = validState
     expect(!isBillState(noTax)).toBe(true)
+  })
+
+  it('missing tip bases return false (older bills are upgraded before this check)', () => {
+    const { tipDiscountBase: _d, ...noDiscountBase } = validState
+    const { tipFeeBase: _f, ...noFeeBase } = validState
+    expect(isBillState(noDiscountBase)).toBe(false)
+    expect(isBillState(noFeeBase)).toBe(false)
+  })
+
+  it('invalid tip bases return false', () => {
+    expect(isBillState({ ...validState, tipDiscountBase: 'sometimes' })).toBe(false)
+    expect(isBillState({ ...validState, tipFeeBase: 42 })).toBe(false)
   })
 
   it('items: [null] returns false', () => {
@@ -318,7 +333,7 @@ describe('useBillSplit (hook)', () => {
     act(() => {
       result.current.addParticipant('Alice')
     })
-    const stored = localStorage.getItem('bill-split:v2')
+    const stored = localStorage.getItem(`bill-split:v${CURRENT_BILL_VERSION}`)
     expect(stored).not.toBeNull()
     const parsed = JSON.parse(stored!)
     expect(parsed.participants[0].name).toEqual('Alice')

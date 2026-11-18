@@ -21,7 +21,7 @@ describe('bill schema shape', () => {
       actual,
       'BillState shape changed: bump CURRENT_BILL_VERSION and add a migration (see src/lib/migrations/index.ts)',
     ).toEqual({
-      version: 2,
+      version: 3,
       bill: [
         'additionalFees', 'amountPaid', 'items', 'participants', 'payerMode', 'singlePayerId',
         'tax', 'tip', 'tipBase', 'tipDiscountBase', 'tipFeeBase',
