@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { act } from 'react'
+import { act } from '@testing-library/react'
 import { createRoot } from 'react-dom/client'
 import { bootstrap } from './bootstrap'
 import { MigrationLoadError } from './lib/migrations'
