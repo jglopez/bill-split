@@ -2,6 +2,24 @@
 
 import { describe, it, expect } from 'vitest'
 import { migrate } from './v1'
+import v1Fixture from './fixtures/v1.json'
+
+// ─── Pinned fixture ───────────────────────────────────────────────────────────
+
+describe('v1 → v2 (fixture)', () => {
+  it('upgrades the pinned v1 fixture to the expected v2 bill', () => {
+    expect(migrate(v1Fixture)).toEqual({
+      ...v1Fixture,
+      tipDiscountBase: 'pre-discount',
+      tipFeeBase: 'pre-fee',
+      items: [
+        { id: 'i-pizza', name: 'Pizza', price: '24.00', assignedTo: null },
+        { id: 'i-salad', name: 'Salad', price: '9.50', assignedTo: ['p-sam'] },
+        { id: 'i-blank', name: '', price: '', assignedTo: null },
+      ],
+    })
+  })
+})
 
 // ─── Fuzz tests ───────────────────────────────────────────────────────────────
 
