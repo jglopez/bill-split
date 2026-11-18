@@ -1,6 +1,14 @@
 import type { ReactNode } from 'react'
 import type { Root } from 'react-dom/client'
 import { MigrationLoadError } from './lib/migrations'
+import { refreshCachedPage } from './lib/refreshCachedPage'
+
+// A stale cached page is one reason the migration chunk can be missing (it
+// points at a chunk a newer deploy removed), so refresh the page before reloading.
+async function reloadFresh() {
+  await refreshCachedPage()
+  window.location.reload()
+}
 
 export function MigrationLoadFailed() {
   return (
@@ -11,7 +19,7 @@ export function MigrationLoadFailed() {
           Your bill is still saved. Check your connection, then reload.
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => void reloadFresh()}
           className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors min-h-[44px]"
         >
           Reload
