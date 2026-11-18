@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode, TipDiscountBase, TipFeeBase } from '../types'
 import { makeVersionedStore } from '../lib/versionedStore'
-import { migrateV1toBillV2 } from '../lib/billMigrations'
+import { migrate as migrateV1 } from '../lib/migrations/v1'
 
 // ─── Default state ────────────────────────────────────────────────────────────
 
@@ -79,7 +79,7 @@ export function isBillState(v: unknown): boolean {
 
 const billStore = makeVersionedStore<BillState>(
   'bill-split:v2',
-  [['bill-split:v1', migrateV1toBillV2]],
+  [['bill-split:v1', raw => migrateV1(raw) as unknown as BillState]],
   DEFAULT_STATE,
   isBillState,
 )

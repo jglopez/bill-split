@@ -1,8 +1,23 @@
-import type { BillState } from '../types'
+// Schema step v1 → v2: the "assigned to all" sentinel changed from [] to null.
+//
+// This step describes the v2 shape with its own local types instead of
+// importing BillState, so later schema changes can't silently alter what this
+// step produces. The step after it takes this output as its input.
 
-// Base defaults used when a v1 payload is missing fields. Items are omitted
-// here because the migration always computes them from the v1 data.
-const BILL_V2_DEFAULTS: Omit<BillState, 'items'> = {
+export interface V2Item extends Record<string, unknown> {
+  id: string
+  name: string
+  price: string
+  assignedTo: string[] | null
+}
+
+export interface V2Bill extends Record<string, unknown> {
+  items: V2Item[]
+}
+
+// Defaults used when a v1 payload is missing fields. Items are omitted here
+// because the migration always computes them from the v1 data.
+const V2_DEFAULTS = {
   participants: [],
   tax: '',
   tip: '',
@@ -15,8 +30,7 @@ const BILL_V2_DEFAULTS: Omit<BillState, 'items'> = {
   amountPaid: {},
 }
 
-// v1 → v2: the "assigned to all" sentinel changed from [] to null.
-export function migrateV1toBillV2(raw: unknown): BillState {
+export function migrate(raw: unknown): V2Bill {
   if (typeof raw !== 'object' || raw === null) {
     throw new Error('Invalid v1 bill state: expected object')
   }
@@ -26,7 +40,7 @@ export function migrateV1toBillV2(raw: unknown): BillState {
   if (rawItems !== undefined && !Array.isArray(rawItems)) {
     throw new Error('Invalid v1 bill state: items must be an array')
   }
-  const items: BillState['items'] = (rawItems ?? []).map((item: unknown) => {
+  const items: V2Item[] = (rawItems ?? []).map((item: unknown) => {
     if (typeof item !== 'object' || item === null) {
       throw new Error('Invalid v1 bill state: each item must be an object')
     }
@@ -54,8 +68,8 @@ export function migrateV1toBillV2(raw: unknown): BillState {
       }
       normalized = assignedTo as string[]
     }
-    return { ...rest, assignedTo: normalized } as BillState['items'][number]
+    return { ...rest, assignedTo: normalized } as V2Item
   })
 
-  return { ...BILL_V2_DEFAULTS, ...v1, items }
+  return { ...V2_DEFAULTS, ...v1, items }
 }
