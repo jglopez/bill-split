@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode, TipDiscountBase, TipFeeBase } from '../types'
 import { makeVersionedStore } from '../lib/versionedStore'
-import { migrateV1toBillV2 } from '../lib/billMigrations'
+import { CURRENT_BILL_VERSION, migrateToCurrent } from '../lib/migrations'
 
 // ─── Default state ────────────────────────────────────────────────────────────
 
@@ -77,12 +77,30 @@ export function isBillState(v: unknown): boolean {
   )
 }
 
+const storageKey = (version: number) => `bill-split:v${version}`
+
+// Older bills live under the key for their version, newest first.
+const legacyKeys = Array.from(
+  { length: CURRENT_BILL_VERSION - 1 },
+  (_, i): [string, number] => [storageKey(CURRENT_BILL_VERSION - 1 - i), CURRENT_BILL_VERSION - 1 - i],
+)
+
 const billStore = makeVersionedStore<BillState>(
-  'bill-split:v2',
-  [['bill-split:v1', migrateV1toBillV2]],
+  storageKey(CURRENT_BILL_VERSION),
+  legacyKeys,
   DEFAULT_STATE,
   isBillState,
+  migrateToCurrent,
 )
+
+/**
+ * Upgrade a bill saved by an older version of the app. Must finish before the
+ * first render (see makeVersionedStore). Rejects with MigrationLoadError if
+ * the upgrade code couldn't be fetched.
+ */
+export function prepareBillStore(): Promise<void> {
+  return billStore.migrate()
+}
 
 function loadState(): BillState {
   const state = billStore.load()

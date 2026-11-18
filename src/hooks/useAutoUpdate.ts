@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { refreshCachedPage } from '../lib/refreshCachedPage'
 
 /** sessionStorage key recording the build we last reloaded toward, to prevent reload loops. */
 export const RELOAD_TARGET_KEY = 'bill-split:reload-target'
@@ -65,11 +66,7 @@ export function useAutoUpdate({ enabled }: { enabled: boolean }) {
         if (readReloadTarget() === deployed) return
         if (!writeReloadTarget(deployed)) return
         // Refresh the cached HTML first so the reload doesn't get the stale page again.
-        try {
-          await fetch(import.meta.env.BASE_URL, { cache: 'reload' })
-        } catch {
-          // Reload anyway; the browser may still revalidate.
-        }
+        await refreshCachedPage()
         if (!cancelled) window.location.reload()
       } finally {
         inFlight = false

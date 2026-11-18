@@ -53,6 +53,8 @@ export type TipDiscountBase = 'pre-discount' | 'post-discount'
 // Independent of tipDiscountBase and tipBase.
 export type TipFeeBase = 'pre-fee' | 'post-fee'
 
+// Changing this shape (or Participant, Item, AdditionalFee) changes the saved
+// schema: follow the checklist at the top of src/lib/migrations/index.ts.
 export interface BillState {
   participants: Participant[]
   items: Item[]

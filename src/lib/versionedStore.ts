@@ -1,14 +1,24 @@
 // ─── Versioned localStorage store ─────────────────────────────────────────────
 //
-// Each store owns one current key and an ordered list of (oldKey, migrate) pairs.
-// On load, it tries the current key first. If absent, it walks the migration
-// list, applies the first matching migration, writes the result to the current
-// key, and removes the old key — all before first render. On save it writes to
-// the current key only.
+// Each store owns one current key and a list of legacy keys, each tagged with
+// the schema version its data is in. Loading happens in two phases:
+//
+// 1. migrate() (async) runs once at startup, before first render. If the
+//    current key already holds valid data it returns without doing anything,
+//    so no migration code is fetched. Otherwise it upgrades the first legacy
+//    key that exists, writes the result to the current key, and removes the
+//    legacy key.
+// 2. load() (sync) reads the current key, so it can run inside a reducer
+//    initializer.
+//
+// Migration has to finish before render: the app saves on mount, and a save
+// of default state to the current key would hide the legacy data for good.
 
-type Migration<T> = (raw: unknown) => T
+import { MigrationLoadError } from './migrations'
 
 interface VersionedStore<T> {
+  /** Upgrade legacy data, if any. Rejects only with MigrationLoadError. */
+  migrate: () => Promise<void>
   load: () => T
   save: (value: T) => boolean
 }
@@ -35,43 +45,59 @@ export function writeJSON(key: string, value: unknown): boolean {
 
 export function makeVersionedStore<T>(
   currentKey: string,
-  migrations: [oldKey: string, migrate: Migration<T>][],
+  // Most recent first.
+  legacyKeys: [oldKey: string, version: number][],
   fallback: T,
   // A plain boolean predicate, not a `v is T` type guard: validators may
   // accept an object missing fields that T declares required (e.g. an
   // optional-field backfill applied after load), so asserting the full type
-  // here would be a false guarantee. `current as T` below is the one place
-  // that cast happens, deliberately visible rather than hidden in the guard.
-  validate?: (v: unknown) => boolean,
+  // here would be a false guarantee. The `as T` casts below are the one place
+  // that happens, deliberately visible rather than hidden in the guard.
+  validate: (v: unknown) => boolean = () => true,
+  upgrade: (raw: unknown, fromVersion: number) => Promise<unknown> = () =>
+    Promise.reject(new Error('No migrations configured')),
 ): VersionedStore<T> {
-  return {
-    load(): T {
-      // Try the current key first.
-      const current = readJSON(currentKey)
-      if (current !== null) {
-        // If a validator is supplied and the parsed value fails it, fall
-        // through to migrations rather than returning malformed state.
-        if (!validate || validate(current)) return current as T
-      }
+  // Holds a migrated value when it couldn't be written to storage, so this
+  // session still sees it. The legacy key is kept in that case.
+  let unsaved: T | null = null
 
-      // Walk migrations in order (most-recent old key first).
-      for (const [oldKey, migrate] of migrations) {
+  function readCurrent(): T | null {
+    const current = readJSON(currentKey)
+    return current !== null && validate(current) ? current as T : null
+  }
+
+  return {
+    async migrate(): Promise<void> {
+      if (readCurrent() !== null) return
+
+      for (const [oldKey, version] of legacyKeys) {
         const raw = readJSON(oldKey)
         if (raw === null) continue
 
+        let migrated: unknown
         try {
-          const migrated = migrate(raw)
-          writeJSON(currentKey, migrated)
-          // Best-effort cleanup: a removeItem failure must not suppress the
-          // migrated value that was already written to the current key.
-          try { localStorage.removeItem(oldKey) } catch { /* ignore */ }
-          return migrated
-        } catch {
-          // Migration failed — try the next entry.
+          migrated = await upgrade(raw, version)
+        } catch (err) {
+          // The data may be fine; the code to upgrade it just didn't arrive.
+          // Let the caller stop before anything overwrites it.
+          if (err instanceof MigrationLoadError) throw err
+          continue // Invalid legacy data: try the next key.
         }
-      }
+        if (!validate(migrated)) continue
 
-      return fallback
+        if (!writeJSON(currentKey, migrated)) {
+          unsaved = migrated as T
+          return
+        }
+        // Best-effort cleanup: a removeItem failure must not undo a migration
+        // that was already written to the current key.
+        try { localStorage.removeItem(oldKey) } catch { /* ignore */ }
+        return
+      }
+    },
+
+    load(): T {
+      return readCurrent() ?? unsaved ?? fallback
     },
 
     save(value: T): boolean {
