@@ -17,7 +17,7 @@
 //      existing fixtures; they pin what old saved bills and links look like.
 // meta.test.ts fails until all of these are in place.
 
-export const CURRENT_BILL_VERSION = 2
+export const CURRENT_BILL_VERSION = 3
 
 export interface MigrationStep {
   migrate: (raw: unknown) => unknown
@@ -27,6 +27,7 @@ export type StepRegistry = Readonly<Record<number, () => Promise<MigrationStep>>
 
 export const steps: StepRegistry = {
   1: () => import('./v1'),
+  2: () => import('./v2'),
 }
 
 /** Data is from a newer app version than this one. The app should update. */

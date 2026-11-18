@@ -3,6 +3,7 @@
 
 import { isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
 import type { BillState } from '../types'
+import { CURRENT_BILL_VERSION } from '../lib/migrations'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
@@ -318,7 +319,7 @@ describe('useBillSplit (hook)', () => {
     act(() => {
       result.current.addParticipant('Alice')
     })
-    const stored = localStorage.getItem('bill-split:v2')
+    const stored = localStorage.getItem(`bill-split:v${CURRENT_BILL_VERSION}`)
     expect(stored).not.toBeNull()
     const parsed = JSON.parse(stored!)
     expect(parsed.participants[0].name).toEqual('Alice')
