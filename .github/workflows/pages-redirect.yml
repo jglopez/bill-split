@@ -1,0 +1,57 @@
+name: GitHub Pages redirect
+
+# One-off: replaces the old GitHub Pages site with a page that clears this
+# app's saved data from the old origin and redirects to the new host.
+# Run it by hand once the new host serves the app.
+# It ships a version.json with a new build ID, so copies of the old app that
+# are still open, or installed to a home screen, reload into the redirect.
+on:
+  workflow_dispatch:
+    inputs:
+      new_origin:
+        description: "Where the app lives now (scheme + host, no trailing slash)"
+        required: true
+        default: "https://bill-split.jbeans.net"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build redirect site
+        env:
+          NEW_ORIGIN: ${{ inputs.new_origin }}
+          # The old Vite base: the site was served from /<repo name>/.
+          OLD_BASE: /${{ github.event.repository.name }}/
+        run: |
+          case "$NEW_ORIGIN" in
+            https://*) ;;
+            *) echo "new_origin must start with https://"; exit 1 ;;
+          esac
+          NEW_ORIGIN="${NEW_ORIGIN%/}"
+          mkdir site
+          sed -e "s#__NEW_ORIGIN__#${NEW_ORIGIN}#g" -e "s#__OLD_BASE__#${OLD_BASE}#g" \
+            pages-redirect/index.html > site/index.html
+          cp site/index.html site/404.html
+          printf '{"version":"moved","build":"moved-%s"}\n' "$GITHUB_RUN_ID" > site/version.json
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v5

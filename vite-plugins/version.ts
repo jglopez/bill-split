@@ -12,7 +12,12 @@ function git(args: string): string | null {
 
 // Identifies the exact build. The running app compares this against the
 // deployed version.json to detect that a newer build is live.
-export const buildId = process.env.BUILD_ID || git('rev-parse --short HEAD') || 'dev'
+export const buildId =
+  process.env.BUILD_ID ||
+  git('rev-parse --short HEAD') ||
+  // Workers Builds always sets this, even if the checkout's git metadata is unusable.
+  process.env.WORKERS_CI_COMMIT_SHA?.slice(0, 7) ||
+  'dev'
 
 // Human-readable release tag, for display only. The release tag may not exist
 // yet when the deploy builds, so it is never used to detect updates.

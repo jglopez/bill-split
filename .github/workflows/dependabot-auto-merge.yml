@@ -47,8 +47,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
 
+      # A merge made with GITHUB_TOKEN doesn't trigger other workflows' push
+      # events, so release by hand. Deploys need no dispatch: Workers Builds
+      # reacts to every push to main through its own GitHub App.
       - name: Dispatch auto-release for merged Dependabot PR
-        id: dispatch_release
         if: >-
           steps.pr.outputs.skip != 'true' &&
           (steps.pr.outputs.actor == 'dependabot[bot]' ||
@@ -59,18 +61,7 @@ jobs:
             echo "Error: could not resolve merge commit SHA for PR #$PR_NUMBER — auto-release dispatch failed."
             exit 1
           fi
-          echo "merge_sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
           gh workflow run auto-release.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
-
-      - name: Dispatch deploy for merged Dependabot PR
-        if: >-
-          steps.pr.outputs.skip != 'true' &&
-          (steps.pr.outputs.actor == 'dependabot[bot]' ||
-           steps.pr.outputs.actor == 'app/dependabot')
-        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_SHA: ${{ steps.dispatch_release.outputs.merge_sha }}

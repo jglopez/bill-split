@@ -2,11 +2,11 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { appVersion, buildId, versionFile } from './vite-plugins/version.ts'
 
-// The base path must match the deployment path (repo name).
-// Override with BASE_PATH env var when serving from a different root (e.g., Docker).
+// The app is served from the site root. Set BASE_PATH to host it under a
+// subpath instead (it must start and end with a slash).
 export default defineConfig({
   plugins: [react(), versionFile()],
-  base: process.env.BASE_PATH ?? '/bill-split/',
+  base: process.env.BASE_PATH ?? '/',
   define: {
     __BUILD_ID__: JSON.stringify(buildId),
     __APP_VERSION__: JSON.stringify(appVersion),

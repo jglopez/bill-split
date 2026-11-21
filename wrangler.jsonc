@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Static-assets-only Worker: the Vite build in dist/ is the whole app.
+  // No routes or account ID here on purpose: each deployer attaches their own
+  // hostname (dashboard, Terraform, or a routes entry in a fork), so this file
+  // deploys unchanged to any account.
+  "name": "bill-split",
+  "compatibility_date": "2026-11-21",
+  "assets": {
+    "directory": "./dist",
+    // Unknown paths serve index.html so client-side routes survive a reload.
+    "not_found_handling": "single-page-application"
+  },
+  // Give every preview a workers.dev URL. Deployers can also serve previews
+  // from their own custom domain, attached outside this file.
+  "preview_urls": true,
+  "observability": {
+    "enabled": true
+  },
+  // Required by `wrangler preview`, which Workers Builds runs for every
+  // non-production branch. Empty: previews share the settings above.
+  "previews": {}
+}

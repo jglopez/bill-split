@@ -32,6 +32,7 @@ Other scripts:
 ```bash
 npm run build      # production build → dist/
 npm run preview    # preview the production build locally
+npm run preview:worker  # build, then serve it the way Cloudflare does (wrangler dev)
 npm run typecheck  # run TypeScript without emitting files
 npm run lint       # run ESLint on src/
 npm test           # run the unit tests
@@ -58,12 +59,37 @@ docker run -p 8080:8080 bill-split
 
 ## Deployment
 
-Merging to `main` triggers two workflows:
+The app is a static build served by a [Cloudflare Worker with static assets](https://developers.cloudflare.com/workers/static-assets/), configured in `wrangler.jsonc`.
+[Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) is connected to this repository:
 
-1. **Deploy** — builds and publishes the site automatically.
-2. **Auto-release** — reads the `version:major/minor/patch` label from the merged PR and creates a new semver tag and release.
+- **Every push to `main`** builds with `npm run build:release` and deploys to production.
+  The build waits briefly for the release tag so the footer can show the version.
+- **Every other branch** gets its own preview URL, posted as a comment on the PR.
 
+Merging to `main` also runs **Auto-release**, which reads the `version:major/minor/patch` label from the merged PR and creates a new semver tag and release.
 PRs require exactly one version label (`version:major`, `version:minor`, or `version:patch`) before merging.
+
+No Cloudflare credentials live in this repository or its GitHub secrets.
+The hostname is attached to the Worker outside this repo, so `wrangler.jsonc` deploys unchanged to any account.
+
+---
+
+## Deploy your own
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jglopez/bill-split)
+
+The button copies the repo to your GitHub account and sets up Workers Builds for it.
+Or, from a clone:
+
+```bash
+npx wrangler login
+npm run deploy     # build, then upload to your account's workers.dev subdomain
+```
+
+To use your own domain, add it to the Worker under **Settings → Domains & Routes** in the Cloudflare dashboard, or add a `routes` entry with `custom_domain: true` to `wrangler.jsonc`.
+
+To host it anywhere else, serve `dist/` from any static host with unknown paths falling back to `index.html`, or use the Docker `prod` image above.
+Set `BASE_PATH` at build time to serve it from a subpath (for example `BASE_PATH=/bill-split/`).
 
 ---
 
@@ -71,6 +97,7 @@ PRs require exactly one version label (`version:major`, `version:minor`, or `ver
 
 1. Branch from `main`
 2. Apply a version label to your PR before merging
-3. The deploy and release workflows run automatically on merge
+3. Check the preview URL Cloudflare posts on the PR
+4. The deploy and release run automatically on merge
 
 See `AGENTS.md` for notes relevant to AI assistants working on this codebase.

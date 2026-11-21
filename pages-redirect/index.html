@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bill Split has moved</title>
+    <script>
+      // Published to the old GitHub Pages site as both index.html and 404.html,
+      // so every old URL lands here. NEW_ORIGIN and OLD_BASE are filled in by
+      // .github/workflows/pages-redirect.yml.
+      (function () {
+        var NEW_ORIGIN = '__NEW_ORIGIN__'
+        var OLD_BASE = '__OLD_BASE__'
+
+        // This origin (<user>.github.io) is shared by every GitHub Pages site
+        // under the account, so remove only this app's keys. Never clear().
+        function forget(storage) {
+          try {
+            for (var i = storage.length - 1; i >= 0; i--) {
+              var key = storage.key(i)
+              if (key && key.indexOf('bill-split') === 0) storage.removeItem(key)
+            }
+          } catch (e) {
+            // Storage blocked or unavailable: nothing to clean up, redirect anyway.
+          }
+        }
+        forget(window.localStorage)
+        forget(window.sessionStorage)
+
+        var path = location.pathname
+        if (path.indexOf(OLD_BASE) === 0) path = '/' + path.slice(OLD_BASE.length)
+        location.replace(NEW_ORIGIN + path + location.search + location.hash)
+      })()
+    </script>
+  </head>
+  <body>
+    <p>Bill Split has moved to <a href="__NEW_ORIGIN__/">__NEW_ORIGIN__</a>.</p>
+  </body>
+</html>
