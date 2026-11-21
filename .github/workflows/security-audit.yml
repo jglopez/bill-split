@@ -3,8 +3,9 @@ name: Security audit
 # Catches npm audit high-severity findings on main independently of
 # Dependabot's weekly version-bump PRs, which don't always re-resolve the
 # whole dependency tree. Self-contained: runs the same checks as CI inline
-# and dispatches auto-release/deploy by hand, since GITHUB_TOKEN-driven
+# and dispatches auto-release by hand, since GITHUB_TOKEN-driven
 # pushes/PRs/merges don't trigger other workflows' push/pull_request events.
+# Deploys need no dispatch: Workers Builds reacts to every push to main.
 on:
   schedule:
     - cron: '0 6 * * *' # daily
@@ -95,7 +96,7 @@ jobs:
             --label "version:patch" --base main --head "$BRANCH"
           gh pr merge "$BRANCH" --squash --repo "$GITHUB_REPOSITORY"
 
-      - name: Dispatch auto-release and deploy for the merged fix
+      - name: Dispatch auto-release for the merged fix
         if: steps.audit.outputs.found == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -107,4 +108,3 @@ jobs:
             exit 0
           fi
           gh workflow run auto-release.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"
-          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main -f sha="$MERGE_SHA"

@@ -21,8 +21,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# BASE_PATH=/ serves from the root; the default (/bill-split/) is for GitHub Pages.
-ENV BASE_PATH=/
 RUN npm run build
 
 # ── prod ──────────────────────────────────────────────────────────────────────

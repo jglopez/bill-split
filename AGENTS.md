@@ -22,9 +22,14 @@ Notes for AI assistants working on this codebase. Read the code, git history, an
 
 **Bill schema changes go through versioned, lazy-loaded migrations.** `src/lib/migrations/index.ts` owns `CURRENT_BILL_VERSION` and a registry of steps, one file per step (`vN.ts` turns vN into vN+1). Steps are dynamic imports, so their code is fetched only when old data is actually found; current data imports none of it. Saved bills are upgraded in `main.tsx` before the first render, because `useBillSplit` saves on mount and would otherwise overwrite the old bill with defaults. For the same reason, if a step's code can't be fetched, the app shows a reload prompt instead of rendering. Changing the `BillState` shape means following the checklist at the top of `index.ts`. `meta.test.ts` and `shape.test.ts` fail until the step, its tests, its registration, and a pinned fixture are all in place. Never edit existing fixtures; they stand for bills already saved (and, later, links already shared).
 
+**Deploys run on Cloudflare Workers Builds, not GitHub Actions.** Pushes to `main` deploy production with `npm run build:release`; other branches get a preview URL that Cloudflare posts as a PR comment. Workers Builds sees every push, including ones made with `GITHUB_TOKEN`, so bot workflows never need to dispatch a deploy (they still dispatch auto-release, which a `GITHUB_TOKEN` push doesn't trigger).
+
+**Working from a Claude Code cloud session.** Never deploy from a session: there are no Cloudflare credentials in it, and pushing the branch is the deploy. To check a change in the real runtime, run `npm run preview:worker` (wrangler dev on a local workerd, no login needed) and drive it with the preinstalled Playwright. Read Workers Builds status and logs through the Cloudflare MCP connector. A PR's preview URL arrives in Cloudflare's PR comment.
+
 ---
 
 ## Things to avoid
 
 - Don't add comments that include specific config values — they drift. Describe intent instead.
-- The `base` path in `vite.config.ts` defaults to `/bill-split/` (the GitHub Pages deployment path) but is overridable via the `BASE_PATH` env var. The Docker prod build sets `BASE_PATH=/`. Don't hardcode a different default.
+- The `base` path in `vite.config.ts` defaults to `/` and is overridable via the `BASE_PATH` env var for subpath hosting. Don't hardcode a different default.
+- Don't add `routes`, `account_id`, or a custom domain to `wrangler.jsonc`. It stays deployable unchanged to any account; the production hostname is attached outside this repo. The MCP server (#146) belongs in this same Worker: add `main` and `assets.run_worker_first` for its path.
