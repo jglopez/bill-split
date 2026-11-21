@@ -11,6 +11,9 @@
     // Unknown paths serve index.html so client-side routes survive a reload.
     "not_found_handling": "single-page-application"
   },
+  // Give every preview a workers.dev URL. Deployers can also serve previews
+  // from their own custom domain, attached outside this file.
+  "preview_urls": true,
   "observability": {
     "enabled": true
   },
