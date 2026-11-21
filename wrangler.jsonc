@@ -13,5 +13,8 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  // Required by `wrangler preview`, which Workers Builds runs for every
+  // non-production branch. Empty: previews share the settings above.
+  "previews": {}
 }
