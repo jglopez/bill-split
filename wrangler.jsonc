@@ -11,9 +11,11 @@
     // Unknown paths serve index.html so client-side routes survive a reload.
     "not_found_handling": "single-page-application"
   },
-  // Give every preview a workers.dev URL. Deployers can also serve previews
-  // from their own custom domain, attached outside this file.
-  "preview_urls": true,
+  // No workers.dev preview URLs: they name the Cloudflare account, and Cloudflare
+  // posts every preview URL on the pull request. Previews are served from a
+  // custom domain attached outside this file. A fork without one can set this
+  // to true to get workers.dev preview URLs.
+  "preview_urls": false,
   "observability": {
     "enabled": true
   },

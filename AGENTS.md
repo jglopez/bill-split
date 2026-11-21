@@ -24,7 +24,7 @@ Notes for AI assistants working on this codebase. Read the code, git history, an
 
 **Deploys run on Cloudflare Workers Builds, not GitHub Actions.** Pushes to `main` deploy production with `npm run build:release`; other branches get a preview URL that Cloudflare posts as a PR comment. Workers Builds sees every push, including ones made with `GITHUB_TOKEN`, so bot workflows never need to dispatch a deploy (they still dispatch auto-release, which a `GITHUB_TOKEN` push doesn't trigger).
 
-**Working from a Claude Code cloud session.** Never deploy from a session: there are no Cloudflare credentials in it, and pushing the branch is the deploy. To check a change in the real runtime, run `npm run preview:worker` (wrangler dev on a local workerd, no login needed) and drive it with the preinstalled Playwright. Read Workers Builds status and logs through the Cloudflare MCP connector. A PR's preview URL arrives in Cloudflare's PR comment; it's on `workers.dev`, which cloud sessions can't reach, so check behavior locally instead.
+**Working from a Claude Code cloud session.** Never deploy from a session: there are no Cloudflare credentials in it, and pushing the branch is the deploy. To check a change in the real runtime, run `npm run preview:worker` (wrangler dev on a local workerd, no login needed) and drive it with the preinstalled Playwright. Read Workers Builds status and logs through the Cloudflare MCP connector. A PR's preview URL arrives in Cloudflare's PR comment, on a subdomain of the production host, which cloud sessions can reach.
 
 ---
 
@@ -32,5 +32,5 @@ Notes for AI assistants working on this codebase. Read the code, git history, an
 
 - Don't add comments that include specific config values — they drift. Describe intent instead.
 - The `base` path in `vite.config.ts` defaults to `/` and is overridable via the `BASE_PATH` env var for subpath hosting. Don't hardcode a different default.
-- Don't name the production hostname anywhere in this repo: code, docs, PR descriptions, commit messages or release notes. Visitors find it by following the old site's redirect.
+- Don't name the production hostname in code, docs, PR descriptions, commit messages or release notes. Cloudflare's preview comments are the one place it shows up.
 - Don't add `routes`, `account_id`, or a custom domain to `wrangler.jsonc`. It stays deployable unchanged to any account; the production hostname is attached outside this repo. The MCP server (#146) belongs in this same Worker: add `main` and `assets.run_worker_first` for its path.
