@@ -11,11 +11,8 @@
     // Unknown paths serve index.html so client-side routes survive a reload.
     "not_found_handling": "single-page-application"
   },
-  // No workers.dev preview URLs: they name the Cloudflare account, and Cloudflare
-  // posts every preview URL on the pull request. Previews are served from a
-  // custom domain attached outside this file. A fork without one can set this
-  // to true to get workers.dev preview URLs.
-  "preview_urls": false,
+  // Each preview gets a workers.dev URL, which Cloudflare posts on the PR.
+  "preview_urls": true,
   "observability": {
     "enabled": true
   },

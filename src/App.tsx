@@ -10,6 +10,7 @@ import { SummarySection } from './components/SummarySection'
 import { PayerSection } from './components/PayerSection'
 import { SettlementSection } from './components/SettlementSection'
 import { ConfirmModal } from './components/ConfirmModal'
+import { BuildInfo } from './components/BuildInfo'
 
 export function App() {
   const {
@@ -152,7 +153,7 @@ export function App() {
         </div>
 
         <footer className="mt-6 text-center text-xs text-gray-400">
-          {__APP_VERSION__} · {__BUILD_ID__}
+          <BuildInfo />
         </footer>
       </div>
       {showResetModal && (
