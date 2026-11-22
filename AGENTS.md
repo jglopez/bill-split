@@ -34,5 +34,5 @@ Notes for AI assistants working on this codebase. Read the code, git history, an
 
 - Don't add comments that include specific config values — they drift. Describe intent instead.
 - The `base` path in `vite.config.ts` defaults to `/` and is overridable via the `BASE_PATH` env var for subpath hosting. Don't hardcode a different default.
-- Don't name the production hostname anywhere in this repo: code, docs, PR descriptions, PR comments, commit messages or release notes. Previews use workers.dev, so the hostname never needs to appear.
+- Don't name the production hostname, the owner's other domains, or the owner's private repositories anywhere in this repo: code, docs, issues, PR descriptions, PR comments, commit messages or release notes. Say "outside this repo" instead. Previews use workers.dev, so the hostname never needs to appear.
 - Don't add `routes`, `account_id`, or a custom domain to `wrangler.jsonc`. It stays deployable unchanged to any account; the production hostname is attached outside this repo. The MCP server (#146) belongs in this same Worker: add `main` and `assets.run_worker_first` for its path.
