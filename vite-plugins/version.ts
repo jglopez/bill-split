@@ -12,11 +12,12 @@ function git(args: string): string | null {
 
 // Identifies the exact build. The running app compares this against the
 // deployed version.json to detect that a newer build is live.
+// On Workers Builds it is the first 7 characters of the commit that triggered
+// the build, matching the Commit column of Cloudflare's preview comment.
 export const buildId =
   process.env.BUILD_ID ||
-  git('rev-parse --short HEAD') ||
-  // Workers Builds always sets this, even if the checkout's git metadata is unusable.
   process.env.WORKERS_CI_COMMIT_SHA?.slice(0, 7) ||
+  git('rev-parse --short=7 HEAD') ||
   'dev'
 
 // Human-readable release tag, for display only. The release tag may not exist
@@ -77,11 +78,10 @@ export function versionFile(): Plugin {
     name: 'version-file',
     apply: 'build',
     generateBundle() {
-      this.emitFile({
-        type: 'asset',
-        fileName: 'version.json',
-        source: JSON.stringify(versionInfo()),
-      })
+      const source = JSON.stringify(versionInfo())
+      // Logged so a build's log shows exactly what its footer will say.
+      console.log(`version.json: ${source}`)
+      this.emitFile({ type: 'asset', fileName: 'version.json', source })
     },
   }
 }
