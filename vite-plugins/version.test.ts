@@ -20,6 +20,7 @@ describe('previewBranch', () => {
 describe('githubRepoUrl', () => {
   it('normalizes GitHub remotes and drops credentials', () => {
     expect(githubRepoUrl('https://github.com/o/r')).toBe('https://github.com/o/r')
+    expect(githubRepoUrl('https://github.com/o/r/')).toBe('https://github.com/o/r')
     expect(githubRepoUrl('https://x-access-token:abc@github.com/o/r.git')).toBe('https://github.com/o/r')
     expect(githubRepoUrl('git@github.com:o/my.repo.git')).toBe('https://github.com/o/my.repo')
   })

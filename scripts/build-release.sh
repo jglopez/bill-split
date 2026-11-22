@@ -34,7 +34,7 @@ fi
 # public API; if that fails (rate limit, no PR yet, not on GitHub), the
 # footer links to a search for the branch's PRs instead.
 if [ -n "${WORKERS_CI_BRANCH:-}" ] && [ "$BRANCH" != "$PRODUCTION_BRANCH" ] && [ -z "${PREVIEW_PR_URL:-}" ]; then
-  SLUG=$(git remote get-url origin 2>/dev/null | sed -nE 's#.*github\.com[/:]([^/]+/[^/]+)$#\1#p' | sed -E 's#(\.git)?/?$##')
+  SLUG=$(git remote get-url origin 2>/dev/null | sed -E 's#/$##; s#\.git$##' | sed -nE 's#.*github\.com[/:]([^/]+/[^/]+)$#\1#p')
   if [ -n "$SLUG" ]; then
     PR=$(curl -fsS --max-time 10 -G "https://api.github.com/repos/$SLUG/pulls" \
       --data-urlencode "head=${SLUG%%/*}:$BRANCH" --data-urlencode state=open 2>/dev/null \
