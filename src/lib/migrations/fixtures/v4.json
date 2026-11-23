@@ -1,0 +1,65 @@
+{
+  "name": "Dinner at Joe's",
+  "participants": [
+    {
+      "id": "p-alex",
+      "name": "Alex"
+    },
+    {
+      "id": "p-sam",
+      "name": "Sam"
+    },
+    {
+      "id": "p-jo",
+      "name": "Jo"
+    }
+  ],
+  "items": [
+    {
+      "id": "i-tacos",
+      "name": "Tacos",
+      "price": "18.00",
+      "assignedTo": null
+    },
+    {
+      "id": "i-soda",
+      "name": "Soda",
+      "price": "2.50",
+      "assignedTo": [
+        "p-jo"
+      ],
+      "taxable": false
+    },
+    {
+      "id": "i-nachos",
+      "name": "Nachos",
+      "price": "11.25",
+      "assignedTo": [
+        "p-alex",
+        "p-sam"
+      ]
+    },
+    {
+      "id": "i-blank",
+      "name": "",
+      "price": "",
+      "assignedTo": null
+    }
+  ],
+  "tax": "7.25%",
+  "tip": "4.00",
+  "tipBase": "pre-tax",
+  "tipDiscountBase": "pre-discount",
+  "tipFeeBase": "post-fee",
+  "additionalFees": [
+    {
+      "id": "f-delivery",
+      "name": "Delivery",
+      "amount": "3.99",
+      "base": "post-tax"
+    }
+  ],
+  "payerMode": "single",
+  "singlePayerId": "p-sam",
+  "amountPaid": {}
+}

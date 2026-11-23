@@ -56,6 +56,8 @@ export type TipFeeBase = 'pre-fee' | 'post-fee'
 // Changing this shape (or Participant, Item, AdditionalFee) changes the saved
 // schema: follow the checklist at the top of src/lib/migrations/index.ts.
 export interface BillState {
+  // Optional free-text title for the bill. Empty means unnamed.
+  name: string
   participants: Participant[]
   items: Item[]
   // Tax is calculated on the raw taxable item subtotal, adjusted by any

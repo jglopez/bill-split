@@ -7,6 +7,7 @@ import { CURRENT_BILL_VERSION, migrateToCurrent } from '../lib/migrations'
 // ─── Default state ────────────────────────────────────────────────────────────
 
 export const DEFAULT_STATE: BillState = {
+  name: '',
   participants: [],
   items: [{ id: nanoid(), name: '', price: '', assignedTo: null }],
   tax: '',
@@ -58,6 +59,7 @@ export function isBillState(v: unknown): v is BillState {
   if (typeof v !== 'object' || v === null) return false
   const s = v as Record<string, unknown>
   return (
+    typeof s.name === 'string' &&
     Array.isArray(s.participants) &&
     s.participants.every(isParticipant) &&
     Array.isArray(s.items) &&
@@ -108,6 +110,7 @@ function loadState(): BillState {
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
 export type Action =
+  | { type: 'SET_NAME'; value: string }
   | { type: 'ADD_PARTICIPANT'; name: string }
   | { type: 'REMOVE_PARTICIPANT'; id: string }
   | { type: 'RENAME_PARTICIPANT'; id: string; name: string }
@@ -146,6 +149,9 @@ function ensureTrailingBlankRow(state: BillState): BillState {
 
 export function reducer(state: BillState, action: Action): BillState {
   switch (action.type) {
+    case 'SET_NAME':
+      return { ...state, name: action.value }
+
     case 'ADD_PARTICIPANT': {
       const id = nanoid()
       return ensureTrailingBlankRow({
@@ -282,6 +288,7 @@ export function useBillSplit() {
     setIsPersisted(ok)
   }, [state])
 
+  const setName = useCallback((value: string) => dispatch({ type: 'SET_NAME', value }), [])
   const addParticipant = useCallback(
     (name: string) => dispatch({ type: 'ADD_PARTICIPANT', name }),
     [],
@@ -350,6 +357,7 @@ export function useBillSplit() {
     state,
     saveFailed,
     isPersisted,
+    setName,
     addParticipant,
     removeParticipant,
     renameParticipant,
