@@ -71,4 +71,18 @@ describe('App', () => {
     expect(screen.queryByLabelText('Rename Alice')).not.toBeInTheDocument()
     expect(screen.getByText('Add participants above to start entering items.')).toBeInTheDocument()
   })
+
+  it('keeps the bill name across a reload and clears it on reset', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await user.type(screen.getByLabelText('Bill name'), 'Dinner')
+    unmount()
+
+    render(<App />)
+    expect(screen.getByLabelText('Bill name')).toHaveValue('Dinner')
+
+    await user.click(screen.getByLabelText('Reset all fields and start over'))
+    await user.click(screen.getByRole('button', { name: 'Reset' }))
+    expect(screen.getByLabelText('Bill name')).toHaveValue('')
+  })
 })

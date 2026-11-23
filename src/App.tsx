@@ -3,6 +3,7 @@ import { useBillSplit } from './hooks/useBillSplit'
 import { useColumnOrder } from './hooks/useColumnOrder'
 import { useAutoUpdate } from './hooks/useAutoUpdate'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
+import { BillNameInput } from './components/BillNameInput'
 import { ParticipantSection } from './components/ParticipantSection'
 import { ItemsTable } from './components/ItemsTable'
 import { TaxTipSection } from './components/TaxTipSection'
@@ -17,6 +18,7 @@ export function App() {
     state,
     saveFailed,
     isPersisted,
+    setName,
     addParticipant,
     removeParticipant,
     renameParticipant,
@@ -81,6 +83,8 @@ export function App() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+          <BillNameInput name={state.name} onChange={setName} />
+
           {/* Participants */}
           <ParticipantSection
             participants={state.participants}

@@ -19,6 +19,7 @@ const item = {
 const fee = { id: 'f', name: 'Service', amount: '3%', base: 'pre-tax' } satisfies Required<AdditionalFee>
 
 export const FULL_BILL_SAMPLE = {
+  name: 'Dinner',
   participants: [participant],
   items: [item],
   tax: '',

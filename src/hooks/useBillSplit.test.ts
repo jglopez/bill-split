@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
 const validState = {
+  name: 'Dinner',
   participants: [{ id: 'a', name: 'Alice' }],
   items: [{ id: 'i1', name: 'Tacos', price: '10.00', assignedTo: null }],
   tax: '8%',
@@ -53,6 +54,7 @@ describe('isBillState', () => {
 
   it('invalid tip bases return false', () => {
     expect(isBillState({ ...validState, tipDiscountBase: 'sometimes' })).toBe(false)
+    expect(isBillState({ ...validState, name: 5 })).toBe(false)
     expect(isBillState({ ...validState, tipFeeBase: 42 })).toBe(false)
   })
 
@@ -118,8 +120,12 @@ describe('reducer', () => {
     return { ...DEFAULT_STATE, ...overrides }
   }
 
-  it('RESET returns DEFAULT_STATE', () => {
-    const state = baseState({ tax: '10%', participants: [p1] })
+  it('SET_NAME sets the bill name', () => {
+    expect(reducer(baseState(), { type: 'SET_NAME', value: 'Dinner' }).name).toEqual('Dinner')
+  })
+
+  it('RESET returns DEFAULT_STATE and clears the name', () => {
+    const state = baseState({ tax: '10%', name: 'Dinner', participants: [p1] })
     expect(reducer(state, { type: 'RESET' })).toEqual(DEFAULT_STATE)
   })
 
