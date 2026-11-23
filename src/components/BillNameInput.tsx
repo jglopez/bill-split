@@ -20,7 +20,7 @@ export function BillNameInput({ name, onChange }: Props) {
         placeholder="Bill name"
         aria-label="Bill name"
         autoComplete="off"
-        className="w-full text-xl font-semibold text-gray-900 placeholder-gray-300 bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:outline-none px-0 py-1 min-h-[44px] rounded-none"
+        className="w-full text-xl font-semibold text-gray-900 placeholder-gray-400 bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:outline-none px-0 py-1 min-h-[44px] rounded-none"
       />
     </div>
   )
