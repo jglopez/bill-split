@@ -10,6 +10,7 @@ import { TaxTipSection } from './components/TaxTipSection'
 import { SummarySection } from './components/SummarySection'
 import { PayerSection } from './components/PayerSection'
 import { SettlementSection } from './components/SettlementSection'
+import { ShareSection } from './components/ShareSection'
 import { ConfirmModal } from './components/ConfirmModal'
 import { BuildInfo } from './components/BuildInfo'
 
@@ -154,6 +155,11 @@ export function App() {
             participants={state.participants}
             transactions={transactions}
           />
+
+          {/* Share: each way of sending the bill out is a ShareButton child (see #4).
+              Methods that need a bill should render only when
+              state.participants.length > 0 && breakdown.totalSubtotal > 0. */}
+          <ShareSection />
         </div>
 
         <footer className="mt-6 text-center text-xs text-gray-400">
