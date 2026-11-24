@@ -3,8 +3,11 @@
   share, then how the bill adds up. It only formats: every amount comes
   from the template data. See templateData.ts for the fields, and
   renderSummary.ts for the filters available.
+
+  The title and total are wrapped in Markdown bold markers. Chat apps that
+  understand them show bold; others show the asterisks.
 {%- endcomment -%}
-{% if name != "" %}{{ name }}{% else %}Bill split{% endif %}
+**{% if name != "" %}{{ name }}{% else %}Bill split{% endif %}**
 {% for person in people %}
 {{ person.name }}: {{ person.total | money }}
 {%- endfor %}
@@ -19,4 +22,4 @@ Tip: {{ totals.tip | money }}
 {%- for fee in totals.fees %}
 {{ fee.name }}: {{ fee.amount | money }}
 {%- endfor %}
-Total: {{ totals.grandTotal | money }}
+**Total: {{ totals.grandTotal | money }}**
