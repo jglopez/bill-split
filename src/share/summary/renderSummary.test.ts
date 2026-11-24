@@ -16,6 +16,13 @@ const minimal: SummaryTemplateData = {
 }
 
 describe('renderSummary with the default template', () => {
+  it('lists people in participant order after a reorder', () => {
+    const [a, b, c] = sampleBill.participants
+    const text = renderSummary(toSummaryTemplateData(buildShareData({ ...sampleBill, participants: [c, a, b] })))
+    const lines = text.split('\n').filter(line => /^(Alice|Bob|Chris):/.test(line))
+    expect(lines.map(line => line.split(':')[0])).toEqual(['Chris', 'Alice', 'Bob'])
+  })
+
   it('renders the sample bill', () => {
     expect(renderSummary(sample)).toMatchInlineSnapshot(`
       "Dinner at Rosa's

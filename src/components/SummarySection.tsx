@@ -14,8 +14,8 @@ interface Props {
  * Read-only summary table showing each person's share of:
  * subtotal → tax → tip → each additional fee → grand total.
  *
- * Columns are rendered in the same order as ItemsTable (controlled by
- * useColumnOrder in App). Per-person values are looked up by participantId
+ * Columns follow the participant list's order, the same order as the
+ * ItemsTable columns. Per-person values are looked up by participantId
  * rather than relying on parallel index ordering.
  *
  * On narrow screens (below sm breakpoint) the table becomes stacked cards:

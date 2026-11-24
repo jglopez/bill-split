@@ -94,6 +94,12 @@ describe('bill links', () => {
     expect(byName(await decodeBillHash(encodeBillHash(bill)))).toEqual(byName(bill))
   })
 
+  it('keeps a reordered participant list in its new order', async () => {
+    const participants = [...dinner.participants].reverse()
+    const opened = await decodeBillHash(encodeBillHash({ ...dinner, participants }))
+    expect(opened.participants.map(p => p.name)).toEqual(participants.map(p => p.name))
+  })
+
   it('gives opened bills fresh ids and keeps assignments pointing at the right people', async () => {
     const opened = await decodeBillHash(encodeBillHash(dinner))
     expect(opened.participants.map(p => p.id)).not.toContain('p0')

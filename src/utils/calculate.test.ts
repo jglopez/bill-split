@@ -381,6 +381,80 @@ describe('calculateBreakdown', () => {
 })
 
 describe('calculateSettlement', () => {
+  // A owes most, but the payments are listed in participant order.
+  function unevenSinglePayer(order: string[]): BillState {
+    return state({
+      participants: order.map(p),
+      items: [item('x', '30', ['B']), item('y', '60', ['C']), item('z', '10', ['D'])],
+      payerMode: 'single',
+      singlePayerId: 'A',
+    })
+  }
+
+  // Two people paid, so one debtor pays two people. A and B owe the same, so
+  // which of them pays two people is a tie, settled by participant order.
+  function twoCreditors(order: string[]): BillState {
+    return state({
+      participants: order.map(p),
+      items: [item('x', '40')],
+      payerMode: 'multiple',
+      amountPaid: { C: '15', D: '25' },
+    })
+  }
+
+  const pairs = (s: BillState) =>
+    calculateSettlement(s, calculateBreakdown(s)).map(t => [t.fromId, t.toId, t.amount])
+
+  function permutations<T>(list: T[]): T[][] {
+    if (list.length <= 1) return [list]
+    return list.flatMap((x, i) =>
+      permutations([...list.slice(0, i), ...list.slice(i + 1)]).map(rest => [x, ...rest]))
+  }
+
+  it('lists payments in participant order, not by amount', () => {
+    expect(pairs(unevenSinglePayer(['A', 'B', 'C', 'D']))).toEqual([
+      ['B', 'A', 30], ['C', 'A', 60], ['D', 'A', 10],
+    ])
+  })
+
+  it('follows the participants when they are reordered', () => {
+    expect(pairs(unevenSinglePayer(['D', 'A', 'C', 'B']))).toEqual([
+      ['D', 'A', 10], ['C', 'A', 60], ['B', 'A', 30],
+    ])
+  })
+
+  it('orders by payer, then by payee', () => {
+    expect(pairs(twoCreditors(['A', 'B', 'C', 'D']))).toEqual([
+      ['A', 'D', 10], ['B', 'C', 5], ['B', 'D', 5],
+    ])
+    expect(pairs(twoCreditors(['B', 'D', 'A', 'C']))).toEqual([
+      ['B', 'D', 10], ['A', 'D', 5], ['A', 'C', 5],
+    ])
+  })
+
+  it('every participant order gives the same payments when nobody ties', () => {
+    const key = (t: unknown[]) => t.join()
+    const baseline = pairs(unevenSinglePayer(['A', 'B', 'C', 'D'])).map(key).sort()
+    for (const order of permutations(['A', 'B', 'C', 'D'])) {
+      expect(pairs(unevenSinglePayer(order)).map(key).sort()).toEqual(baseline)
+    }
+  })
+
+  it('every participant order lists payments by payer, then by payee', () => {
+    for (const build of [unevenSinglePayer, twoCreditors]) {
+      for (const order of permutations(['A', 'B', 'C', 'D'])) {
+        const got = pairs(build(order))
+        const rank = (id: unknown) => order.indexOf(id as string)
+        for (let i = 1; i < got.length; i++) {
+          const [prevFrom, prevTo] = got[i - 1]
+          const [from, to] = got[i]
+          const ordered = rank(prevFrom) < rank(from) || (prevFrom === from && rank(prevTo) < rank(to))
+          expect(ordered).toBe(true)
+        }
+      }
+    }
+  })
+
   it('single payer: other participants owe their share', () => {
     const participants = [p('A'), p('B')]
     const s = state({

@@ -14,7 +14,6 @@ function baseProps() {
       { id: 'i1', name: 'Dinner', price: '10', assignedTo: null },
       { id: 'i2', name: '', price: '', assignedTo: null }, // trailing blank row
     ] as Item[],
-    columnOrder: ['a', 'b'],
     onUpdateItem: vi.fn(),
     onRemoveItem: vi.fn(),
     onReorderItems: vi.fn(),
@@ -29,8 +28,8 @@ describe('ItemsTable', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('renders a column header per participant in columnOrder', () => {
-    render(<ItemsTable {...baseProps()} columnOrder={['b', 'a']} />)
+  it('renders a column header per participant in participant order', () => {
+    render(<ItemsTable {...baseProps()} participants={[bob, alice]} />)
     const headers = screen.getAllByRole('columnheader').map(h => h.textContent)
     expect(headers.indexOf('Bob')).toBeLessThan(headers.indexOf('Alice'))
   })

@@ -37,6 +37,17 @@ describe('buildShareData', () => {
     }
   })
 
+  it('follows the participant order when participants are reordered', () => {
+    const [a, b, c] = sampleBill.participants
+    const reordered: BillState = { ...sampleBill, participants: [c, a, b] }
+    const data = buildShareData(reordered)
+    expect(data.people.map(p => p.id)).toEqual(['c', 'a', 'b'])
+    expect(data.settlements.map(s => s.fromId)).toEqual(['c', 'b'])
+    const swapped = buildShareData({ ...reordered, participants: [b, a, c] })
+    expect(swapped.people.map(p => p.id)).toEqual(['b', 'a', 'c'])
+    expect(swapped.settlements.map(s => s.fromId)).toEqual(['b', 'c'])
+  })
+
   it('carries the bill totals from the breakdown', () => {
     expect(data.totals.subtotal).toBe(cents(breakdown.totalSubtotal))
     expect(data.totals.tax).toBe(cents(breakdown.totalTax))

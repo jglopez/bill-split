@@ -13,7 +13,6 @@ import {
 import {
   SortableContext,
   useSortable,
-  arrayMove,
   horizontalListSortingStrategy,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
@@ -40,11 +39,10 @@ function getItemShare(item: Item, participantId: string, allParticipantCount: nu
 interface Props {
   participants: Participant[]
   items: Item[]
-  columnOrder: string[]
   onUpdateItem: (item: Item) => void
   onRemoveItem: (id: string) => void
   onReorderItems: (fromIndex: number, toIndex: number) => void
-  onReorderColumns: (newOrder: string[]) => void
+  onReorderColumns: (fromIndex: number, toIndex: number) => void
 }
 
 /**
@@ -63,15 +61,11 @@ interface Props {
  *
  * Columns (participants) can be reordered by dragging the column header.
  * Rows (items) can be reordered by dragging the grip handle on the left.
- * Column order is managed by the parent via useColumnOrder and persisted in
- * localStorage. Row order updates BillState directly.
+ * Both update BillState directly. Column order is the participant list's
+ * order, so every other view and share method follows it.
  */
-export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
+export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
   const allIds = participants.map(p => p.id)
-
-  const orderedParticipants = columnOrder
-    .map(id => participants.find(p => p.id === id))
-    .filter((p): p is Participant => p !== undefined)
 
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
 
@@ -106,10 +100,10 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
     const overType = over.data.current?.type as string | undefined
 
     if (activeType === 'column' && overType === 'column') {
-      const oldIdx = columnOrder.indexOf(active.id as string)
-      const newIdx = columnOrder.indexOf(over.id as string)
+      const oldIdx = allIds.indexOf(active.id as string)
+      const newIdx = allIds.indexOf(over.id as string)
       if (oldIdx !== -1 && newIdx !== -1) {
-        onReorderColumns(arrayMove(columnOrder, oldIdx, newIdx))
+        onReorderColumns(oldIdx, newIdx)
       }
     } else if (activeType === 'row' && overType === 'row') {
       const draggable = items.slice(0, -1) // exclude trailing blank row
@@ -165,8 +159,8 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
               <th className="text-left py-2 pr-3 font-medium text-gray-600 w-[35%]">Item</th>
               <th className="text-right py-2 px-2 font-medium text-gray-600 w-20">$</th>
               <th className="text-center py-2 px-2 font-medium text-gray-400 text-xs w-14">taxable</th>
-              <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                {orderedParticipants.map(p => (
+              <SortableContext items={allIds} strategy={horizontalListSortingStrategy}>
+                {participants.map(p => (
                   <SortableColumnHeader key={p.id} participant={p} />
                 ))}
               </SortableContext>
@@ -243,7 +237,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
                     </td>
 
                     {/* Per-participant column cells — rendered in column display order */}
-                    {orderedParticipants.map(p => {
+                    {participants.map(p => {
                       const assigned = isParticipantAssigned(item, p.id)
                       const share = getItemShare(item, p.id, participants.length)
 
@@ -324,7 +318,7 @@ export function ItemsTable({ participants, items, columnOrder, onUpdateItem, onR
         </table>
         <DragOverlay>
           {activeColumnId && (() => {
-            const participant = orderedParticipants.find(p => p.id === activeColumnId)
+            const participant = participants.find(p => p.id === activeColumnId)
             if (!participant) return null
             return <ColumnDragOverlay participant={participant} items={items} participants={participants} />
           })()}

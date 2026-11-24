@@ -4,6 +4,7 @@
 import { isBillBlank, isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
 import type { BillState } from '../types'
 import { CURRENT_BILL_VERSION } from '../lib/migrations'
+import { LEGACY_COLUMN_ORDER_KEY } from '../lib/legacyColumnOrder'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
@@ -320,6 +321,27 @@ describe('reducer', () => {
     expect(next.items[3].name).toEqual('')
     expect(next.items[3].price).toEqual('')
   })
+
+  it('REORDER_PARTICIPANTS moves a participant and keeps everything keyed by id', () => {
+    const p3 = { id: 'p3', name: 'Chris' }
+    const state = baseState({
+      participants: [p1, p2, p3],
+      singlePayerId: 'p1',
+      amountPaid: { p2: '5' },
+    })
+    const next = reducer(state, { type: 'REORDER_PARTICIPANTS', fromIndex: 0, toIndex: 2 })
+    expect(next.participants).toEqual([p2, p3, p1])
+    expect(next.singlePayerId).toBe('p1')
+    expect(next.amountPaid).toEqual({ p2: '5' })
+    expect(next.items).toBe(state.items)
+  })
+
+  it('REORDER_PARTICIPANTS ignores a move to the same place or out of range', () => {
+    const state = baseState({ participants: [p1, p2] })
+    expect(reducer(state, { type: 'REORDER_PARTICIPANTS', fromIndex: 1, toIndex: 1 })).toBe(state)
+    expect(reducer(state, { type: 'REORDER_PARTICIPANTS', fromIndex: 0, toIndex: 2 })).toBe(state)
+    expect(reducer(state, { type: 'REORDER_PARTICIPANTS', fromIndex: -1, toIndex: 0 })).toBe(state)
+  })
 })
 
 describe('useBillSplit (hook)', () => {
@@ -341,6 +363,43 @@ describe('useBillSplit (hook)', () => {
     })
     expect(result.current.state.participants.length).toEqual(1)
     expect(result.current.state.participants[0].name).toEqual('Alice')
+  })
+
+  it('reorderParticipants changes the saved participant order', () => {
+    const { result } = renderHook(() => useBillSplit())
+    act(() => {
+      result.current.addParticipant('Alice')
+      result.current.addParticipant('Bob')
+      result.current.addParticipant('Chris')
+    })
+    act(() => {
+      result.current.reorderParticipants(2, 0)
+    })
+    expect(result.current.state.participants.map(p => p.name)).toEqual(['Chris', 'Alice', 'Bob'])
+    const parsed = JSON.parse(localStorage.getItem(`bill-split:v${CURRENT_BILL_VERSION}`)!)
+    expect(parsed.participants.map((p: { name: string }) => p.name)).toEqual(['Chris', 'Alice', 'Bob'])
+  })
+
+  it('carries over a column order an older build stored apart, then removes it', () => {
+    const saved: BillState = {
+      ...DEFAULT_STATE,
+      participants: [{ id: 'a', name: 'Alice' }, { id: 'b', name: 'Bob' }, { id: 'c', name: 'Chris' }],
+    }
+    localStorage.setItem(`bill-split:v${CURRENT_BILL_VERSION}`, JSON.stringify(saved))
+    localStorage.setItem(LEGACY_COLUMN_ORDER_KEY, JSON.stringify(['c', 'a', 'b']))
+    const { result } = renderHook(() => useBillSplit())
+    expect(result.current.state.participants.map(p => p.id)).toEqual(['c', 'a', 'b'])
+    expect(localStorage.getItem(LEGACY_COLUMN_ORDER_KEY)).toBeNull()
+  })
+
+  it('keeps the old column order key while saving fails', () => {
+    localStorage.setItem(LEGACY_COLUMN_ORDER_KEY, JSON.stringify(['b', 'a']))
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError')
+    })
+    renderHook(() => useBillSplit())
+    setItemSpy.mockRestore()
+    expect(localStorage.getItem(LEGACY_COLUMN_ORDER_KEY)).not.toBeNull()
   })
 
   it('persists state to localStorage on every change', () => {

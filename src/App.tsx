@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useBillSplit } from './hooks/useBillSplit'
-import { useColumnOrder } from './hooks/useColumnOrder'
 import { useAutoUpdate } from './hooks/useAutoUpdate'
 import { useIncomingLink } from './hooks/useIncomingLink'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
@@ -29,6 +28,7 @@ export function App() {
     updateItem,
     removeItem,
     reorderItems,
+    reorderParticipants,
     setTax,
     setTip,
     setTipBase,
@@ -50,7 +50,6 @@ export function App() {
   // A reload would discard unsaved state, so only auto-update while saving works.
   useAutoUpdate({ enabled: isPersisted })
 
-  const { columnOrder, setColumnOrder, orderedParticipants } = useColumnOrder(state.participants)
   const [showResetModal, setShowResetModal] = useState(false)
 
   const breakdown = useMemo(() => calculateBreakdown(state), [state])
@@ -107,11 +106,10 @@ export function App() {
           <ItemsTable
             participants={state.participants}
             items={state.items}
-            columnOrder={columnOrder}
             onUpdateItem={updateItem}
             onRemoveItem={removeItem}
             onReorderItems={reorderItems}
-            onReorderColumns={setColumnOrder}
+            onReorderColumns={reorderParticipants}
           />
 
           {/* Tax, tip, and additional fees */}
@@ -143,7 +141,7 @@ export function App() {
 
           {/* Summary table */}
           <SummarySection
-            orderedParticipants={orderedParticipants}
+            orderedParticipants={state.participants}
             additionalFees={state.additionalFees}
             state={state}
             breakdown={breakdown}
