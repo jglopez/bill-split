@@ -29,8 +29,8 @@ export class SummaryTemplateError extends Error {
  * - Parse, render and memory limits, so a runaway template can't hang the
  *   page. They are generous for anything a person would write by hand.
  */
-// Marks bold text while rendering. Control characters can't come from a
-// typed name, so they never collide with the bill's own text.
+// Marks bold text while rendering. buildShareData strips control characters
+// from names, so these never collide with the bill's own text.
 const BOLD_START = '\u0002'
 const BOLD_END = '\u0003'
 

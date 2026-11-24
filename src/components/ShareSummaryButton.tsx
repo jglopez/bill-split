@@ -4,6 +4,7 @@ import type { BillBreakdown, Transaction } from '../utils/calculate'
 import { buildShareData } from '../share/shareData'
 import { toSummaryTemplateData } from '../share/summary/templateData'
 import { ShareButton } from './ShareButton'
+import { canUseShareSheet } from '../share/shareText'
 
 type SummaryModule = typeof import('../share/summary/renderSummary')
 
@@ -27,14 +28,19 @@ interface Props {
  */
 export function ShareSummaryButton({ state, breakdown, transactions }: Props) {
   const [renderer, setRenderer] = useState<SummaryModule | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  // The share sheet only takes plain text, so the rich version is only
+  // worth rendering when the button copies.
+  const [copies] = useState(() => !canUseShareSheet())
 
   useEffect(() => {
     let active = true
     import('../share/summary/renderSummary').then(
       mod => { if (active) setRenderer(mod) },
       // If the chunk can't be fetched (for example offline after a new
-      // deploy), the button stays disabled; the rest of the app still works.
-      () => {},
+      // deploy), the button stays disabled and says how to recover; the rest
+      // of the app still works.
+      () => { if (active) setLoadFailed(true) },
     )
     return () => { active = false }
   }, [])
@@ -45,9 +51,14 @@ export function ShareSummaryButton({ state, breakdown, transactions }: Props) {
     return {
       title: data.name || 'Bill split',
       text: renderer.renderSummary(data),
-      html: renderer.renderSummaryHtml(data),
+      html: copies ? renderer.renderSummaryHtml(data) : undefined,
     }
   }
 
-  return <ShareButton label="summary" getContent={getContent} disabled={!renderer} />
+  return (
+    <>
+      <ShareButton label="summary" getContent={getContent} disabled={!renderer} />
+      {loadFailed && <span className="text-xs text-gray-500 self-center">Reload the page to share the summary.</span>}
+    </>
+  )
 }

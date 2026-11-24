@@ -98,4 +98,13 @@ describe('App', () => {
     const share = screen.getByRole('region', { name: 'Share' })
     expect(within(share).getByRole('button', { name: 'Copy summary' })).toBeInTheDocument()
   })
+
+  it('hides the summary when the totals are not real numbers', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await addParticipant(user, 'Alice')
+    // Too large for a double, so the totals overflow to Infinity or NaN.
+    await user.type(screen.getAllByLabelText('Item price')[0], '1e400')
+    expect(screen.queryByRole('button', { name: /summary/ })).not.toBeInTheDocument()
+  })
 })

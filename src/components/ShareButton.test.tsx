@@ -68,5 +68,4 @@ describe('ShareButton', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Copy summary' }))
     expect(getContent).not.toHaveBeenCalled()
   })
-
 })

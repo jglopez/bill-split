@@ -16,7 +16,7 @@ import {
  * rounded to whole cents, and nothing in it is shaped for one output format.
  */
 export interface ShareData {
-  /** The bill's title, trimmed. Empty when the bill is unnamed. */
+  /** The bill's title, trimmed, without control characters. Empty when the bill is unnamed. */
   name: string
   /** One entry per participant, in participant order. */
   people: SharePerson[]
@@ -27,7 +27,7 @@ export interface ShareData {
 
 export interface SharePerson {
   id: string
-  /** The participant's name, trimmed. */
+  /** The participant's name, trimmed, without control characters. */
   name: string
   /** What this person's share of the bill comes to, including tax, tip and fees. */
   total: number
@@ -60,6 +60,20 @@ export interface ShareSettlement {
   amount: number
 }
 
+/**
+ * Trim a typed name and drop control characters (tabs, newlines and the
+ * like), which a pasted name can carry and which no share format wants.
+ */
+function cleanName(name: string): string {
+  return Array.from(name)
+    .filter(ch => {
+      const code = ch.charCodeAt(0)
+      return code >= 0x20 && code !== 0x7f
+    })
+    .join('')
+    .trim()
+}
+
 /** Round to whole cents, so every consumer sees the same amounts the app shows. */
 function cents(n: number): number {
   return Math.round(n * 100) / 100
@@ -74,21 +88,21 @@ export function buildShareData(
   breakdown: BillBreakdown = calculateBreakdown(state),
   transactions: Transaction[] = calculateSettlement(state, breakdown),
 ): ShareData {
-  const nameById = new Map(state.participants.map(p => [p.id, p.name.trim()]))
+  const nameById = new Map(state.participants.map(p => [p.id, cleanName(p.name)]))
   const totalById = new Map(breakdown.perPerson.map(p => [p.participantId, p.grandTotal]))
 
   const fees: ShareFee[] = []
   state.additionalFees.forEach((fee, i) => {
     const amount = cents(breakdown.totalAdditionalFees[i] ?? 0)
     if (amount === 0) return
-    fees.push({ name: fee.name.trim() || (amount < 0 ? 'Discount' : 'Fee'), amount })
+    fees.push({ name: cleanName(fee.name) || (amount < 0 ? 'Discount' : 'Fee'), amount })
   })
 
   return {
-    name: state.name.trim(),
+    name: cleanName(state.name),
     people: state.participants.map(p => ({
       id: p.id,
-      name: p.name.trim(),
+      name: cleanName(p.name),
       total: cents(totalById.get(p.id) ?? 0),
     })),
     totals: {

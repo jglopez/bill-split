@@ -160,7 +160,8 @@ export function App() {
           {/* Share: each way of sending the bill out is a ShareButton child (see #4).
               Methods that need a bill render only when there is one. */}
           <ShareSection>
-            {state.participants.length > 0 && breakdown.totalSubtotal > 0 && (
+            {state.participants.length > 0 && breakdown.totalSubtotal > 0
+              && Number.isFinite(breakdown.totalGrandTotal) && (
               <ShareSummaryButton state={state} breakdown={breakdown} transactions={transactions} />
             )}
           </ShareSection>

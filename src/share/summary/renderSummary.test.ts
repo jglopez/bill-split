@@ -57,7 +57,13 @@ describe('renderSummaryHtml', () => {
 
   it('has the same text and line breaks as the plain summary', () => {
     const html = renderSummaryHtml(sample)
-    const text = html.replace(/<br>/g, '\n').replace(/<[^>]+>/g, '').replace(/&#39;/g, "'")
+    const text = html
+      .replace(/<br>/g, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
     expect(text).toBe(renderSummary(sample))
   })
 

@@ -16,6 +16,19 @@ describe('buildShareData', () => {
     expect(data.people.map(p => p.name)).toEqual(['Alice', 'Bob', 'Chris'])
   })
 
+  it('drops control characters a pasted name can carry', () => {
+    const bill: BillState = {
+      ...sampleBill,
+      name: 'Din\tner\u0002',
+      participants: [{ id: 'a', name: 'A\u0002li\u0003ce\n' }],
+      additionalFees: [{ id: 'f', name: 'Cou\u007fpon', amount: '-1', base: 'pre-tax' }],
+    }
+    const data = buildShareData(bill)
+    expect(data.name).toBe('Dinner')
+    expect(data.people[0].name).toBe('Alice')
+    expect(data.totals.fees[0].name).toBe('Coupon')
+  })
+
   it('gives each person the grand total from the breakdown, in participant order', () => {
     expect(data.people.map(p => p.id)).toEqual(['a', 'b', 'c'])
     for (const person of data.people) {
