@@ -17,7 +17,7 @@ const minimal: SummaryTemplateData = {
 describe('renderSummary with the default template', () => {
   it('renders the sample bill', () => {
     expect(renderSummary(sample)).toMatchInlineSnapshot(`
-      "**Dinner at Rosa's**
+      "Dinner at Rosa's
 
       Alice: $46.86
       Bob: $14.57
@@ -28,7 +28,7 @@ describe('renderSummary with the default template', () => {
       Tip: $14.13
       Coupon: −$5.00
       Fee: $2.00
-      **Total: $93.11**"
+      Total: $93.11"
     `)
   })
 
@@ -41,12 +41,12 @@ describe('renderSummary with the default template', () => {
       `Tax: ${formatMoney(sample.totals.tax)}`,
       `Tip: ${formatMoney(sample.totals.tip)}`,
       ...sample.totals.fees.map(f => `${f.name}: ${formatMoney(f.amount)}`),
-      `**Total: ${formatMoney(sample.totals.grandTotal)}**`,
+      `Total: ${formatMoney(sample.totals.grandTotal)}`,
     ])
   })
 
   it('uses a generic title for an unnamed bill and leaves out zero tax and tip', () => {
-    expect(renderSummary(minimal)).toBe('**Bill split**\n\nAlice: $10.00\n\nSubtotal: $10.00\n**Total: $10.00**')
+    expect(renderSummary(minimal)).toBe('Bill split\n\nAlice: $10.00\n\nSubtotal: $10.00\nTotal: $10.00')
   })
 })
 
