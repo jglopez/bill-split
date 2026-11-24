@@ -25,7 +25,7 @@ describe('ResetModal', () => {
 
   it('offers each reset option, each described by what it clears', () => {
     renderModal()
-    expect(screen.getByRole('button', { name: 'Clear participants' })).toHaveAccessibleDescription(/Removes everyone/)
+    expect(screen.getByRole('button', { name: 'Clear participants' })).toHaveAccessibleDescription(/Removes everyone. Your items/)
     expect(screen.getByRole('button', { name: 'Clear items' })).toHaveAccessibleDescription(/bill name/)
     expect(screen.getByRole('button', { name: 'Reset all' })).toHaveAccessibleDescription(/whole bill/)
   })

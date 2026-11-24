@@ -49,7 +49,7 @@ export function ResetModal({
   const options: ResetOption[] = [
     {
       label: 'Clear participants',
-      description: 'Removes everyone. Items, the bill name, tax, tip, and fees stay, and every item is shared by everyone again.',
+      description: 'Removes everyone. Your items, the bill name, tax, tip, and fees are kept for the next people you add.',
       onSelect: onClearParticipants,
       disabled: !hasParticipants,
       emphasis: 'outline',

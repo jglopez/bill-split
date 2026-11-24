@@ -104,6 +104,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Clear participants' }))
     expect(screen.getByLabelText('Bill name')).toHaveValue('Dinner')
     expect(screen.queryByLabelText('Rename Alice')).not.toBeInTheDocument()
+    expect(screen.getByText('1 item is kept. Add participants above to split it.')).toBeInTheDocument()
 
     // The items reappear once someone is added again.
     await addParticipant(user, 'Bob')

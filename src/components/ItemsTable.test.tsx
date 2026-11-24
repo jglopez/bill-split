@@ -23,9 +23,18 @@ function baseProps() {
 
 describe('ItemsTable', () => {
   it('shows a placeholder message when there are no participants', () => {
-    render(<ItemsTable {...baseProps()} participants={[]} />)
+    render(<ItemsTable {...baseProps()} participants={[]} items={[baseProps().items[1]]} />)
     expect(screen.getByText('Add participants above to start entering items.')).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('says items are kept when there are items but no participants', () => {
+    const { rerender } = render(<ItemsTable {...baseProps()} participants={[]} />)
+    expect(screen.getByText('1 item is kept. Add participants above to split it.')).toBeInTheDocument()
+
+    const items: Item[] = [{ id: 'i0', name: 'Soda', price: '', assignedTo: null }, ...baseProps().items]
+    rerender(<ItemsTable {...baseProps()} participants={[]} items={items} />)
+    expect(screen.getByText('2 items are kept. Add participants above to split them.')).toBeInTheDocument()
   })
 
   it('renders a column header per participant in participant order', () => {
