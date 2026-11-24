@@ -94,7 +94,9 @@ jobs:
           gh pr create --title "fix(deps): resolve npm audit high-severity findings" \
             --body "Automated: the scheduled security-audit workflow found high-severity \`npm audit\` findings on \`main\` and ran \`npm audit fix\`. typecheck/lint/build/test all pass." \
             --label "version:patch" --base main --head "$BRANCH"
-          gh pr merge "$BRANCH" --squash --repo "$GITHUB_REPOSITORY"
+          # The repo's "delete head branch on merge" setting doesn't fire for
+          # merges made with GITHUB_TOKEN, so delete the branch explicitly.
+          gh pr merge "$BRANCH" --squash --delete-branch --repo "$GITHUB_REPOSITORY"
 
       - name: Dispatch auto-release for the merged fix
         if: steps.audit.outputs.found == 'true'
