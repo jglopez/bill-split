@@ -62,7 +62,7 @@ describe('renderSummary with the default template', () => {
   ]
 
   for (const [what, totals, note] of notes) {
-    it(`says ${what} is included, after the shares and before the link`, () => {
+    it(`names ${what} in the note, after the shares and before the link`, () => {
       const link = 'https://example.test/#b=1.abc'
       const data = { ...minimal, totals: { ...minimal.totals, ...totals }, link }
       expect(renderSummary(data)).toBe(`Bill split\n\nAlice: $10.00\n\n${note}\n\n${link}`)
