@@ -69,9 +69,8 @@ interface Props {
  * card instead, so nothing needs horizontal scrolling: description, price
  * and remove on top, then a wrapping line of assignment chips ("All" and one
  * per participant, showing that person's share) ending with the taxable
- * switch. The cards keep row
- * dragging by the grip. Participants can't be reordered there, because the
- * cards have no columns to drag.
+ * switch. The cards keep row dragging by the grip. Participants can't be
+ * reordered there, because the cards have no columns to drag.
  */
 export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
   const allIds = participants.map(p => p.id)
@@ -173,7 +172,9 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                         <ItemNameInput item={item} isBlank={blank} onUpdateItem={onUpdateItem} />
                       </div>
                       <ItemPriceInput item={item} onUpdateItem={onUpdateItem} className="w-20" />
-                      {!blank && <RemoveItemButton item={item} onRemoveItem={onRemoveItem} />}
+                      {blank
+                        ? <span aria-hidden="true" className="w-11 flex-shrink-0" /> // keeps prices aligned with item cards
+                        : <RemoveItemButton item={item} onRemoveItem={onRemoveItem} />}
                     </div>
                     {!blank && (
                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -534,7 +535,7 @@ function AssignChip({
       >
         {checked && <CheckIcon />}
       </span>
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 truncate">{label}</span>
       {share !== undefined && share > 0 && (
         <span className="text-xs text-gray-600 tabular-nums">{formatAmount(share)}</span>
       )}
