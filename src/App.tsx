@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useBillSplit } from './hooks/useBillSplit'
+import { useBillSplit, hasItemsToClear } from './hooks/useBillSplit'
 import { useAutoUpdate } from './hooks/useAutoUpdate'
 import { useIncomingLink } from './hooks/useIncomingLink'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
@@ -12,7 +12,7 @@ import { PayerSection } from './components/PayerSection'
 import { SettlementSection } from './components/SettlementSection'
 import { ShareSection } from './components/ShareSection'
 import { ShareSummaryButton } from './components/ShareSummaryButton'
-import { ConfirmModal } from './components/ConfirmModal'
+import { ResetModal } from './components/ResetModal'
 import { BuildInfo } from './components/BuildInfo'
 import { SharedBillNotice } from './components/SharedBillNotice'
 
@@ -40,6 +40,8 @@ export function App() {
     setPayerMode,
     setSinglePayer,
     setAmountPaid,
+    clearParticipants,
+    clearItems,
     reset,
     load,
     dismissSaveWarning,
@@ -84,7 +86,7 @@ export function App() {
           <h1 className="text-2xl font-bold text-gray-900">Bill Split</h1>
           <button
             onClick={() => setShowResetModal(true)}
-            aria-label="Reset all fields and start over"
+            aria-haspopup="dialog"
             className="text-sm text-gray-400 hover:text-red-500 focus:outline-none focus:text-red-500 transition-colors px-3 py-1.5 rounded border border-transparent hover:border-red-200 focus:border-red-200 min-h-[44px]"
           >
             Reset
@@ -179,11 +181,12 @@ export function App() {
         </footer>
       </div>
       {showResetModal && (
-        <ConfirmModal
-          title="Reset everything?"
-          message="This will clear all participants, items, and settings. It can't be undone."
-          confirmLabel="Reset"
-          onConfirm={() => { reset(); setShowResetModal(false) }}
+        <ResetModal
+          hasParticipants={state.participants.length > 0}
+          hasItems={hasItemsToClear(state)}
+          onClearParticipants={() => { clearParticipants(); setShowResetModal(false) }}
+          onClearItems={() => { clearItems(); setShowResetModal(false) }}
+          onResetAll={() => { reset(); setShowResetModal(false) }}
           onCancel={() => setShowResetModal(false)}
         />
       )}

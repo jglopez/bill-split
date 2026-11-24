@@ -63,10 +63,19 @@ describe.each([
   }
 
   it('shows a placeholder message when there are no participants', () => {
-    renderItems(<ItemsTable {...baseProps()} participants={[]} />)
+    renderItems(<ItemsTable {...baseProps()} participants={[]} items={[baseProps().items[1]]} />)
     expect(screen.getByText('Add participants above to start entering items.')).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Items' })).not.toBeInTheDocument()
+  })
+
+  it('says items are kept when there are items but no participants', () => {
+    const { rerender } = renderItems(<ItemsTable {...baseProps()} participants={[]} />)
+    expect(screen.getByText('1 item is kept. Add participants above to split it.')).toBeInTheDocument()
+
+    const items: Item[] = [{ id: 'i0', name: 'Soda', price: '', assignedTo: null }, ...baseProps().items]
+    rerender(<ItemsTable {...baseProps()} participants={[]} items={items} />)
+    expect(screen.getByText('2 items are kept. Add participants above to split them.')).toBeInTheDocument()
   })
 
   it('lists participants in participant order', () => {
