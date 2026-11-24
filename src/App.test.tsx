@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from './App'
@@ -84,5 +84,38 @@ describe('App', () => {
     await user.click(screen.getByLabelText('Reset all fields and start over'))
     await user.click(screen.getByRole('button', { name: 'Reset' }))
     expect(screen.getByLabelText('Bill name')).toHaveValue('')
+  })
+
+  it('copies the app link, and no bill data, from the Share section', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    // jsdom has no share sheet, so the button falls back to copying.
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    try {
+      render(<App />)
+      await addParticipant(user, 'Alice')
+
+      const share = screen.getByRole('region', { name: 'Share' })
+      await user.click(within(share).getByRole('button', { name: 'Copy app link' }))
+
+      expect(writeText).toHaveBeenCalledWith(
+        `Split a bill item by item, with tax and tip:\n\n${window.location.origin}/`,
+      )
+      expect(await within(share).findByRole('status')).toHaveTextContent('Copied to clipboard')
+    } finally {
+      delete (navigator as unknown as Record<string, unknown>).clipboard
+    }
+  })
+  it('offers the summary only once there is a bill to summarize', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    expect(screen.queryByRole('button', { name: /summary/ })).not.toBeInTheDocument()
+
+    await addParticipant(user, 'Alice')
+    expect(screen.queryByRole('button', { name: /summary/ })).not.toBeInTheDocument()
+
+    await user.type(screen.getAllByLabelText('Item price')[0], '10')
+    const share = screen.getByRole('region', { name: 'Share' })
+    expect(within(share).getByRole('button', { name: 'Copy summary' })).toBeInTheDocument()
   })
 })
