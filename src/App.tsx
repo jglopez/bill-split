@@ -141,7 +141,7 @@ export function App() {
 
           {/* Summary table */}
           <SummarySection
-            orderedParticipants={state.participants}
+            participants={state.participants}
             additionalFees={state.additionalFees}
             state={state}
             breakdown={breakdown}

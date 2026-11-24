@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode, TipDiscountBase, TipFeeBase } from '../types'
 import { makeVersionedStore } from '../lib/versionedStore'
@@ -318,11 +318,18 @@ export function useBillSplit() {
   // dismissable warning), dismissing the warning doesn't change this.
   const [isPersisted, setIsPersisted] = useState(true)
 
+  // Whether the column order an older build kept apart has been cleared.
+  const legacyOrderCleared = useRef(false)
+
   // Persist to localStorage on every state change
   useEffect(() => {
     const ok = billStore.save(state)
-    // The saved bill now holds any column order an older build kept apart.
-    if (ok) clearLegacyColumnOrder()
+    // Once a save succeeds, the saved bill holds that order, so the old key
+    // can go. It only needs removing once per session.
+    if (ok && !legacyOrderCleared.current) {
+      clearLegacyColumnOrder()
+      legacyOrderCleared.current = true
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveFailed(!ok)
     setIsPersisted(ok)

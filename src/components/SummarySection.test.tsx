@@ -41,7 +41,7 @@ describe('SummarySection', () => {
     const state = billState({ participants: [] })
     const { container } = render(
       <SummarySection
-        orderedParticipants={[]}
+        participants={[]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -54,7 +54,7 @@ describe('SummarySection', () => {
     const state = billState({ items: [] })
     const { container } = render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -67,7 +67,7 @@ describe('SummarySection', () => {
     const state = billState()
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -82,7 +82,7 @@ describe('SummarySection', () => {
     const state = billState()
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -96,7 +96,7 @@ describe('SummarySection', () => {
     const state = billState({ tax: '10%', tip: '20%' })
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -114,7 +114,7 @@ describe('SummarySection', () => {
     const state = billState({ additionalFees: fees })
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={fees}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -129,7 +129,7 @@ describe('SummarySection', () => {
     const state = billState({ additionalFees: fees })
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={fees}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -143,7 +143,7 @@ describe('SummarySection', () => {
     const state = billState({ tax: '10%' })
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -159,7 +159,7 @@ describe('SummarySection', () => {
     const state = billState({ tax: '10%' })
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
@@ -184,7 +184,7 @@ describe('SummarySection', () => {
     const breakdown = calculateBreakdown(state)
     render(
       <SummarySection
-        orderedParticipants={[alice, bob]}
+        participants={[alice, bob]}
         additionalFees={fees}
         state={state}
         breakdown={breakdown}
@@ -209,7 +209,7 @@ describe('SummarySection', () => {
     const state = billState({ participants: [alice], tax: '10%' })
     render(
       <SummarySection
-        orderedParticipants={[alice]}
+        participants={[alice]}
         additionalFees={[]}
         state={state}
         breakdown={calculateBreakdown(state)}
