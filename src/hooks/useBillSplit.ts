@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode, TipDiscountBase, TipFeeBase } from '../types'
 import { makeVersionedStore } from '../lib/versionedStore'
 import { CURRENT_BILL_VERSION, migrateToCurrent } from '../lib/migrations'
+import { adoptLegacyColumnOrder, clearLegacyColumnOrder } from '../lib/legacyColumnOrder'
 
 // ─── Default state ────────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ export function prepareBillStore(): Promise<void> {
 
 function loadState(): BillState {
   // Ensure the trailing blank row always exists after a restore
-  return ensureTrailingBlankRow(billStore.load())
+  return ensureTrailingBlankRow(adoptLegacyColumnOrder(billStore.load()))
 }
 
 /**
@@ -144,6 +145,7 @@ export type Action =
   | { type: 'SET_SINGLE_PAYER'; id: string }
   | { type: 'SET_AMOUNT_PAID'; participantId: string; value: string }
   | { type: 'REORDER_ITEMS'; fromIndex: number; toIndex: number }
+  | { type: 'REORDER_PARTICIPANTS'; fromIndex: number; toIndex: number }
   | { type: 'RESET' }
   | { type: 'LOAD'; state: BillState }
 
@@ -280,6 +282,21 @@ export function reducer(state: BillState, action: Action): BillState {
       return ensureTrailingBlankRow({ ...state, items })
     }
 
+    // The participant list's order is the one order every view and share
+    // method follows: the items table's columns, the summary, the settlement,
+    // the share summary and bill links.
+    case 'REORDER_PARTICIPANTS': {
+      const { fromIndex, toIndex } = action
+      const count = state.participants.length
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= count || toIndex >= count) {
+        return state
+      }
+      const participants = [...state.participants]
+      const [moved] = participants.splice(fromIndex, 1)
+      participants.splice(toIndex, 0, moved)
+      return { ...state, participants }
+    }
+
     case 'RESET':
       return DEFAULT_STATE
 
@@ -301,9 +318,18 @@ export function useBillSplit() {
   // dismissable warning), dismissing the warning doesn't change this.
   const [isPersisted, setIsPersisted] = useState(true)
 
+  // Whether the column order an older build kept apart has been cleared.
+  const legacyOrderCleared = useRef(false)
+
   // Persist to localStorage on every state change
   useEffect(() => {
     const ok = billStore.save(state)
+    // Once a save succeeds, the saved bill holds that order, so the old key
+    // can go. It only needs removing once per session.
+    if (ok && !legacyOrderCleared.current) {
+      clearLegacyColumnOrder()
+      legacyOrderCleared.current = true
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveFailed(!ok)
     setIsPersisted(ok)
@@ -373,6 +399,11 @@ export function useBillSplit() {
       dispatch({ type: 'REORDER_ITEMS', fromIndex, toIndex }),
     [],
   )
+  const reorderParticipants = useCallback(
+    (fromIndex: number, toIndex: number) =>
+      dispatch({ type: 'REORDER_PARTICIPANTS', fromIndex, toIndex }),
+    [],
+  )
   const dismissSaveWarning = useCallback(() => setSaveFailed(false), [])
 
   return {
@@ -386,6 +417,7 @@ export function useBillSplit() {
     updateItem,
     removeItem,
     reorderItems,
+    reorderParticipants,
     setTax,
     setTip,
     setTipBase,

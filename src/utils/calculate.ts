@@ -374,7 +374,7 @@ export interface Transaction {
  *
  * Uses a greedy algorithm: repeatedly pair the person who owes the most with
  * the person owed the most. This minimizes the number of transactions when
- * net balances are non-degenerate.
+ * net balances are non-degenerate. The result is listed in participant order.
  */
 export function calculateSettlement(
   state: BillState,
@@ -428,6 +428,14 @@ export function calculateSettlement(
     if (debtor.amount < 0.005) di++
     if (creditor.amount < 0.005) ci++
   }
+
+  // The greedy pass above works largest debts first, which is an order people
+  // can't follow. List payments in participant order instead (by payer, then
+  // by payee), so the settlement and every share method read in the same
+  // order as the items table. Sorting changes only the order, not the payments.
+  const position = new Map(participants.map((p, i) => [p.id, i]))
+  const at = (id: string) => position.get(id) ?? Number.MAX_SAFE_INTEGER
+  transactions.sort((a, b) => at(a.fromId) - at(b.fromId) || at(a.toId) - at(b.toId))
 
   return transactions
 }
