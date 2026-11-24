@@ -21,11 +21,10 @@ interface Props {
   getContent: () => ShareContent
   disabled?: boolean
   /**
-   * Also offer a plain "Copy" button where the share sheet is used, for
-   * content whose copy is richer than what the share sheet can carry (for
-   * example bold text). Without a share sheet the main button already copies.
+   * Always copy, never open the share sheet. For content whose copy is
+   * richer than the share sheet can carry, such as bold text (see `html`).
    */
-  alsoCopy?: boolean
+  copyOnly?: boolean
 }
 
 // How long a "Copied" or error note stays visible.
@@ -41,10 +40,11 @@ const STATUS_TEXT: Partial<Record<ShareOutcome, string>> = {
  * and most desktop Safari and Chrome), and copies to the clipboard
  * otherwise. The button says which it will do.
  */
-export function ShareButton({ label, getContent, disabled = false, alsoCopy = false }: Props) {
+export function ShareButton({ label, getContent, disabled = false, copyOnly = false }: Props) {
   const [status, setStatus] = useState<string | null>(null)
   // Read once: whether the browser has a share sheet doesn't change.
-  const [useSheet] = useState(canUseShareSheet)
+  const [hasSheet] = useState(canUseShareSheet)
+  const useSheet = hasSheet && !copyOnly
 
   useEffect(() => {
     if (!status) return
@@ -58,12 +58,8 @@ export function ShareButton({ label, getContent, disabled = false, alsoCopy = fa
 
   function handleClick() {
     const { text, title, url, html } = getContent()
-    void shareText(text, { title, url, html }).then(report)
-  }
-
-  function handleCopy() {
-    const { text, url, html } = getContent()
-    void copyText(text, { url, html }).then(report)
+    const sent = useSheet ? shareText(text, { title, url, html }) : copyText(text, { url, html })
+    void sent.then(report)
   }
 
   const buttonClass = 'text-sm font-medium text-teal-700 border border-teal-200 rounded px-3 py-1.5 min-h-[44px] hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -73,17 +69,6 @@ export function ShareButton({ label, getContent, disabled = false, alsoCopy = fa
       <button type="button" onClick={handleClick} disabled={disabled} className={buttonClass}>
         {useSheet ? `Share ${label}` : `Copy ${label}`}
       </button>
-      {alsoCopy && useSheet && (
-        <button
-          type="button"
-          onClick={handleCopy}
-          disabled={disabled}
-          aria-label={`Copy ${label}`}
-          className={buttonClass}
-        >
-          Copy
-        </button>
-      )}
       <span role="status" className="text-xs text-gray-500">
         {status}
       </span>

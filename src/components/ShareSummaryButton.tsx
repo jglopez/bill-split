@@ -15,10 +15,11 @@ interface Props {
 
 /**
  * Shares a plain-text summary of who owes what, ready to paste into a group
- * chat. The text comes from a template (see src/share/summary/). Copying
- * also puts a rich-text version on the clipboard, with the title and total
- * in bold, for apps that keep formatting on paste; the share sheet only
- * carries plain text, so a separate Copy button is offered beside it.
+ * chat. The text comes from a template (see src/share/summary/).
+ *
+ * It always copies, never opens the share sheet: the clipboard gets a
+ * rich-text version (title and total in bold) beside the plain text, and
+ * the share sheet can only carry plain text.
  *
  * The template engine is loaded in the background when this mounts, so it
  * stays out of the main bundle. The button is disabled until it's loaded,
@@ -48,5 +49,5 @@ export function ShareSummaryButton({ state, breakdown, transactions }: Props) {
     }
   }
 
-  return <ShareButton label="summary" getContent={getContent} disabled={!renderer} alsoCopy />
+  return <ShareButton label="summary" getContent={getContent} disabled={!renderer} copyOnly />
 }
