@@ -77,21 +77,30 @@ describe('renderSummary with the default template', () => {
   }
 })
 
+/**
+ * The text a person sees when the rich-text summary is pasted: each line
+ * break becomes a newline and entities are decoded. Uses the browser's HTML
+ * parser rather than stripping tags with a pattern, so the comparison sees
+ * exactly what a real parser would.
+ */
+function htmlToText(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  for (const br of Array.from(doc.body.querySelectorAll('br'))) br.replaceWith('\n')
+  return doc.body.textContent ?? ''
+}
+
 describe('renderSummaryHtml', () => {
   it('renders the sample bill with the title in bold', () => {
     expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br>Tax, tip, fees, and discounts are included.</div>"`)
   })
 
   it('has the same text and line breaks as the plain summary', () => {
-    const html = renderSummaryHtml(sample)
-    const text = html
-      .replace(/<br>/g, '\n')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-    expect(text).toBe(renderSummary(sample))
+    expect(htmlToText(renderSummaryHtml(sample))).toBe(renderSummary(sample))
+  })
+
+  it('reads back as the plain summary when names look like markup', () => {
+    const data = { ...minimal, name: '<<b>b>Tom & &amp; "Jerry"' }
+    expect(htmlToText(renderSummaryHtml(data))).toBe(renderSummary(data))
   })
 
   it('escapes names, so they show as typed and add no markup', () => {
