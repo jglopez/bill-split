@@ -24,41 +24,55 @@ describe('renderSummary with the default template', () => {
       Bob: $14.57
       Chris: $31.68
 
-      Subtotal: $78.50
-      Tax: $3.48
-      Tip: $14.13
-      Coupon: −$5.00
-      Fee: $2.00
-      Total: $93.11"
+      Tax, tip, fees and discounts are included."
     `)
   })
 
-  it('shows every person, in bill order, and every total with the same amounts as the data', () => {
+  it('shows every person, in bill order, with the same amounts as the data', () => {
     const lines = renderSummary(sample).split('\n')
     const personLines = sample.people.map(p => `${p.name}: ${formatMoney(p.total)}`)
     expect(lines.filter(l => personLines.includes(l))).toEqual(personLines)
-    expect(lines.slice(-(4 + sample.totals.fees.length))).toEqual([
-      `Subtotal: ${formatMoney(sample.totals.subtotal)}`,
-      `Tax: ${formatMoney(sample.totals.tax)}`,
-      `Tip: ${formatMoney(sample.totals.tip)}`,
-      ...sample.totals.fees.map(f => `${f.name}: ${formatMoney(f.amount)}`),
-      `Total: ${formatMoney(sample.totals.grandTotal)}`,
-    ])
   })
 
-  it('ends with the bill link on its own line', () => {
+  // People read any other amount as something to pay on top of their own
+  // share, so each person's share is the only amount shown.
+  it('shows no amount other than each person\'s share', () => {
+    const amounts = renderSummary(sample).match(/\$\d[\d,]*\.\d\d/g) ?? []
+    expect(amounts).toEqual(sample.people.map(p => formatMoney(p.total)))
+  })
+
+  it('ends with the bill link alone on its own line, after a blank line', () => {
     const link = 'https://example.test/#b=1.abc'
     expect(renderSummary({ ...minimal, link })).toBe(`${renderSummary(minimal)}\n\n${link}`)
+    expect(renderSummary({ ...sample, link })).toBe(`${renderSummary(sample)}\n\n${link}`)
   })
 
-  it('uses a generic title for an unnamed bill and leaves out zero tax and tip', () => {
-    expect(renderSummary(minimal)).toBe('Bill split\n\nAlice: $10.00\n\nSubtotal: $10.00\nTotal: $10.00')
+  it('uses a generic title for an unnamed bill and leaves out the note when nothing was added', () => {
+    expect(renderSummary(minimal)).toBe('Bill split\n\nAlice: $10.00')
   })
+
+  const notes: [string, Partial<SummaryTemplateData['totals']>, string][] = [
+    ['tax only', { tax: 1 }, 'Tax is included.'],
+    ['tip only', { tip: 1 }, 'Tip is included.'],
+    ['a fee only', { fees: [{ name: 'Delivery', amount: 2 }] }, 'Fees are included.'],
+    ['a discount only', { fees: [{ name: 'Coupon', amount: -2 }] }, 'Discounts are included.'],
+    ['tax and tip', { tax: 1, tip: 2 }, 'Tax and tip are included.'],
+    ['tip and a discount', { tip: 2, fees: [{ name: 'Coupon', amount: -2 }] }, 'Tip and discounts are included.'],
+    ['tax, tip and fees', { tax: 1, tip: 2, fees: [{ name: 'Fee', amount: 1 }, { name: 'Delivery', amount: 2 }] }, 'Tax, tip and fees are included.'],
+  ]
+
+  for (const [what, totals, note] of notes) {
+    it(`says ${what} is included, after the shares and before the link`, () => {
+      const link = 'https://example.test/#b=1.abc'
+      const data = { ...minimal, totals: { ...minimal.totals, ...totals }, link }
+      expect(renderSummary(data)).toBe(`Bill split\n\nAlice: $10.00\n\n${note}\n\n${link}`)
+    })
+  }
 })
 
 describe('renderSummaryHtml', () => {
-  it('renders the sample bill with the title and total in bold', () => {
-    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br>Subtotal: $78.50<br>Tax: $3.48<br>Tip: $14.13<br>Coupon: −$5.00<br>Fee: $2.00<br><b>Total: $93.11</b></div>"`)
+  it('renders the sample bill with the title in bold', () => {
+    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br>Tax, tip, fees and discounts are included.</div>"`)
   })
 
   it('has the same text and line breaks as the plain summary', () => {

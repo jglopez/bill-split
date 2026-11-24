@@ -1,30 +1,44 @@
 {%- comment -%}
   The plain-text summary people paste into a group chat: each person's
-  share, then how the bill adds up. It only formats: every amount comes
-  from the template data. See templateData.ts for the fields, and
+  share, a note that those shares already include tax, tip, fees and
+  discounts, then the bill link. It only formats: every amount comes from
+  the template data. See templateData.ts for the fields, and
   renderSummary.ts for the filters available.
 
-  The bill link, when there is one, goes last on its own line so chat apps
-  show it as a tappable link.
+  The bill's subtotal, tax, tip and total are left out on purpose. Readers
+  took them as amounts to pay on top of their own share, so each person
+  gets one number, and the link opens the full breakdown. The note names
+  only what this bill has, so it never mentions a tip that wasn't added.
+
+  The bill link, when there is one, goes last, on its own line after a
+  blank line, so chat apps show it as a link preview.
 
   `bold` makes text bold in the rich-text copy and leaves plain text alone.
 {%- endcomment -%}
+{%- assign included = "" -%}
+{%- if totals.tax != 0 %}{% assign included = included | append: ",tax" %}{% endif -%}
+{%- if totals.tip != 0 %}{% assign included = included | append: ",tip" %}{% endif -%}
+{%- assign has_fee = false -%}
+{%- assign has_discount = false -%}
+{%- for fee in totals.fees -%}
+  {%- if fee.amount > 0 %}{% assign has_fee = true %}{% elsif fee.amount < 0 %}{% assign has_discount = true %}{% endif -%}
+{%- endfor -%}
+{%- if has_fee %}{% assign included = included | append: ",fees" %}{% endif -%}
+{%- if has_discount %}{% assign included = included | append: ",discounts" %}{% endif -%}
 {% if name != "" %}{{ name | bold }}{% else %}{{ "Bill split" | bold }}{% endif %}
 {% for person in people %}
 {{ person.name }}: {{ person.total | money }}
 {%- endfor %}
+{%- if included != "" %}
+{%- assign verb = " are" %}
+{%- if included == ",tax" or included == ",tip" %}{% assign verb = " is" %}{% endif %}
+{%- assign parts = included | remove_first: "," | split: "," %}
 
-Subtotal: {{ totals.subtotal | money }}
-{%- if totals.tax != 0 %}
-Tax: {{ totals.tax | money }}
+{% for part in parts -%}
+  {%- if forloop.first %}{{ part | capitalize }}{% elsif forloop.last %} and {{ part }}{% else %}, {{ part }}{% endif -%}
+{%- endfor -%}
+{{ verb }} included.
 {%- endif %}
-{%- if totals.tip != 0 %}
-Tip: {{ totals.tip | money }}
-{%- endif %}
-{%- for fee in totals.fees %}
-{{ fee.name }}: {{ fee.amount | money }}
-{%- endfor %}
-{% capture total %}Total: {{ totals.grandTotal | money }}{% endcapture %}{{ total | bold }}
 {%- if link != "" %}
 
 {{ link }}
