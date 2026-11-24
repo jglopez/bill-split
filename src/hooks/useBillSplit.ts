@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode, TipDiscountBase, TipFeeBase } from '../types'
+import { isItemBlank } from '../utils/items'
 import { makeVersionedStore } from '../lib/versionedStore'
 import { CURRENT_BILL_VERSION, OLDEST_BILL_VERSION, migrateToCurrent } from '../lib/migrations'
 
@@ -117,7 +118,7 @@ export function isBillBlank(state: BillState): boolean {
   return (
     state.name.trim() === '' &&
     state.participants.length === 0 &&
-    state.items.every(item => item.name.trim() === '' && item.price.trim() === '') &&
+    state.items.every(isItemBlank) &&
     state.tax.trim() === '' &&
     state.tip.trim() === '' &&
     state.additionalFees.length === 0
@@ -128,7 +129,7 @@ export function isBillBlank(state: BillState): boolean {
 export function hasItemsToClear(state: BillState): boolean {
   return (
     state.name.trim() !== '' ||
-    state.items.some(item => item.name.trim() !== '' || item.price.trim() !== '')
+    state.items.some(item => !isItemBlank(item))
   )
 }
 

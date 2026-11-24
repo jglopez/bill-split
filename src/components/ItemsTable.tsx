@@ -21,6 +21,7 @@ import type { Item, Participant } from '../types'
 import { isValidPrice } from '../utils/calculate'
 import { formatAmount } from '../utils/format'
 import { NAME_MAX_LENGTH } from '../constants'
+import { isItemBlank } from '../utils/items'
 import { GripIcon } from './GripIcon'
 import { useIsMobile } from '../hooks/useIsMobile'
 
@@ -130,7 +131,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
   if (participants.length === 0) {
     // Items can outlive everyone (see Clear participants), so say they are
     // still there rather than looking like an empty bill.
-    const kept = items.filter(i => i.name.trim() !== '' || i.price.trim() !== '').length
+    const kept = items.filter(i => !isItemBlank(i)).length
     return (
       <p className="text-sm text-gray-400 italic mb-6">
         {kept === 0
