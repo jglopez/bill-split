@@ -46,10 +46,15 @@ export async function shareText(text: string, opts: ShareTextOptions = {}): Prom
       await navigator.share(data)
       return 'shared'
     } catch (err) {
-      // The user closed the share sheet without picking a target.
-      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled'
-      // Anything else (for example a NotAllowedError after the gesture
-      // expired) falls through to the clipboard so the user still gets the text.
+      // AbortError: the user closed the share sheet without picking a target.
+      // InvalidStateError: a share sheet is already open (for example a second
+      // click on desktop). Neither is a failure, and neither should copy.
+      if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'InvalidStateError')) {
+        return 'cancelled'
+      }
+      // Anything else is a last-chance clipboard attempt. It often fails too,
+      // because the same expired gesture usually blocks the clipboard, and
+      // then the caller reports 'failed'.
     }
   }
 

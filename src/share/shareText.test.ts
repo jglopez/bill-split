@@ -65,6 +65,14 @@ describe('shareText', () => {
     expect(writeText).not.toHaveBeenCalled()
   })
 
+  it('reports cancelled, without copying, when a share sheet is already open', async () => {
+    install('share', vi.fn().mockRejectedValue(new DOMException('busy', 'InvalidStateError')))
+    const writeText = installClipboard()
+
+    await expect(shareText('hello')).resolves.toBe('cancelled')
+    expect(writeText).not.toHaveBeenCalled()
+  })
+
   it('falls back to the clipboard when the share sheet fails for another reason', async () => {
     install('share', vi.fn().mockRejectedValue(new DOMException('no gesture', 'NotAllowedError')))
     const writeText = installClipboard()
