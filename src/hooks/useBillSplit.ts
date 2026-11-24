@@ -107,6 +107,22 @@ function loadState(): BillState {
   return ensureTrailingBlankRow(billStore.load())
 }
 
+/**
+ * True when the bill has nothing a person typed in, so replacing it loses
+ * nothing. The payer and tip options don't count: they only matter once
+ * there are people and items.
+ */
+export function isBillBlank(state: BillState): boolean {
+  return (
+    state.name.trim() === '' &&
+    state.participants.length === 0 &&
+    state.items.every(item => item.name.trim() === '' && item.price.trim() === '') &&
+    state.tax.trim() === '' &&
+    state.tip.trim() === '' &&
+    state.additionalFees.length === 0
+  )
+}
+
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
 export type Action =
@@ -129,6 +145,7 @@ export type Action =
   | { type: 'SET_AMOUNT_PAID'; participantId: string; value: string }
   | { type: 'REORDER_ITEMS'; fromIndex: number; toIndex: number }
   | { type: 'RESET' }
+  | { type: 'LOAD'; state: BillState }
 
 /**
  * The last item in the list is always a blank placeholder row.
@@ -266,6 +283,10 @@ export function reducer(state: BillState, action: Action): BillState {
     case 'RESET':
       return DEFAULT_STATE
 
+    // Replaces the whole bill, for example with one opened from a link.
+    case 'LOAD':
+      return ensureTrailingBlankRow(action.state)
+
     default:
       return state
   }
@@ -346,6 +367,7 @@ export function useBillSplit() {
     [],
   )
   const reset = useCallback(() => dispatch({ type: 'RESET' }), [])
+  const load = useCallback((bill: BillState) => dispatch({ type: 'LOAD', state: bill }), [])
   const reorderItems = useCallback(
     (fromIndex: number, toIndex: number) =>
       dispatch({ type: 'REORDER_ITEMS', fromIndex, toIndex }),
@@ -376,6 +398,7 @@ export function useBillSplit() {
     setSinglePayer,
     setAmountPaid,
     reset,
+    load,
     dismissSaveWarning,
   }
 }

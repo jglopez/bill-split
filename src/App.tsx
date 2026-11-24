@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useBillSplit } from './hooks/useBillSplit'
 import { useColumnOrder } from './hooks/useColumnOrder'
 import { useAutoUpdate } from './hooks/useAutoUpdate'
+import { useIncomingLink } from './hooks/useIncomingLink'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
 import { BillNameInput } from './components/BillNameInput'
 import { ParticipantSection } from './components/ParticipantSection'
@@ -14,6 +15,7 @@ import { ShareSection } from './components/ShareSection'
 import { ShareSummaryButton } from './components/ShareSummaryButton'
 import { ConfirmModal } from './components/ConfirmModal'
 import { BuildInfo } from './components/BuildInfo'
+import { SharedBillNotice } from './components/SharedBillNotice'
 
 export function App() {
   const {
@@ -39,8 +41,11 @@ export function App() {
     setSinglePayer,
     setAmountPaid,
     reset,
+    load,
     dismissSaveWarning,
   } = useBillSplit()
+
+  const { incoming, open: openIncoming, dismiss: dismissIncoming } = useIncomingLink(state, load)
 
   // A reload would discard unsaved state, so only auto-update while saving works.
   useAutoUpdate({ enabled: isPersisted })
@@ -56,6 +61,9 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {incoming && (
+        <SharedBillNotice incoming={incoming} onOpen={openIncoming} onDismiss={dismissIncoming} />
+      )}
       {saveFailed && (
         <div
           role="status"

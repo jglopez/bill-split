@@ -4,6 +4,7 @@ interface ConfirmModalProps {
   title: string
   message: string
   confirmLabel?: string
+  cancelLabel?: string
   onConfirm: () => void
   onCancel: () => void
 }
@@ -12,6 +13,7 @@ export function ConfirmModal({
   title,
   message,
   confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -48,7 +50,7 @@ export function ConfirmModal({
             onClick={onCancel}
             className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
           >
-            Cancel
+            {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
