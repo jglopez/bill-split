@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canUseShareSheet, shareText } from './shareText'
+import { canUseShareSheet, copyText, shareText } from './shareText'
 
 // jsdom has neither navigator.share nor navigator.clipboard, so each test
 // installs the browser features it needs and removes them afterward.
@@ -95,5 +95,69 @@ describe('shareText', () => {
 
   it('reports failed when there is neither a share sheet nor a clipboard', async () => {
     await expect(shareText('hello')).resolves.toBe('failed')
+  })
+})
+
+describe('copyText with rich text', () => {
+  // jsdom has no ClipboardItem; a minimal stand-in records what it was given.
+  class FakeClipboardItem {
+    constructor(readonly items: Record<string, Blob>) {}
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  async function written(write: ReturnType<typeof vi.fn>) {
+    const [[[item]]] = write.mock.calls as [[[FakeClipboardItem]]]
+    return {
+      plain: await item.items['text/plain'].text(),
+      html: await item.items['text/html'].text(),
+    }
+  }
+
+  it('writes both rich and plain text when the browser supports it', async () => {
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    const write = vi.fn().mockResolvedValue(undefined)
+    const writeText = vi.fn()
+    install('clipboard', { write, writeText })
+
+    await expect(copyText('Hi', { html: '<b>Hi</b>' })).resolves.toBe('copied')
+    expect(await written(write)).toEqual({ plain: 'Hi', html: '<b>Hi</b>' })
+    expect(writeText).not.toHaveBeenCalled()
+  })
+
+  it('appends the url to both versions, escaped as a link in the rich one', async () => {
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    const write = vi.fn().mockResolvedValue(undefined)
+    install('clipboard', { write, writeText: vi.fn() })
+
+    await copyText('Hi', { html: '<b>Hi</b>', url: 'https://example.com/?a=1&b="2"' })
+    expect(await written(write)).toEqual({
+      plain: 'Hi\n\nhttps://example.com/?a=1&b="2"',
+      html: '<b>Hi</b><br><br><a href="https://example.com/?a=1&amp;b=&quot;2&quot;">https://example.com/?a=1&amp;b="2"</a>',
+    })
+  })
+
+  it('copies plain text when the browser has no ClipboardItem', async () => {
+    const writeText = installClipboard()
+    await expect(copyText('Hi', { html: '<b>Hi</b>' })).resolves.toBe('copied')
+    expect(writeText).toHaveBeenCalledWith('Hi')
+  })
+
+  it('falls back to plain text when the rich write is refused', async () => {
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    install('clipboard', { write: vi.fn().mockRejectedValue(new Error('denied')), writeText })
+
+    await expect(copyText('Hi', { html: '<b>Hi</b>' })).resolves.toBe('copied')
+    expect(writeText).toHaveBeenCalledWith('Hi')
+  })
+
+  it('gives the share sheet only the plain text', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    install('share', share)
+    await shareText('Hi', { html: '<b>Hi</b>' })
+    expect(share).toHaveBeenCalledWith({ text: 'Hi' })
   })
 })

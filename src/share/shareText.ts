@@ -11,6 +11,12 @@ export type ShareOutcome = 'shared' | 'copied' | 'cancelled' | 'failed'
 export interface ShareTextOptions {
   title?: string
   url?: string
+  /**
+   * The same content as rich text (an HTML fragment), for apps that keep
+   * formatting on paste. Only the clipboard can carry it; the share sheet
+   * gets the plain text.
+   */
+  html?: string
 }
 
 /** True when the browser can open the OS share sheet for text. */
@@ -30,7 +36,7 @@ export function canUseShareSheet(): boolean {
  * Resolves to what happened; never rejects.
  */
 export async function shareText(text: string, opts: ShareTextOptions = {}): Promise<ShareOutcome> {
-  const { title, url } = opts
+  const { title, url, html } = opts
 
   if (canUseShareSheet()) {
     const data: ShareData = { text }
@@ -52,15 +58,51 @@ export async function shareText(text: string, opts: ShareTextOptions = {}): Prom
     }
   }
 
-  return copyText(url ? `${text}\n\n${url}` : text)
+  return copyText(text, { url, html })
 }
 
-async function copyText(text: string): Promise<ShareOutcome> {
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return 'failed'
+/**
+ * Copy to the clipboard without trying the share sheet. With `html`, the
+ * clipboard gets both rich text and plain text, and the app pasted into
+ * picks the one it supports; browsers without rich clipboard support get
+ * the plain text. Like shareText, call it synchronously from a click.
+ */
+export async function copyText(
+  text: string,
+  opts: Pick<ShareTextOptions, 'url' | 'html'> = {},
+): Promise<ShareOutcome> {
+  const { url, html } = opts
+  const plain = url ? `${text}\n\n${url}` : text
+  if (typeof navigator === 'undefined' || !navigator.clipboard) return 'failed'
+
+  if (html && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard.write === 'function') {
+    const richHtml = url ? `${html}<br><br><a href="${escapeAttribute(url)}">${escapeText(url)}</a>` : html
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': new Blob([plain], { type: 'text/plain' }),
+          'text/html': new Blob([richHtml], { type: 'text/html' }),
+        }),
+      ])
+      return 'copied'
+    } catch {
+      // Some browsers refuse rich clipboard items; plain text still helps.
+    }
+  }
+
+  if (!navigator.clipboard.writeText) return 'failed'
   try {
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(plain)
     return 'copied'
   } catch {
     return 'failed'
   }
+}
+
+function escapeText(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function escapeAttribute(text: string): string {
+  return escapeText(text).replace(/"/g, '&quot;')
 }

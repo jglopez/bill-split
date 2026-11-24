@@ -5,6 +5,8 @@ export interface ShareContent {
   text: string
   title?: string
   url?: string
+  /** The same content as rich text, used only when copying (see shareText). */
+  html?: string
 }
 
 interface Props {
@@ -67,7 +69,7 @@ export function ShareButton({ label, getContent, disabled = false }: Props) {
       return
     }
     setBusy(true)
-    void shareText(content.text, { title: content.title, url: content.url })
+    void shareText(content.text, { title: content.title, url: content.url, html: content.html })
       .then(report)
       .finally(() => setBusy(false))
   }

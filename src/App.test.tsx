@@ -85,4 +85,26 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Reset' }))
     expect(screen.getByLabelText('Bill name')).toHaveValue('')
   })
+
+  it('offers the summary only once there is a bill to summarize', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    expect(screen.queryByRole('button', { name: /summary/ })).not.toBeInTheDocument()
+
+    await addParticipant(user, 'Alice')
+    expect(screen.queryByRole('button', { name: /summary/ })).not.toBeInTheDocument()
+
+    await user.type(screen.getAllByLabelText('Item price')[0], '10')
+    const share = screen.getByRole('region', { name: 'Share' })
+    expect(within(share).getByRole('button', { name: 'Copy summary' })).toBeInTheDocument()
+  })
+
+  it('hides the summary when the totals are not real numbers', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await addParticipant(user, 'Alice')
+    // Too large for a double, so the totals overflow to Infinity or NaN.
+    await user.type(screen.getAllByLabelText('Item price')[0], '1e400')
+    expect(screen.queryByRole('button', { name: /summary/ })).not.toBeInTheDocument()
+  })
 })
