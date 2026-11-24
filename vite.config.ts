@@ -1,11 +1,12 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import svgr from 'vite-plugin-svgr'
 import { appVersion, buildId, previewBranch, previewPrUrl, versionFile } from './vite-plugins/version.ts'
 
 // The app is served from the site root. Set BASE_PATH to host it under a
 // subpath instead (it must start and end with a slash).
 export default defineConfig({
-  plugins: [react(), versionFile()],
+  plugins: [react(), svgr(), versionFile()],
   base: process.env.BASE_PATH ?? '/',
   define: {
     __BUILD_ID__: JSON.stringify(buildId),

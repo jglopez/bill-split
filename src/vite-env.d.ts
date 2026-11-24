@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-svgr/client" />
 
 /** Short commit SHA of this build; 'dev' when git was unavailable at build time. */
 declare const __BUILD_ID__: string

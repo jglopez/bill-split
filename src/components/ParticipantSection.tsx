@@ -12,7 +12,7 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities'
 import type { Participant } from '../types'
 import { NAME_MAX_LENGTH } from '../constants'
-import { GripIcon } from './GripIcon'
+import GripIcon from './icons/grip.svg?react'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 interface Props {
@@ -277,7 +277,7 @@ function ParticipantRow({ participant, onRemove, onRename }: ChipProps) {
         {...attributes}
         {...listeners}
       >
-        <GripIcon />
+        <GripIcon className="w-2 h-3" aria-hidden="true" />
       </button>
       {rename.editing ? (
         <div className="flex-1 min-w-0">
