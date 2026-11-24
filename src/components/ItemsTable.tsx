@@ -21,6 +21,7 @@ import type { Item, Participant } from '../types'
 import { isValidPrice } from '../utils/calculate'
 import { formatAmount } from '../utils/format'
 import { NAME_MAX_LENGTH } from '../constants'
+import { GripIcon } from './GripIcon'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 function isParticipantAssigned(item: Item, participantId: string): boolean {
@@ -69,8 +70,8 @@ interface Props {
  * card instead, so nothing needs horizontal scrolling: description, price
  * and remove on top, then one line summarizing who shares the item. Tapping
  * that line opens the participant list for that card (see ItemAssignment).
- * The cards keep row dragging by the grip. Participants can't be
- * reordered there, because the cards have no columns to drag.
+ * The cards keep row dragging by the grip. With no columns to drag there,
+ * ParticipantSection's one-per-line list reorders participants instead.
  */
 export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
   const allIds = participants.map(p => p.id)
@@ -766,19 +767,6 @@ function ChevronIcon({ open }: { open: boolean }) {
       aria-hidden="true"
     >
       <polyline points="1,1.5 6,6.5 11,1.5" />
-    </svg>
-  )
-}
-
-function GripIcon() {
-  return (
-    <svg viewBox="0 0 8 12" fill="currentColor" className="w-2 h-3" aria-hidden="true">
-      <circle cx="2" cy="2" r="1.2" />
-      <circle cx="6" cy="2" r="1.2" />
-      <circle cx="2" cy="6" r="1.2" />
-      <circle cx="6" cy="6" r="1.2" />
-      <circle cx="2" cy="10" r="1.2" />
-      <circle cx="6" cy="10" r="1.2" />
     </svg>
   )
 }

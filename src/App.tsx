@@ -100,6 +100,7 @@ export function App() {
             onAdd={addParticipant}
             onRemove={removeParticipant}
             onRename={renameParticipant}
+            onReorder={reorderParticipants}
           />
 
           {/* Items table */}
