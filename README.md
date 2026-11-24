@@ -12,6 +12,7 @@ An itemized bill-splitting tool. Add participants, enter line items, assign them
 - Tip and fee rows can be calculated on pre-tax or post-tax subtotal
 - Multi-payer support: one person paid, or split payment across multiple people
 - Settlement: minimal set of transactions to settle all debts
+- Share a plain-text summary of who owes whom through the share sheet, or copy it, ready to paste into a group chat. The wording lives in a template, `src/share/summary/default.liquid`
 - Session auto-saves to localStorage (survives page refresh)
 - Fully responsive — works on Safari on iOS, Chrome for Android, and desktop
 

@@ -11,6 +11,7 @@ import { SummarySection } from './components/SummarySection'
 import { PayerSection } from './components/PayerSection'
 import { SettlementSection } from './components/SettlementSection'
 import { ShareSection } from './components/ShareSection'
+import { ShareSummaryButton } from './components/ShareSummaryButton'
 import { ConfirmModal } from './components/ConfirmModal'
 import { BuildInfo } from './components/BuildInfo'
 
@@ -158,7 +159,9 @@ export function App() {
 
           {/* Share: each way of sending the bill out is a ShareButton child (see #4) */}
           {state.participants.length > 0 && breakdown.totalSubtotal > 0 && (
-            <ShareSection />
+            <ShareSection>
+              <ShareSummaryButton state={state} breakdown={breakdown} transactions={transactions} />
+            </ShareSection>
           )}
         </div>
 

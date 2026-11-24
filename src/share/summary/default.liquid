@@ -1,0 +1,15 @@
+{%- comment -%}
+  The plain-text summary people paste into a group chat. It only formats:
+  every amount comes from the template data. See templateData.ts for the
+  fields, and renderSummary.ts for the filters available.
+{%- endcomment -%}
+{% if name != "" %}{{ name }}{% else %}Bill split{% endif %}
+{% for person in people %}
+{{ person.name }}: {{ person.total | money }}
+{%- endfor %}
+Total: {{ totals.grandTotal | money }}
+{%- if settlements.size > 0 %}
+{% for payment in settlements %}
+{{ payment.from }} pays {{ payment.to }} {{ payment.amount | money }}
+{%- endfor %}
+{%- endif %}
