@@ -51,28 +51,79 @@ describe('App', () => {
     expect(within(grandTotalRow!).getAllByText('5.00')).toHaveLength(2) // $10 split evenly across Alice and Bob
   })
 
-  it('resets all state after confirming the reset modal', async () => {
+  async function openReset(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Reset' }))
+    return screen.getByRole('dialog', { name: 'Reset bill' })
+  }
+
+  async function fillBill(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText('Bill name'), 'Dinner')
+    await addParticipant(user, 'Alice')
+    await user.type(screen.getByLabelText('Item description'), 'Taco')
+    await user.type(screen.getAllByLabelText('Item price')[0], '10')
+  }
+
+  it('Cancel and Escape close the reset modal without changing anything', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await addParticipant(user, 'Alice')
-    expect(screen.getByLabelText('Rename Alice')).toBeInTheDocument()
+    await fillBill(user)
 
-    await user.click(screen.getByLabelText('Reset all fields and start over'))
-    expect(screen.getByRole('dialog', { name: 'Reset everything?' })).toBeInTheDocument()
-
+    await openReset(user)
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Rename Alice')).toBeInTheDocument() // cancel left state untouched
 
-    await user.click(screen.getByLabelText('Reset all fields and start over'))
-    await user.click(screen.getByRole('button', { name: 'Reset' }))
+    await openReset(user)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    expect(screen.getByLabelText('Bill name')).toHaveValue('Dinner')
+    expect(screen.getByLabelText('Rename Alice')).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Item description')[0]).toHaveValue('Taco')
+  })
+
+  it('Reset all clears the whole bill', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await fillBill(user)
+
+    await openReset(user)
+    await user.click(screen.getByRole('button', { name: 'Reset all' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Bill name')).toHaveValue('')
     expect(screen.queryByLabelText('Rename Alice')).not.toBeInTheDocument()
     expect(screen.getByText('Add participants above to start entering items.')).toBeInTheDocument()
   })
 
-  it('keeps the bill name across a reload and clears it on reset', async () => {
+  it('Clear participants keeps the items and the bill name', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await fillBill(user)
+
+    await openReset(user)
+    await user.click(screen.getByRole('button', { name: 'Clear participants' }))
+    expect(screen.getByLabelText('Bill name')).toHaveValue('Dinner')
+    expect(screen.queryByLabelText('Rename Alice')).not.toBeInTheDocument()
+
+    // The items reappear once someone is added again.
+    await addParticipant(user, 'Bob')
+    expect(screen.getAllByLabelText('Item description')[0]).toHaveValue('Taco')
+  })
+
+  it('Clear items keeps the participants and clears the bill name', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await fillBill(user)
+
+    await openReset(user)
+    await user.click(screen.getByRole('button', { name: 'Clear items' }))
+    expect(screen.getByLabelText('Bill name')).toHaveValue('')
+    expect(screen.getByLabelText('Rename Alice')).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Item description')).toHaveLength(1)
+    expect(screen.getByLabelText('Item description')).toHaveValue('')
+  })
+
+  it('keeps the bill name across a reload', async () => {
     const user = userEvent.setup()
     const { unmount } = render(<App />)
     await user.type(screen.getByLabelText('Bill name'), 'Dinner')
@@ -80,10 +131,6 @@ describe('App', () => {
 
     render(<App />)
     expect(screen.getByLabelText('Bill name')).toHaveValue('Dinner')
-
-    await user.click(screen.getByLabelText('Reset all fields and start over'))
-    await user.click(screen.getByRole('button', { name: 'Reset' }))
-    expect(screen.getByLabelText('Bill name')).toHaveValue('')
   })
 
   it('offers the summary only once there is a bill to summarize', async () => {

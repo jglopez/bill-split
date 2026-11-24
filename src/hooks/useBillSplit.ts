@@ -146,6 +146,8 @@ export type Action =
   | { type: 'SET_AMOUNT_PAID'; participantId: string; value: string }
   | { type: 'REORDER_ITEMS'; fromIndex: number; toIndex: number }
   | { type: 'REORDER_PARTICIPANTS'; fromIndex: number; toIndex: number }
+  | { type: 'CLEAR_PARTICIPANTS' }
+  | { type: 'CLEAR_ITEMS' }
   | { type: 'RESET' }
   | { type: 'LOAD'; state: BillState }
 
@@ -297,6 +299,26 @@ export function reducer(state: BillState, action: Action): BillState {
       return { ...state, participants }
     }
 
+    // Removes everyone and every reference to them, so no stale ID is left
+    // behind. Items go back to "everyone" rather than "no one", because an
+    // explicit subset of people who no longer exist means nothing, and an
+    // empty list would leave every item unassigned once people are added
+    // again. The payer mode is a preference, not data, so it stays.
+    case 'CLEAR_PARTICIPANTS':
+      return ensureTrailingBlankRow({
+        ...state,
+        participants: [],
+        items: state.items.map(item => ({ ...item, assignedTo: null })),
+        singlePayerId: '',
+        amountPaid: {},
+      })
+
+    // Starts a new bill for the same people: the item rows go, and so does
+    // the bill's name, since a name describes what was bought. Tax, tip and
+    // fees are separate parts of the bill with their own fields, and they stay.
+    case 'CLEAR_ITEMS':
+      return ensureTrailingBlankRow({ ...state, name: '', items: [] })
+
     case 'RESET':
       return DEFAULT_STATE
 
@@ -383,6 +405,8 @@ export function useBillSplit() {
       dispatch({ type: 'SET_AMOUNT_PAID', participantId, value }),
     [],
   )
+  const clearParticipants = useCallback(() => dispatch({ type: 'CLEAR_PARTICIPANTS' }), [])
+  const clearItems = useCallback(() => dispatch({ type: 'CLEAR_ITEMS' }), [])
   const reset = useCallback(() => dispatch({ type: 'RESET' }), [])
   const load = useCallback((bill: BillState) => dispatch({ type: 'LOAD', state: bill }), [])
   const reorderItems = useCallback(
@@ -420,6 +444,8 @@ export function useBillSplit() {
     setPayerMode,
     setSinglePayer,
     setAmountPaid,
+    clearParticipants,
+    clearItems,
     reset,
     load,
     dismissSaveWarning,

@@ -129,6 +129,83 @@ describe('reducer', () => {
     expect(reducer(state, { type: 'RESET' })).toEqual(DEFAULT_STATE)
   })
 
+  describe('CLEAR_PARTICIPANTS', () => {
+    const fee = { id: 'f1', name: 'Service', amount: '5', base: 'pre-tax' as const }
+    const populated = baseState({
+      name: 'Dinner',
+      participants: [p1, p2],
+      items: [
+        { id: 'i1', name: 'Taco', price: '5', assignedTo: ['p1'] },
+        { id: 'i2', name: 'Soda', price: '2', assignedTo: [], taxable: false },
+        { id: 'i3', name: 'Chips', price: '3', assignedTo: null },
+        { id: 'i4', name: '', price: '', assignedTo: null },
+      ],
+      tax: '8%',
+      tip: '20%',
+      tipBase: 'post-tax',
+      additionalFees: [fee],
+      payerMode: 'multiple',
+      singlePayerId: 'p2',
+      amountPaid: { p1: '6', p2: '4' },
+    })
+    const next = reducer(populated, { type: 'CLEAR_PARTICIPANTS' })
+
+    it('removes every participant', () => {
+      expect(next.participants).toEqual([])
+    })
+
+    it('leaves no stale participant IDs in items, payer, or amounts paid', () => {
+      expect(next.items.every(item => item.assignedTo === null)).toBe(true)
+      expect(next.singlePayerId).toBe('')
+      expect(next.amountPaid).toEqual({})
+    })
+
+    it('keeps items, tax, tip, fees, name, and payer mode', () => {
+      expect(next.items.map(({ id, name, price, taxable }) => ({ id, name, price, taxable }))).toEqual(
+        populated.items.map(({ id, name, price, taxable }) => ({ id, name, price, taxable })),
+      )
+      expect(next).toMatchObject({
+        name: 'Dinner',
+        tax: '8%',
+        tip: '20%',
+        tipBase: 'post-tax',
+        additionalFees: [fee],
+        payerMode: 'multiple',
+      })
+    })
+  })
+
+  describe('CLEAR_ITEMS', () => {
+    const fee = { id: 'f1', name: 'Coupon', amount: '-10%', base: 'pre-tax' as const }
+    const populated = baseState({
+      name: 'Dinner',
+      participants: [p1, p2],
+      items: [
+        { id: 'i1', name: 'Taco', price: '5', assignedTo: ['p1'] },
+        { id: 'i2', name: '', price: '', assignedTo: null },
+      ],
+      tax: '8%',
+      tip: '20%',
+      additionalFees: [fee],
+      singlePayerId: 'p1',
+      amountPaid: { p1: '6' },
+    })
+    const next = reducer(populated, { type: 'CLEAR_ITEMS' })
+
+    it('leaves only the trailing blank row', () => {
+      expect(next.items).toHaveLength(1)
+      expect(next.items[0]).toMatchObject({ name: '', price: '', assignedTo: null })
+    })
+
+    it('clears the bill name', () => {
+      expect(next.name).toBe('')
+    })
+
+    it('keeps participants, tax, tip, fees, and payer', () => {
+      expect(next).toEqual({ ...populated, name: '', items: next.items })
+    })
+  })
+
   it('LOAD replaces the bill and restores the trailing blank row', () => {
     const loaded = baseState({ name: 'Shared', participants: [p1], items: [{ id: 'i1', name: 'Taco', price: '5', assignedTo: null }] })
     const next = reducer(baseState({ name: 'Mine', participants: [p2] }), { type: 'LOAD', state: loaded })
