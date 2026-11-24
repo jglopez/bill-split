@@ -67,10 +67,9 @@ interface Props {
  *
  * On narrow screens (below the sm breakpoint) each row becomes a stacked
  * card instead, so nothing needs horizontal scrolling: description, price
- * and remove on top, then a two-column grid with one cell per participant
- * (checkbox, name, share), then "Everyone" and the taxable switch. Every
- * card uses the same grid, so each person sits in the same spot down the
- * list, the way a table column would. The cards keep row dragging by the grip. Participants can't be
+ * and remove on top, then one line summarizing who shares the item. Tapping
+ * that line opens the participant list for that card (see ItemAssignment).
+ * The cards keep row dragging by the grip. Participants can't be
  * reordered there, because the cards have no columns to drag.
  */
 export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
@@ -78,6 +77,8 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
   const isMobile = useIsMobile()
 
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
+  // Narrow layout only: the one card whose participant list is open.
+  const [openItemId, setOpenItemId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -178,29 +179,16 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                         : <RemoveItemButton item={item} onRemoveItem={onRemoveItem} />}
                     </div>
                     {!blank && (
-                      <>
-                        <div className="mt-1 grid grid-cols-2 gap-x-3">
-                          {participants.map(p => (
-                            <AssignCell
-                              key={p.id}
-                              label={p.name}
-                              checked={isParticipantAssigned(item, p.id)}
-                              share={getItemShare(item, p.id, participants.length)}
-                              onChange={() => toggleParticipant(item, p.id)}
-                              ariaLabel={`Assign "${item.name || 'item'}" to ${p.name}`}
-                            />
-                          ))}
-                        </div>
-                        <div className="flex items-center justify-between border-t border-gray-100">
-                          <AssignCell
-                            label="Everyone"
-                            checked={isAssignedToAll(item)}
-                            onChange={() => toggleAllAssigned(item)}
-                            ariaLabel={`Assign "${item.name || 'item'}" to all participants`}
-                          />
-                          <TaxableSwitch item={item} onUpdateItem={onUpdateItem} showLabel />
-                        </div>
-                      </>
+                      <ItemAssignment
+                        item={item}
+                        participants={participants}
+                        open={openItemId === item.id}
+                        onToggleOpen={() => setOpenItemId(openItemId === item.id ? null : item.id)}
+                        isAssignedToAll={isAssignedToAll(item)}
+                        onToggleAll={() => toggleAllAssigned(item)}
+                        onToggleParticipant={id => toggleParticipant(item, id)}
+                        onUpdateItem={onUpdateItem}
+                      />
                     )}
                   </SortableItemCard>
                 )
@@ -506,14 +494,97 @@ function SortableItemCard({
 }
 
 /**
- * One participant (or "Everyone") in the narrow layout's assignment grid.
- * The real checkbox is visually hidden and the whole cell is its label, so
- * the cell is the touch target. The share sits under the name so names get
- * the cell's full width. Every cell keeps the same shape whether or not it is
- * checked, including the line for the share, so toggling someone never moves
- * anything.
+ * Who shares an item, for the narrow layout. Closed, it is one tappable line
+ * summarizing the split. Open, it lists one participant per line (checkbox,
+ * name, share), then "Everyone" and the taxable switch. Only one card is open
+ * at a time, so a long bill stays short.
  */
-function AssignCell({
+function ItemAssignment({
+  item,
+  participants,
+  open,
+  onToggleOpen,
+  isAssignedToAll,
+  onToggleAll,
+  onToggleParticipant,
+  onUpdateItem,
+}: {
+  item: Item
+  participants: Participant[]
+  open: boolean
+  onToggleOpen: () => void
+  isAssignedToAll: boolean
+  onToggleAll: () => void
+  onToggleParticipant: (participantId: string) => void
+  onUpdateItem: (item: Item) => void
+}) {
+  const panelId = `assign-${item.id}`
+  const assigned = participants.filter(p => isParticipantAssigned(item, p.id))
+  const share = assigned.length > 0 ? getItemShare(item, assigned[0].id, participants.length) : 0
+
+  // Name whichever side is shorter, so a mostly-shared item doesn't list
+  // nearly everyone and run out of room.
+  const left = participants.filter(p => !isParticipantAssigned(item, p.id))
+  let who: string
+  if (assigned.length === 0) who = 'No one'
+  else if (isAssignedToAll && participants.length > 1) who = 'Everyone'
+  else if (assigned.length > 1 && left.length < assigned.length) who = `Everyone but ${left.map(p => p.name).join(', ')}`
+  else who = assigned.map(p => p.name).join(', ')
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={onToggleOpen}
+        className="flex w-full min-h-11 items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
+      >
+        <span className={`flex-1 min-w-0 truncate ${assigned.length === 0 ? 'text-amber-600' : 'text-gray-600'}`}>
+          {who}
+        </span>
+        {share > 0 && (
+          <span className="flex-shrink-0 text-xs tabular-nums text-gray-500">
+            {formatAmount(share)}{assigned.length > 1 ? ' each' : ''}
+          </span>
+        )}
+        {item.taxable === false && <span className="flex-shrink-0 text-xs text-gray-400">no tax</span>}
+        <ChevronIcon open={open} />
+      </button>
+      {open && (
+        <div id={panelId} className="border-t border-gray-100 pr-2">
+          {participants.map(p => (
+            <AssignRow
+              key={p.id}
+              label={p.name}
+              checked={isParticipantAssigned(item, p.id)}
+              share={getItemShare(item, p.id, participants.length)}
+              onChange={() => onToggleParticipant(p.id)}
+              ariaLabel={`Assign "${item.name || 'item'}" to ${p.name}`}
+            />
+          ))}
+          <div className="flex items-center justify-between border-t border-gray-100">
+            <AssignRow
+              label="Everyone"
+              checked={isAssignedToAll}
+              onChange={onToggleAll}
+              ariaLabel={`Assign "${item.name || 'item'}" to all participants`}
+            />
+            <TaxableSwitch item={item} onUpdateItem={onUpdateItem} showLabel />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * One participant (or "Everyone") line in an open card. The real checkbox is
+ * visually hidden and the whole line is its label, so the line is the touch
+ * target. The share keeps a fixed-width slot whether or not the person is
+ * checked, so toggling someone never moves anything.
+ */
+function AssignRow({
   label,
   checked,
   share,
@@ -522,13 +593,13 @@ function AssignCell({
 }: {
   label: string
   checked: boolean
-  /** Omitted for the "Everyone" cell, which has no share line. */
+  /** Omitted for the "Everyone" line, which has no share. */
   share?: number
   onChange: () => void
   ariaLabel: string
 }) {
   return (
-    <label className="flex min-h-11 min-w-0 items-center gap-2 cursor-pointer select-none rounded has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-teal-500">
+    <label className="flex flex-1 min-h-11 min-w-0 items-center gap-3 cursor-pointer select-none rounded has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-teal-500">
       <input type="checkbox" checked={checked} onChange={onChange} aria-label={ariaLabel} className="sr-only" />
       <span
         aria-hidden="true"
@@ -538,14 +609,12 @@ function AssignCell({
       >
         {checked && <CheckIcon />}
       </span>
-      <span className="flex-1 min-w-0 flex flex-col leading-tight">
-        <span className={`truncate ${checked ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
-        {share !== undefined && (
-          <span className="text-xs tabular-nums text-gray-500">
-            {share > 0 ? formatAmount(share) : <span className="text-gray-300">—</span>}
-          </span>
-        )}
-      </span>
+      <span className={`flex-1 min-w-0 truncate ${checked ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
+      {share !== undefined && (
+        <span className="w-16 flex-shrink-0 text-right tabular-nums text-gray-600">
+          {share > 0 ? formatAmount(share) : <span className="text-gray-300">—</span>}
+        </span>
+      )}
     </label>
   )
 }
@@ -680,6 +749,23 @@ function CheckIcon() {
       aria-hidden="true"
     >
       <polyline points="1,4 3.5,7 9,1" />
+    </svg>
+  )
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 12 8"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`w-3 h-2 flex-shrink-0 mr-2 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+      aria-hidden="true"
+    >
+      <polyline points="1,1.5 6,6.5 11,1.5" />
     </svg>
   )
 }
