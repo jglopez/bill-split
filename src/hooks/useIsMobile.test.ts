@@ -1,7 +1,7 @@
 // Hook tests for useIsMobile.
 // Run with: npm test
 
-import { useIsMobile } from './useIsMobile'
+import { useIsMobile, SM_BREAKPOINT_PX } from './useIsMobile'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
@@ -39,6 +39,23 @@ describe('useIsMobile', () => {
     act(() => {
       setInnerWidth(800)
     })
+    expect(result.current).toBe(false)
+  })
+
+  it('reads the current width on the first render, so phones never render the wide layout', () => {
+    setInnerWidth(SM_BREAKPOINT_PX - 1)
+    const values: boolean[] = []
+    renderHook(() => {
+      const value = useIsMobile()
+      values.push(value)
+      return value
+    })
+    expect(values[0]).toBe(true)
+  })
+
+  it('treats exactly the breakpoint width as not mobile', () => {
+    setInnerWidth(SM_BREAKPOINT_PX)
+    const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(false)
   })
 
