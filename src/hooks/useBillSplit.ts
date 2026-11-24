@@ -124,6 +124,14 @@ export function isBillBlank(state: BillState): boolean {
   )
 }
 
+/** True when Clear items would change something: an item or the bill name. */
+export function hasItemsToClear(state: BillState): boolean {
+  return (
+    state.name.trim() !== '' ||
+    state.items.some(item => item.name.trim() !== '' || item.price.trim() !== '')
+  )
+}
+
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
 export type Action =

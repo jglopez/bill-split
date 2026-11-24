@@ -1,7 +1,7 @@
 // Pure-function tests for isBillState and the useBillSplit reducer.
 // Run with: npm test
 
-import { isBillBlank, isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
+import { hasItemsToClear, isBillBlank, isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
 import type { BillState } from '../types'
 import { CURRENT_BILL_VERSION } from '../lib/migrations'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -109,6 +109,19 @@ describe('isBillState', () => {
 
   it('invalid payerMode returns false', () => {
     expect(!isBillState({ ...validState, payerMode: 'group' })).toBe(true)
+  })
+})
+
+describe('hasItemsToClear', () => {
+  it('is false for a bill with only the blank row and no name', () => {
+    expect(hasItemsToClear(DEFAULT_STATE)).toBe(false)
+  })
+
+  it('is true when an item has a name or price, or the bill has a name', () => {
+    const blank = DEFAULT_STATE.items[0]
+    expect(hasItemsToClear({ ...DEFAULT_STATE, items: [{ ...blank, name: 'Taco' }] })).toBe(true)
+    expect(hasItemsToClear({ ...DEFAULT_STATE, items: [{ ...blank, price: '5' }] })).toBe(true)
+    expect(hasItemsToClear({ ...DEFAULT_STATE, name: 'Dinner' })).toBe(true)
   })
 })
 

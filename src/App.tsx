@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useBillSplit } from './hooks/useBillSplit'
+import { useBillSplit, hasItemsToClear } from './hooks/useBillSplit'
 import { useAutoUpdate } from './hooks/useAutoUpdate'
 import { useIncomingLink } from './hooks/useIncomingLink'
 import { calculateBreakdown, calculateSettlement } from './utils/calculate'
@@ -182,7 +182,7 @@ export function App() {
       {showResetModal && (
         <ResetModal
           hasParticipants={state.participants.length > 0}
-          hasItems={state.name.trim() !== '' || state.items.some(item => item.name.trim() !== '' || item.price.trim() !== '')}
+          hasItems={hasItemsToClear(state)}
           onClearParticipants={() => { clearParticipants(); setShowResetModal(false) }}
           onClearItems={() => { clearItems(); setShowResetModal(false) }}
           onResetAll={() => { reset(); setShowResetModal(false) }}
