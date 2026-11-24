@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderSummary, SummaryTemplateError } from './renderSummary'
+import { renderSummary, renderSummaryHtml, SummaryTemplateError } from './renderSummary'
 import { toSummaryTemplateData, type SummaryTemplateData } from './templateData'
 import { buildShareData } from '../shareData'
 import { sampleBill } from '../fixtures/sampleBill'
@@ -50,7 +50,32 @@ describe('renderSummary with the default template', () => {
   })
 })
 
+describe('renderSummaryHtml', () => {
+  it('renders the sample bill with the title and total in bold', () => {
+    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br>Subtotal: $78.50<br>Tax: $3.48<br>Tip: $14.13<br>Coupon: −$5.00<br>Fee: $2.00<br><b>Total: $93.11</b></div>"`)
+  })
+
+  it('has the same text and line breaks as the plain summary', () => {
+    const html = renderSummaryHtml(sample)
+    const text = html.replace(/<br>/g, '\n').replace(/<[^>]+>/g, '').replace(/&#39;/g, "'")
+    expect(text).toBe(renderSummary(sample))
+  })
+
+  it('escapes names, so they show as typed and add no markup', () => {
+    const html = renderSummaryHtml({ ...minimal, name: '<i>Tom & "Jerry"</i>' })
+    expect(html).toContain('<b>&lt;i&gt;Tom &amp; &quot;Jerry&quot;&lt;/i&gt;</b>')
+  })
+
+  it('fails the same way as the plain summary on a bad template', () => {
+    expect(() => renderSummaryHtml(minimal, 'Hi {{ nmae }}')).toThrow(SummaryTemplateError)
+  })
+})
+
 describe('renderSummary with a custom template', () => {
+  it('leaves bold text unmarked in plain text', () => {
+    expect(renderSummary(minimal, '{{ "Hi" | bold }} there')).toBe('Hi there')
+  })
+
   it('renders the given template instead of the default', () => {
     expect(renderSummary(minimal, '{{ people[0].name }} owes {{ totals.grandTotal | money }}'))
       .toBe('Alice owes $10.00')

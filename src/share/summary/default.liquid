@@ -3,8 +3,10 @@
   share, then how the bill adds up. It only formats: every amount comes
   from the template data. See templateData.ts for the fields, and
   renderSummary.ts for the filters available.
+
+  `bold` makes text bold in the rich-text copy and leaves plain text alone.
 {%- endcomment -%}
-{% if name != "" %}{{ name }}{% else %}Bill split{% endif %}
+{% if name != "" %}{{ name | bold }}{% else %}{{ "Bill split" | bold }}{% endif %}
 {% for person in people %}
 {{ person.name }}: {{ person.total | money }}
 {%- endfor %}
@@ -19,4 +21,4 @@ Tip: {{ totals.tip | money }}
 {%- for fee in totals.fees %}
 {{ fee.name }}: {{ fee.amount | money }}
 {%- endfor %}
-Total: {{ totals.grandTotal | money }}
+{% capture total %}Total: {{ totals.grandTotal | money }}{% endcapture %}{{ total | bold }}

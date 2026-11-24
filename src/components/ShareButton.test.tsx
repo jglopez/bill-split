@@ -68,4 +68,23 @@ describe('ShareButton', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Copy summary' }))
     expect(getContent).not.toHaveBeenCalled()
   })
+
+  it('offers a separate Copy button beside the share sheet when asked', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    install('share', share)
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    install('clipboard', { writeText })
+    render(<ShareButton label="summary" getContent={() => ({ text: 'hi' })} alsoCopy />)
+
+    await user.click(screen.getByRole('button', { name: 'Copy summary' }))
+    expect(writeText).toHaveBeenCalledWith('hi')
+    expect(share).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Share summary' })).toBeInTheDocument()
+  })
+
+  it('shows no separate Copy button without a share sheet, since the main button copies', () => {
+    render(<ShareButton label="summary" getContent={() => ({ text: 'hi' })} alsoCopy />)
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+  })
 })
