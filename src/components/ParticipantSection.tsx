@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react'
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Participant } from '../types'
 import { NAME_MAX_LENGTH } from '../constants'
@@ -232,7 +233,11 @@ function ParticipantList({
   onReorder: (fromIndex: number, toIndex: number) => void
 }) {
   const ids = participants.map(p => p.id)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  // Keyboard too: focus a grip, Space to pick up, arrows to move, Space to drop.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
@@ -267,7 +272,7 @@ function ParticipantRow({ participant, onRemove, onRename }: ChipProps) {
   return (
     <li ref={setNodeRef} style={style} className="flex min-h-11 items-center gap-1 bg-white text-sm">
       <button
-        className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none focus:outline-none min-h-11 w-8 flex-shrink-0 flex items-center justify-center"
+        className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 min-h-11 w-8 flex-shrink-0 flex items-center justify-center"
         aria-label={`Drag to reorder ${participant.name}`}
         {...attributes}
         {...listeners}

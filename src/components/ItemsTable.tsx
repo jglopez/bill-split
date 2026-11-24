@@ -538,6 +538,7 @@ function ItemAssignment({
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
+        aria-label={`Split of "${item.name || 'item'}": ${who}${share > 0 ? `, ${formatAmount(share)}${assigned.length > 1 ? ' each' : ''}` : ''}${item.taxable === false ? ', no tax' : ''}`}
         onClick={onToggleOpen}
         className="flex w-full min-h-11 items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
       >

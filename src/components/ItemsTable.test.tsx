@@ -253,6 +253,13 @@ describe('ItemsTable (cards layout only)', () => {
     expect(screen.getAllByRole('button', { expanded: false })[0]).toHaveTextContent(text)
   })
 
+  it('names the item in the summary button for screen readers', () => {
+    const props = baseProps()
+    props.items[0].taxable = false
+    render(<ItemsTable {...props} />)
+    expect(screen.getByRole('button', { name: 'Split of "Dinner": Everyone, 5.00 each, no tax' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('opens one card at a time', async () => {
     const user = userEvent.setup()
     const props = baseProps()
