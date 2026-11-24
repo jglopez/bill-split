@@ -6,8 +6,13 @@
 // turns vN into vN+1), which are fetched lazily so they stay out of the main
 // bundle until someone actually has old data.
 //
+// OLDEST_BILL_VERSION is the oldest version this app still reads. Data older
+// than it is rejected as unknown. Raising it retires migrations, which drops
+// support for data people may still have, so it's a deliberate owner decision,
+// never a cleanup. When it equals CURRENT_BILL_VERSION, there are no steps.
+//
 // To change the BillState shape:
-//   1. Bump CURRENT_BILL_VERSION.
+//   1. Bump CURRENT_BILL_VERSION. Leave OLDEST_BILL_VERSION alone.
 //   2. Add vN.ts (N = the old version) exporting `migrate(raw: unknown)`, which
 //      turns a vN payload into the vN+1 shape. Describe that shape with local
 //      types, not BillState, so the step stays fixed as the schema moves on.
@@ -22,23 +27,32 @@
 
 export const CURRENT_BILL_VERSION = 4
 
+/** The oldest schema version this app can still read. See above before raising it. */
+export const OLDEST_BILL_VERSION = 4
+
 export interface MigrationStep {
   migrate: (raw: unknown) => unknown
 }
 
 export type StepRegistry = Readonly<Record<number, () => Promise<MigrationStep>>>
 
-export const steps: StepRegistry = {
-  1: () => import('./v1'),
-  2: () => import('./v2'),
-  3: () => import('./v3'),
+// One entry per version from OLDEST_BILL_VERSION up to, but not including,
+// CURRENT_BILL_VERSION, in the form `N: () => import('./vN')`.
+export const steps: StepRegistry = {}
+
+/** The schema versions a runner accepts. Tests pass their own. */
+export interface SchemaRange {
+  oldest: number
+  current: number
 }
+
+const BILL_SCHEMA: SchemaRange = { oldest: OLDEST_BILL_VERSION, current: CURRENT_BILL_VERSION }
 
 /** Data is from a newer app version than this one. The app should update. */
 export class NewerSchemaError extends Error {
   readonly version: number
-  constructor(version: number) {
-    super(`Bill schema v${version} is newer than this app (v${CURRENT_BILL_VERSION})`)
+  constructor(version: number, current: number = CURRENT_BILL_VERSION) {
+    super(`Bill schema v${version} is newer than this app (v${current})`)
     this.name = 'NewerSchemaError'
     this.version = version
   }
@@ -58,20 +72,24 @@ export class MigrationLoadError extends Error {
   }
 }
 
-function assertKnownVersion(version: number): void {
-  if (version > CURRENT_BILL_VERSION) throw new NewerSchemaError(version)
+function assertKnownVersion(version: number, range: SchemaRange): void {
+  if (version > range.current) throw new NewerSchemaError(version, range.current)
   if (!Number.isInteger(version) || version < 1) {
     throw new RangeError(`Unknown bill schema version: ${version}`)
+  }
+  if (version < range.oldest) {
+    throw new RangeError(`Bill schema v${version} is older than the oldest this app reads (v${range.oldest})`)
   }
 }
 
 /**
  * Whether data at `version` must go through `migrateToCurrent`. Throws
- * NewerSchemaError for data from a newer app, RangeError for nonsense versions.
+ * NewerSchemaError for data from a newer app, RangeError for nonsense versions
+ * and for versions older than the oldest supported one.
  */
-export function needsMigration(version: number): boolean {
-  assertKnownVersion(version)
-  return version < CURRENT_BILL_VERSION
+export function needsMigration(version: number, range: SchemaRange = BILL_SCHEMA): boolean {
+  assertKnownVersion(version, range)
+  return version < range.current
 }
 
 /**
@@ -86,10 +104,11 @@ export async function migrateToCurrent(
   raw: unknown,
   fromVersion: number,
   registry: StepRegistry = steps,
+  range: SchemaRange = BILL_SCHEMA,
 ): Promise<unknown> {
-  assertKnownVersion(fromVersion)
+  assertKnownVersion(fromVersion, range)
   const loaders: (() => Promise<MigrationStep>)[] = []
-  for (let v = fromVersion; v < CURRENT_BILL_VERSION; v++) {
+  for (let v = fromVersion; v < range.current; v++) {
     const loader = registry[v]
     if (!loader) throw new RangeError(`No migration registered for bill schema v${v}`)
     loaders.push(loader)

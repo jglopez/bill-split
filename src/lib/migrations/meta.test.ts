@@ -1,10 +1,11 @@
 // Checks that every schema version follows the pattern in ./index.ts: each
 // step has its own module, tests, and registry entry, and every version
-// (including the current one) has a pinned fixture that still upgrades to a
-// valid bill. Adding a version without the matching files fails here.
+// the app still reads (from OLDEST_BILL_VERSION to the current one) has a
+// pinned fixture that still upgrades to a valid bill. Adding a version without
+// the matching files fails here.
 
 import { describe, it, expect } from 'vitest'
-import { CURRENT_BILL_VERSION, migrateToCurrent, steps } from './index'
+import { CURRENT_BILL_VERSION, OLDEST_BILL_VERSION, migrateToCurrent, steps } from './index'
 import { isBillState } from '../../hooks/useBillSplit'
 
 const CHECKLIST = 'see the checklist at the top of src/lib/migrations/index.ts'
@@ -26,10 +27,11 @@ const fixtureVersions = versionsOf(Object.keys(fixtures), /^\.\/fixtures\/v(\d+)
 const registeredVersions = Object.keys(steps).map(Number).sort((a, b) => a - b)
 
 const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i)
-const allVersions = range(1, CURRENT_BILL_VERSION)
-const stepVersions = range(1, CURRENT_BILL_VERSION - 1)
+const allVersions = range(OLDEST_BILL_VERSION, CURRENT_BILL_VERSION)
+const stepVersions = range(OLDEST_BILL_VERSION, CURRENT_BILL_VERSION - 1)
 
 describe('migration meta', () => {
+  // Empty while OLDEST_BILL_VERSION equals the current version.
   describe.each(stepVersions)('step v%i', v => {
     it('has a module', () => {
       expect(stepFileVersions, `Missing src/lib/migrations/v${v}.ts (${CHECKLIST})`).toContain(v)
@@ -62,7 +64,14 @@ describe('migration meta', () => {
     expect(extra(registeredVersions), 'Steps registered for versions with nothing to upgrade to').toEqual([])
   })
 
-  it('has no fixtures newer than the current version', () => {
-    expect(fixtureVersions.filter(v => v > CURRENT_BILL_VERSION)).toEqual([])
+  it('has no step modules, tests, or registry entries older than the oldest supported version', () => {
+    const retired = (vs: number[]) => vs.filter(v => v < OLDEST_BILL_VERSION)
+    expect(retired(stepFileVersions), 'Step modules found for versions the app no longer reads').toEqual([])
+    expect(retired(stepTestVersions), 'Step tests found for versions the app no longer reads').toEqual([])
+    expect(retired(registeredVersions), 'Steps registered for versions the app no longer reads').toEqual([])
+  })
+
+  it('has fixtures only for the versions the app reads', () => {
+    expect(fixtureVersions.filter(v => v > CURRENT_BILL_VERSION || v < OLDEST_BILL_VERSION)).toEqual([])
   })
 })

@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { BillState, Item, AdditionalFee, FeesBase, PayerMode, TipDiscountBase, TipFeeBase } from '../types'
 import { makeVersionedStore } from '../lib/versionedStore'
-import { CURRENT_BILL_VERSION, migrateToCurrent } from '../lib/migrations'
-import { adoptLegacyColumnOrder, clearLegacyColumnOrder } from '../lib/legacyColumnOrder'
+import { CURRENT_BILL_VERSION, OLDEST_BILL_VERSION, migrateToCurrent } from '../lib/migrations'
 
 // ─── Default state ────────────────────────────────────────────────────────────
 
@@ -80,9 +79,10 @@ export function isBillState(v: unknown): v is BillState {
 
 const storageKey = (version: number) => `bill-split:v${version}`
 
-// Older bills live under the key for their version, newest first.
+// Older bills live under the key for their version, newest first. Only
+// versions the app still reads are checked; anything older is left alone.
 const legacyKeys = Array.from(
-  { length: CURRENT_BILL_VERSION - 1 },
+  { length: CURRENT_BILL_VERSION - OLDEST_BILL_VERSION },
   (_, i): [string, number] => [storageKey(CURRENT_BILL_VERSION - 1 - i), CURRENT_BILL_VERSION - 1 - i],
 )
 
@@ -105,7 +105,7 @@ export function prepareBillStore(): Promise<void> {
 
 function loadState(): BillState {
   // Ensure the trailing blank row always exists after a restore
-  return ensureTrailingBlankRow(adoptLegacyColumnOrder(billStore.load()))
+  return ensureTrailingBlankRow(billStore.load())
 }
 
 /**
@@ -318,18 +318,9 @@ export function useBillSplit() {
   // dismissable warning), dismissing the warning doesn't change this.
   const [isPersisted, setIsPersisted] = useState(true)
 
-  // Whether the column order an older build kept apart has been cleared.
-  const legacyOrderCleared = useRef(false)
-
   // Persist to localStorage on every state change
   useEffect(() => {
     const ok = billStore.save(state)
-    // Once a save succeeds, the saved bill holds that order, so the old key
-    // can go. It only needs removing once per session.
-    if (ok && !legacyOrderCleared.current) {
-      clearLegacyColumnOrder()
-      legacyOrderCleared.current = true
-    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveFailed(!ok)
     setIsPersisted(ok)

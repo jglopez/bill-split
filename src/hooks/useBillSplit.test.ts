@@ -4,7 +4,6 @@
 import { isBillBlank, isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
 import type { BillState } from '../types'
 import { CURRENT_BILL_VERSION } from '../lib/migrations'
-import { LEGACY_COLUMN_ORDER_KEY } from '../lib/legacyColumnOrder'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
@@ -378,28 +377,6 @@ describe('useBillSplit (hook)', () => {
     expect(result.current.state.participants.map(p => p.name)).toEqual(['Chris', 'Alice', 'Bob'])
     const parsed = JSON.parse(localStorage.getItem(`bill-split:v${CURRENT_BILL_VERSION}`)!)
     expect(parsed.participants.map((p: { name: string }) => p.name)).toEqual(['Chris', 'Alice', 'Bob'])
-  })
-
-  it('carries over a column order an older build stored apart, then removes it', () => {
-    const saved: BillState = {
-      ...DEFAULT_STATE,
-      participants: [{ id: 'a', name: 'Alice' }, { id: 'b', name: 'Bob' }, { id: 'c', name: 'Chris' }],
-    }
-    localStorage.setItem(`bill-split:v${CURRENT_BILL_VERSION}`, JSON.stringify(saved))
-    localStorage.setItem(LEGACY_COLUMN_ORDER_KEY, JSON.stringify(['c', 'a', 'b']))
-    const { result } = renderHook(() => useBillSplit())
-    expect(result.current.state.participants.map(p => p.id)).toEqual(['c', 'a', 'b'])
-    expect(localStorage.getItem(LEGACY_COLUMN_ORDER_KEY)).toBeNull()
-  })
-
-  it('keeps the old column order key while saving fails', () => {
-    localStorage.setItem(LEGACY_COLUMN_ORDER_KEY, JSON.stringify(['b', 'a']))
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('QuotaExceededError')
-    })
-    renderHook(() => useBillSplit())
-    setItemSpy.mockRestore()
-    expect(localStorage.getItem(LEGACY_COLUMN_ORDER_KEY)).not.toBeNull()
   })
 
   it('persists state to localStorage on every change', () => {
