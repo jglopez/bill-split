@@ -67,9 +67,10 @@ interface Props {
  *
  * On narrow screens (below the sm breakpoint) each row becomes a stacked
  * card instead, so nothing needs horizontal scrolling: description, price
- * and remove on top, then a wrapping line of assignment chips ("All" and one
- * per participant, showing that person's share) ending with the taxable
- * switch. The cards keep row dragging by the grip. Participants can't be
+ * and remove on top, then a two-column grid with one cell per participant
+ * (checkbox, name, share), then "Everyone" and the taxable switch. Every
+ * card uses the same grid, so each person sits in the same spot down the
+ * list, the way a table column would. The cards keep row dragging by the grip. Participants can't be
  * reordered there, because the cards have no columns to drag.
  */
 export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, onReorderItems, onReorderColumns }: Props) {
@@ -177,27 +178,29 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                         : <RemoveItemButton item={item} onRemoveItem={onRemoveItem} />}
                     </div>
                     {!blank && (
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <AssignChip
-                          label="All"
-                          checked={isAssignedToAll(item)}
-                          onChange={() => toggleAllAssigned(item)}
-                          ariaLabel={`Assign "${item.name || 'item'}" to all participants`}
-                        />
-                        {participants.map(p => (
-                          <AssignChip
-                            key={p.id}
-                            label={p.name}
-                            checked={isParticipantAssigned(item, p.id)}
-                            share={getItemShare(item, p.id, participants.length)}
-                            onChange={() => toggleParticipant(item, p.id)}
-                            ariaLabel={`Assign "${item.name || 'item'}" to ${p.name}`}
+                      <>
+                        <div className="mt-1 grid grid-cols-2 gap-x-3">
+                          {participants.map(p => (
+                            <AssignCell
+                              key={p.id}
+                              label={p.name}
+                              checked={isParticipantAssigned(item, p.id)}
+                              share={getItemShare(item, p.id, participants.length)}
+                              onChange={() => toggleParticipant(item, p.id)}
+                              ariaLabel={`Assign "${item.name || 'item'}" to ${p.name}`}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between border-t border-gray-100">
+                          <AssignCell
+                            label="Everyone"
+                            checked={isAssignedToAll(item)}
+                            onChange={() => toggleAllAssigned(item)}
+                            ariaLabel={`Assign "${item.name || 'item'}" to all participants`}
                           />
-                        ))}
-                        <div className="ml-auto">
                           <TaxableSwitch item={item} onUpdateItem={onUpdateItem} showLabel />
                         </div>
-                      </div>
+                      </>
                     )}
                   </SortableItemCard>
                 )
@@ -503,11 +506,14 @@ function SortableItemCard({
 }
 
 /**
- * A tappable participant (or "All") pill for the narrow layout. The real
- * checkbox is visually hidden; the pill is its label, so the whole pill is
- * the touch target.
+ * One participant (or "Everyone") in the narrow layout's assignment grid.
+ * The real checkbox is visually hidden and the whole cell is its label, so
+ * the cell is the touch target. The share sits under the name so names get
+ * the cell's full width. Every cell keeps the same shape whether or not it is
+ * checked, including the line for the share, so toggling someone never moves
+ * anything.
  */
-function AssignChip({
+function AssignCell({
   label,
   checked,
   share,
@@ -516,29 +522,30 @@ function AssignChip({
 }: {
   label: string
   checked: boolean
+  /** Omitted for the "Everyone" cell, which has no share line. */
   share?: number
   onChange: () => void
   ariaLabel: string
 }) {
   return (
-    <label
-      className={`inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-2.5 cursor-pointer select-none transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-teal-500 ${
-        checked ? 'border-teal-600 bg-teal-50 text-gray-800' : 'border-gray-300 bg-white text-gray-500'
-      }`}
-    >
+    <label className="flex min-h-11 min-w-0 items-center gap-2 cursor-pointer select-none rounded has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-teal-500">
       <input type="checkbox" checked={checked} onChange={onChange} aria-label={ariaLabel} className="sr-only" />
       <span
         aria-hidden="true"
-        className={`w-4 h-4 flex-shrink-0 rounded flex items-center justify-center border ${
+        className={`w-5 h-5 flex-shrink-0 rounded flex items-center justify-center border transition-colors ${
           checked ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 bg-white'
         }`}
       >
         {checked && <CheckIcon />}
       </span>
-      <span className="min-w-0 truncate">{label}</span>
-      {share !== undefined && share > 0 && (
-        <span className="text-xs text-gray-600 tabular-nums">{formatAmount(share)}</span>
-      )}
+      <span className="flex-1 min-w-0 flex flex-col leading-tight">
+        <span className={`truncate ${checked ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
+        {share !== undefined && (
+          <span className="text-xs tabular-nums text-gray-500">
+            {share > 0 ? formatAmount(share) : <span className="text-gray-300">—</span>}
+          </span>
+        )}
+      </span>
     </label>
   )
 }

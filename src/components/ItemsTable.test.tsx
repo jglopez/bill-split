@@ -217,25 +217,33 @@ describe('ItemsTable (cards layout only)', () => {
     expect(within(cards[0]).getByDisplayValue('Dinner')).toBeInTheDocument()
   })
 
-  it('puts the "All" chip and one chip per participant, with their share, in the item card', () => {
+  it('puts one cell per participant, with their share, then "Everyone", in the item card', () => {
     render(<ItemsTable {...baseProps()} />)
     const card = screen.getAllByRole('listitem')[0]
     const chips = within(card).getAllByRole('checkbox')
     expect(chips.map(c => c.getAttribute('aria-label'))).toEqual([
-      'Assign "Dinner" to all participants',
       'Assign "Dinner" to Alice',
       'Assign "Dinner" to Bob',
+      'Assign "Dinner" to all participants',
     ])
     expect(within(card).getByLabelText('Assign "Dinner" to Alice').closest('label')).toHaveTextContent('Alice5.00')
   })
 
-  it('handles many participants by wrapping chips instead of adding columns', () => {
+  it('handles many participants by adding grid rows instead of columns', () => {
     const many = Array.from({ length: 12 }, (_, i) => ({ id: `p${i}`, name: `Person ${i}` }))
     render(<ItemsTable {...baseProps()} participants={many} />)
     const card = screen.getAllByRole('listitem')[0]
     expect(within(card).getAllByRole('checkbox')).toHaveLength(many.length + 1) // plus "All"
     const chipRow = within(card).getByLabelText('Assign "Dinner" to Person 0').closest('label')?.parentElement
-    expect(chipRow).toHaveClass('flex-wrap')
+    expect(chipRow).toHaveClass('grid-cols-2')
+  })
+
+  it('keeps the share space for an unassigned participant, so toggling never shifts the layout', () => {
+    const props = baseProps()
+    props.items[0].assignedTo = ['a']
+    render(<ItemsTable {...props} />)
+    const bobCell = screen.getByLabelText('Assign "Dinner" to Bob').closest('label')
+    expect(bobCell).toHaveTextContent('Bob—')
   })
 
   it('shows only description and price on the blank card', () => {
