@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { canUseShareSheet, copyText, shareText, type ShareOutcome } from '../share/shareText'
+import { canUseShareSheet, shareText, type ShareOutcome } from '../share/shareText'
 
 export interface ShareContent {
   text: string
@@ -20,11 +20,6 @@ interface Props {
    */
   getContent: () => ShareContent
   disabled?: boolean
-  /**
-   * Always copy, never open the share sheet. For content whose copy is
-   * richer than the share sheet can carry, such as bold text (see `html`).
-   */
-  copyOnly?: boolean
 }
 
 // How long a "Copied" or error note stays visible.
@@ -40,11 +35,10 @@ const STATUS_TEXT: Partial<Record<ShareOutcome, string>> = {
  * and most desktop Safari and Chrome), and copies to the clipboard
  * otherwise. The button says which it will do.
  */
-export function ShareButton({ label, getContent, disabled = false, copyOnly = false }: Props) {
+export function ShareButton({ label, getContent, disabled = false }: Props) {
   const [status, setStatus] = useState<string | null>(null)
   // Read once: whether the browser has a share sheet doesn't change.
-  const [hasSheet] = useState(canUseShareSheet)
-  const useSheet = hasSheet && !copyOnly
+  const [useSheet] = useState(canUseShareSheet)
 
   useEffect(() => {
     if (!status) return
@@ -58,8 +52,7 @@ export function ShareButton({ label, getContent, disabled = false, copyOnly = fa
 
   function handleClick() {
     const { text, title, url, html } = getContent()
-    const sent = useSheet ? shareText(text, { title, url, html }) : copyText(text, { url, html })
-    void sent.then(report)
+    void shareText(text, { title, url, html }).then(report)
   }
 
   const buttonClass = 'text-sm font-medium text-teal-700 border border-teal-200 rounded px-3 py-1.5 min-h-[44px] hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed'

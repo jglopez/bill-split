@@ -69,18 +69,4 @@ describe('ShareButton', () => {
     expect(getContent).not.toHaveBeenCalled()
   })
 
-  it('copies instead of opening the share sheet when copyOnly is set', async () => {
-    const share = vi.fn().mockResolvedValue(undefined)
-    install('share', share)
-    const user = userEvent.setup()
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    install('clipboard', { writeText })
-    render(<ShareButton label="summary" getContent={() => ({ text: 'hi' })} copyOnly />)
-
-    expect(screen.getAllByRole('button')).toHaveLength(1)
-    await user.click(screen.getByRole('button', { name: 'Copy summary' }))
-    expect(writeText).toHaveBeenCalledWith('hi')
-    expect(share).not.toHaveBeenCalled()
-    expect(await screen.findByRole('status')).toHaveTextContent('Copied to clipboard')
-  })
 })
