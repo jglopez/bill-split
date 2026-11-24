@@ -22,7 +22,9 @@ import { isValidPrice } from '../utils/calculate'
 import { formatAmount } from '../utils/format'
 import { NAME_MAX_LENGTH } from '../constants'
 import { isItemBlank } from '../utils/items'
-import { GripIcon } from './GripIcon'
+import GripIcon from './icons/grip.svg?react'
+import CheckIcon from './icons/check.svg?react'
+import ChevronIcon from './icons/chevron.svg?react'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 function isParticipantAssigned(item: Item, participantId: string): boolean {
@@ -275,7 +277,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                                     : 'border-gray-300 bg-white'
                                 }`}
                               >
-                                {assigned && <CheckIcon />}
+                                {assigned && <CheckIcon className="w-3 h-3" aria-hidden="true" />}
                               </span>
                               <span className="text-xs text-gray-600 tabular-nums">
                                 {share > 0 ? formatAmount(share) : <span className="text-gray-300">—</span>}
@@ -305,7 +307,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                                 : 'border-gray-300 bg-white'
                             }`}
                           >
-                            {isAssignedToAll(item) && <CheckIcon />}
+                            {isAssignedToAll(item) && <CheckIcon className="w-3 h-3" aria-hidden="true" />}
                           </span>
                         </label>
                       )}
@@ -362,7 +364,7 @@ function ColumnDragOverlay({
                 assigned ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 bg-white'
               }`}
             >
-              {assigned && <CheckIcon />}
+              {assigned && <CheckIcon className="w-3 h-3" aria-hidden="true" />}
             </span>
             <span className="text-xs text-gray-600 tabular-nums">
               {share > 0 ? formatAmount(share) : <span className="text-gray-300">—</span>}
@@ -442,7 +444,7 @@ function SortableItemRow({
             {...attributes}
             {...listeners}
           >
-            <GripIcon />
+            <GripIcon className="w-2 h-3" aria-hidden="true" />
           </button>
         )}
       </td>
@@ -491,7 +493,7 @@ function SortableItemCard({
             {...attributes}
             {...listeners}
           >
-            <GripIcon />
+            <GripIcon className="w-2 h-3" aria-hidden="true" />
           </button>
         )}
       </div>
@@ -557,7 +559,10 @@ function ItemAssignment({
           </span>
         )}
         {item.taxable === false && <span className="flex-shrink-0 text-xs text-gray-400">no tax</span>}
-        <ChevronIcon open={open} />
+        <ChevronIcon
+          className={`w-3 h-2 flex-shrink-0 mr-2 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
       </button>
       {open && (
         <div id={panelId} className="border-t border-gray-100 pr-2">
@@ -615,7 +620,7 @@ function AssignRow({
           checked ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 bg-white'
         }`}
       >
-        {checked && <CheckIcon />}
+        {checked && <CheckIcon className="w-3 h-3" aria-hidden="true" />}
       </span>
       <span className={`flex-1 min-w-0 truncate ${checked ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
       {share !== undefined && (
@@ -738,42 +743,5 @@ function RemoveItemButton({ item, onRemoveItem }: { item: Item; onRemoveItem: (i
     >
       <span aria-hidden="true">×</span>
     </button>
-  )
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 10 8"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-3 h-3"
-      aria-hidden="true"
-    >
-      <polyline points="1,4 3.5,7 9,1" />
-    </svg>
-  )
-}
-
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 12 8"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`w-3 h-2 flex-shrink-0 mr-2 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
-      aria-hidden="true"
-    >
-      <polyline points="1,1.5 6,6.5 11,1.5" />
-    </svg>
   )
 }
