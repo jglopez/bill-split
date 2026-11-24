@@ -42,7 +42,9 @@ jobs:
           steps.pr.outputs.skip != 'true' &&
           (steps.pr.outputs.actor == 'dependabot[bot]' ||
            steps.pr.outputs.actor == 'app/dependabot')
-        run: gh pr merge --squash --repo "$GITHUB_REPOSITORY" "$PR_NUMBER"
+        # The repo's "delete head branch on merge" setting doesn't fire for
+        # merges made with GITHUB_TOKEN, so delete the branch explicitly.
+        run: gh pr merge --squash --delete-branch --repo "$GITHUB_REPOSITORY" "$PR_NUMBER"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
