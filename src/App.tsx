@@ -11,19 +11,9 @@ import { SummarySection } from './components/SummarySection'
 import { PayerSection } from './components/PayerSection'
 import { SettlementSection } from './components/SettlementSection'
 import { ShareSection } from './components/ShareSection'
-import { ShareButton } from './components/ShareButton'
 import { ShareSummaryButton } from './components/ShareSummaryButton'
 import { ConfirmModal } from './components/ConfirmModal'
 import { BuildInfo } from './components/BuildInfo'
-
-// Invites someone to the app itself. Sends only the app's address, never bill data.
-function appLinkContent() {
-  return {
-    title: 'Bill Split',
-    text: 'Split a bill item by item, with tax and tip:',
-    url: new URL(import.meta.env.BASE_URL, window.location.origin).href,
-  }
-}
 
 export function App() {
   const {
@@ -170,7 +160,6 @@ export function App() {
           {/* Share: each way of sending the bill out is a ShareButton child (see #4).
               Methods that need a bill render only when there is one. */}
           <ShareSection>
-            <ShareButton label="app link" getContent={appLinkContent} />
             {state.participants.length > 0 && breakdown.totalSubtotal > 0 && (
               <ShareSummaryButton state={state} breakdown={breakdown} transactions={transactions} />
             )}
