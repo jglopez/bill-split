@@ -12,6 +12,7 @@ const minimal: SummaryTemplateData = {
   people: [{ name: 'Alice', total: 10 }],
   totals: { subtotal: 10, tax: 0, tip: 0, fees: [], grandTotal: 10 },
   settlements: [],
+  link: '',
 }
 
 describe('renderSummary with the default template', () => {
@@ -43,6 +44,11 @@ describe('renderSummary with the default template', () => {
       ...sample.totals.fees.map(f => `${f.name}: ${formatMoney(f.amount)}`),
       `Total: ${formatMoney(sample.totals.grandTotal)}`,
     ])
+  })
+
+  it('ends with the bill link on its own line', () => {
+    const link = 'https://example.test/#b=1.abc'
+    expect(renderSummary({ ...minimal, link })).toBe(`${renderSummary(minimal)}\n\n${link}`)
   })
 
   it('uses a generic title for an unnamed bill and leaves out zero tax and tip', () => {

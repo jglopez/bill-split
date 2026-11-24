@@ -17,6 +17,8 @@ import type { ShareData } from '../shareData'
  *   `fees` is a list of `{ name, amount }`; discounts are negative.
  * - `settlements`: `{ from, to, amount }` for each payment that settles the
  *   bill. Empty when nobody owes anybody.
+ * - `link`: a link that opens this bill in the app, or an empty string when
+ *   there isn't one.
  */
 export interface SummaryTemplateData {
   name: string
@@ -29,13 +31,16 @@ export interface SummaryTemplateData {
     grandTotal: number
   }
   settlements: { from: string; to: string; amount: number }[]
+  link: string
 }
 
 /**
  * Map share data to template data. Fields are copied one by one, so a change
  * to ShareData never reaches templates unless it's added here on purpose.
+ * The bill link isn't part of ShareData because building it needs code that
+ * loads separately (see src/share/link/), so callers pass it in.
  */
-export function toSummaryTemplateData(share: ShareData): SummaryTemplateData {
+export function toSummaryTemplateData(share: ShareData, link = ''): SummaryTemplateData {
   return {
     name: share.name,
     people: share.people.map(p => ({ name: p.name, total: p.total })),
@@ -47,5 +52,6 @@ export function toSummaryTemplateData(share: ShareData): SummaryTemplateData {
       grandTotal: share.totals.grandTotal,
     },
     settlements: share.settlements.map(s => ({ from: s.from, to: s.to, amount: s.amount })),
+    link,
   }
 }

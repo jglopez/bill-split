@@ -1,7 +1,7 @@
 // Pure-function tests for isBillState and the useBillSplit reducer.
 // Run with: npm test
 
-import { isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
+import { isBillBlank, isBillState, reducer, DEFAULT_STATE, useBillSplit } from './useBillSplit'
 import type { BillState } from '../types'
 import { CURRENT_BILL_VERSION } from '../lib/migrations'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -127,6 +127,15 @@ describe('reducer', () => {
   it('RESET returns DEFAULT_STATE and clears the name', () => {
     const state = baseState({ tax: '10%', name: 'Dinner', participants: [p1] })
     expect(reducer(state, { type: 'RESET' })).toEqual(DEFAULT_STATE)
+  })
+
+  it('LOAD replaces the bill and restores the trailing blank row', () => {
+    const loaded = baseState({ name: 'Shared', participants: [p1], items: [{ id: 'i1', name: 'Taco', price: '5', assignedTo: null }] })
+    const next = reducer(baseState({ name: 'Mine', participants: [p2] }), { type: 'LOAD', state: loaded })
+    expect(next.name).toBe('Shared')
+    expect(next.participants).toEqual([p1])
+    expect(next.items).toHaveLength(2)
+    expect(next.items[1]).toMatchObject({ name: '', price: '' })
   })
 
   it('ADD_PARTICIPANT appends a participant and auto-assigns singlePayerId when unset', () => {
@@ -376,5 +385,26 @@ describe('useBillSplit (hook)', () => {
       result.current.addParticipant('Alice')
     })
     expect(result.current.isPersisted).toBe(true)
+  })
+})
+
+describe('isBillBlank', () => {
+  it('is true for a new bill', () => {
+    expect(isBillBlank(DEFAULT_STATE)).toBe(true)
+  })
+
+  it('ignores payer and tip options, which only matter once there is a bill', () => {
+    expect(isBillBlank({ ...DEFAULT_STATE, tipBase: 'post-tax', payerMode: 'multiple' })).toBe(true)
+  })
+
+  it.each([
+    ['a name', { name: 'Dinner' }],
+    ['a participant', { participants: [{ id: 'a', name: 'Alice' }] }],
+    ['an item', { items: [{ id: 'i', name: '', price: '4', assignedTo: null }] }],
+    ['tax', { tax: '8%' }],
+    ['tip', { tip: '2' }],
+    ['a fee', { additionalFees: [{ id: 'f', name: '', amount: '', base: 'pre-tax' as const }] }],
+  ])('is false with %s', (_, overrides) => {
+    expect(isBillBlank({ ...DEFAULT_STATE, ...overrides })).toBe(false)
   })
 })

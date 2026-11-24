@@ -1,0 +1,23 @@
+{
+  "hash": "#b=1.JczNCsIwEATgVykD4mUJTWzRHoWeevBSbyGHUAMWYgL1B317Jy0sC_vt7lj0c0phqfyrGnLYPyEW5xi-EIz-wT5kOLEWVz9lbqFPqq4h6R0jHWO-eapRLdEaJ7roxU_37Vor03JR050THDnu6M0a0pTgPsT5E5Yf9aC6DuVyfWAOrRRf_w",
+  "bill": {
+    "name": "Dinner at Joe's",
+    "participants": ["Alex", "Sam", "Jo"],
+    "items": [
+      { "name": "Tacos", "price": "18.00", "assignedTo": null },
+      { "name": "Soda", "price": "2.50", "assignedTo": ["Jo"], "taxable": false },
+      { "name": "Nachos", "price": "11.25", "assignedTo": ["Alex", "Sam"] }
+    ],
+    "tax": "7.25%",
+    "tip": "4.00",
+    "tipBase": "pre-tax",
+    "tipDiscountBase": "pre-discount",
+    "tipFeeBase": "post-fee",
+    "additionalFees": [
+      { "name": "Delivery", "amount": "3.99", "base": "post-tax" }
+    ],
+    "payerMode": "single",
+    "singlePayer": "Sam",
+    "amountPaid": {}
+  }
+}

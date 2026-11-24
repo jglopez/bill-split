@@ -15,7 +15,10 @@
 //   4. Add vN.test.ts for the step's edge cases.
 //   5. Add fixtures/v{N+1}.json: a bill in the new current format. Never edit
 //      existing fixtures; they pin what old saved bills and links look like.
-// meta.test.ts fails until all of these are in place.
+//   6. Add a bill link format for the new schema in src/share/link/formats/
+//      and make it the latest, with a pinned link (see billLink.ts).
+// meta.test.ts fails until steps 1 to 5 are in place, and
+// src/share/link/billLink.test.ts fails until step 6 is.
 
 export const CURRENT_BILL_VERSION = 4
 

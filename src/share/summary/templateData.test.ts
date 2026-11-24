@@ -23,11 +23,17 @@ describe('toSummaryTemplateData', () => {
     expect(data.settlements).toEqual(share.settlements.map(({ from, to, amount }) => ({ from, to, amount })))
   })
 
+  it('passes the bill link through, and leaves it empty when there is none', () => {
+    expect(data.link).toBe('')
+    expect(toSummaryTemplateData(share, 'https://example.test/#b=1.x').link).toBe('https://example.test/#b=1.x')
+  })
+
   // Templates depend on these fields. Adding one is fine (update this list
   // and the docs in templateData.ts); renaming or removing one breaks
   // templates, which is why this list is pinned.
   it('exposes exactly the documented fields', () => {
     expect(keyPaths(data).filter(Boolean).sort()).toEqual([
+      'link',
       'name',
       'people',
       'people[].name',

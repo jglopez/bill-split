@@ -4,6 +4,9 @@
   from the template data. See templateData.ts for the fields, and
   renderSummary.ts for the filters available.
 
+  The bill link, when there is one, goes last on its own line so chat apps
+  show it as a tappable link.
+
   `bold` makes text bold in the rich-text copy and leaves plain text alone.
 {%- endcomment -%}
 {% if name != "" %}{{ name | bold }}{% else %}{{ "Bill split" | bold }}{% endif %}
@@ -22,3 +25,7 @@ Tip: {{ totals.tip | money }}
 {{ fee.name }}: {{ fee.amount | money }}
 {%- endfor %}
 {% capture total %}Total: {{ totals.grandTotal | money }}{% endcapture %}{{ total | bold }}
+{%- if link != "" %}
+
+{{ link }}
+{%- endif %}
