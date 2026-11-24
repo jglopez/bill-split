@@ -21,7 +21,7 @@ interface Props {
 }
 
 // How long a "Copied" or error note stays visible.
-const STATUS_TIMEOUT_MS = 4000
+export const STATUS_TIMEOUT_MS = 4000
 
 const STATUS_TEXT: Partial<Record<ShareOutcome, string>> = {
   copied: 'Copied to clipboard',
@@ -34,7 +34,12 @@ const STATUS_TEXT: Partial<Record<ShareOutcome, string>> = {
  * otherwise. The button says which it will do.
  */
 export function ShareButton({ label, getContent, disabled = false }: Props) {
-  const [status, setStatus] = useState<string | null>(null)
+  // `seq` changes on every outcome, so repeating the same message restarts
+  // its timer instead of letting the earlier one clear it early.
+  const [status, setStatus] = useState<{ text: string; seq: number } | null>(null)
+  // True while a share or copy is in progress, so a second click can't start
+  // another one (a desktop share popover stays open until it's dismissed).
+  const [busy, setBusy] = useState(false)
   // Read once: whether the browser has a share sheet doesn't change.
   const [useSheet] = useState(canUseShareSheet)
 
@@ -44,9 +49,27 @@ export function ShareButton({ label, getContent, disabled = false }: Props) {
     return () => clearTimeout(timer)
   }, [status])
 
+  function report(outcome: ShareOutcome) {
+    const text = STATUS_TEXT[outcome]
+    setStatus(prev => (text ? { text, seq: (prev?.seq ?? 0) + 1 } : null))
+  }
+
   function handleClick() {
-    const { text, title, url } = getContent()
-    void shareText(text, { title, url }).then(outcome => setStatus(STATUS_TEXT[outcome] ?? null))
+    if (busy) return
+    let content: ShareContent
+    try {
+      content = getContent()
+    } catch (err) {
+      // A bill the share method can't render (for example amounts that
+      // aren't finite numbers) must say so rather than silently do nothing.
+      console.error('Could not prepare share content', err)
+      report('failed')
+      return
+    }
+    setBusy(true)
+    void shareText(content.text, { title: content.title, url: content.url })
+      .then(report)
+      .finally(() => setBusy(false))
   }
 
   return (
@@ -54,13 +77,13 @@ export function ShareButton({ label, getContent, disabled = false }: Props) {
       <button
         type="button"
         onClick={handleClick}
-        disabled={disabled}
+        disabled={disabled || busy}
         className="text-sm font-medium text-teal-700 border border-teal-200 rounded px-3 py-1.5 min-h-[44px] hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {useSheet ? `Share ${label}` : `Copy ${label}`}
       </button>
       <span role="status" className="text-xs text-gray-500">
-        {status}
+        {status?.text}
       </span>
     </div>
   )
