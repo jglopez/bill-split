@@ -1,11 +1,11 @@
 {%- comment -%}
   The plain-text summary people paste into a group chat: each person's
-  share, a note that those shares already include tax, tip, fees and
+  share, a note that those shares already include tax, tip, fees, and
   discounts, then the bill link. It only formats: every amount comes from
   the template data. See templateData.ts for the fields, and
   renderSummary.ts for the filters available.
 
-  The bill's own amounts (subtotal, tax, tip, fees and total) are left out
+  The bill's own amounts (subtotal, tax, tip, fees, and total) are left out
   on purpose. Readers took them as amounts to pay on top of their own
   share, so each person gets one number, and the link opens the full
   breakdown. The note names only what this bill has, so it never mentions
@@ -36,7 +36,7 @@
 {%- assign parts = included | remove_first: "," | split: "," %}
 
 {% for part in parts -%}
-  {%- if forloop.first %}{{ part | capitalize }}{% elsif forloop.last %} and {{ part }}{% else %}, {{ part }}{% endif -%}
+  {%- if forloop.first %}{{ part | capitalize }}{% elsif forloop.last and forloop.length > 2 %}, and {{ part }}{% elsif forloop.last %} and {{ part }}{% else %}, {{ part }}{% endif -%}
 {%- endfor -%}
 {{ verb }} included.
 {%- endif %}
