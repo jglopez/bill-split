@@ -1,15 +1,22 @@
 {%- comment -%}
-  The plain-text summary people paste into a group chat. It only formats:
-  every amount comes from the template data. See templateData.ts for the
-  fields, and renderSummary.ts for the filters available.
+  The plain-text summary people paste into a group chat: each person's
+  share, then how the bill adds up. It only formats: every amount comes
+  from the template data. See templateData.ts for the fields, and
+  renderSummary.ts for the filters available.
 {%- endcomment -%}
 {% if name != "" %}{{ name }}{% else %}Bill split{% endif %}
 {% for person in people %}
 {{ person.name }}: {{ person.total | money }}
 {%- endfor %}
-Total: {{ totals.grandTotal | money }}
-{%- if settlements.size > 0 %}
-{% for payment in settlements %}
-{{ payment.from }} pays {{ payment.to }} {{ payment.amount | money }}
-{%- endfor %}
+
+Subtotal: {{ totals.subtotal | money }}
+{%- if totals.tax != 0 %}
+Tax: {{ totals.tax | money }}
 {%- endif %}
+{%- if totals.tip != 0 %}
+Tip: {{ totals.tip | money }}
+{%- endif %}
+{%- for fee in totals.fees %}
+{{ fee.name }}: {{ fee.amount | money }}
+{%- endfor %}
+Total: {{ totals.grandTotal | money }}

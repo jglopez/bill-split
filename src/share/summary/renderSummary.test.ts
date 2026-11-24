@@ -22,22 +22,31 @@ describe('renderSummary with the default template', () => {
       Alice: $46.86
       Bob: $14.57
       Chris: $31.68
-      Total: $93.11
 
-      Chris pays Alice $31.68
-      Bob pays Alice $14.57"
+      Subtotal: $78.50
+      Tax: $3.48
+      Tip: $14.13
+      Coupon: −$5.00
+      Fee: $2.00
+      Total: $93.11"
     `)
   })
 
-  it('shows every person and payment with the same amounts as the data', () => {
-    const text = renderSummary(sample)
-    for (const p of sample.people) expect(text).toContain(`${p.name}: ${formatMoney(p.total)}`)
-    for (const s of sample.settlements) expect(text).toContain(`${s.from} pays ${s.to} ${formatMoney(s.amount)}`)
-    expect(text).toContain(`Total: ${formatMoney(sample.totals.grandTotal)}`)
+  it('shows every person, in bill order, and every total with the same amounts as the data', () => {
+    const lines = renderSummary(sample).split('\n')
+    const personLines = sample.people.map(p => `${p.name}: ${formatMoney(p.total)}`)
+    expect(lines.filter(l => personLines.includes(l))).toEqual(personLines)
+    expect(lines.slice(-(4 + sample.totals.fees.length))).toEqual([
+      `Subtotal: ${formatMoney(sample.totals.subtotal)}`,
+      `Tax: ${formatMoney(sample.totals.tax)}`,
+      `Tip: ${formatMoney(sample.totals.tip)}`,
+      ...sample.totals.fees.map(f => `${f.name}: ${formatMoney(f.amount)}`),
+      `Total: ${formatMoney(sample.totals.grandTotal)}`,
+    ])
   })
 
-  it('uses a generic title for an unnamed bill and leaves out an empty settlement', () => {
-    expect(renderSummary(minimal)).toBe('Bill split\n\nAlice: $10.00\nTotal: $10.00')
+  it('uses a generic title for an unnamed bill and leaves out zero tax and tip', () => {
+    expect(renderSummary(minimal)).toBe('Bill split\n\nAlice: $10.00\n\nSubtotal: $10.00\nTotal: $10.00')
   })
 })
 
