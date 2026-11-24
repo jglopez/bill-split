@@ -24,7 +24,7 @@ describe('renderSummary with the default template', () => {
       Bob: $14.57
       Chris: $31.68
 
-      Tax, tip, fees and discounts are included."
+      Tax, tip, fees, and discounts are included."
     `)
   })
 
@@ -58,7 +58,7 @@ describe('renderSummary with the default template', () => {
     ['a discount only', { fees: [{ name: 'Coupon', amount: -2 }] }, 'Discounts are included.'],
     ['tax and tip', { tax: 1, tip: 2 }, 'Tax and tip are included.'],
     ['tip and a discount', { tip: 2, fees: [{ name: 'Coupon', amount: -2 }] }, 'Tip and discounts are included.'],
-    ['tax, tip and fees', { tax: 1, tip: 2, fees: [{ name: 'Fee', amount: 1 }, { name: 'Delivery', amount: 2 }] }, 'Tax, tip and fees are included.'],
+    ['tax, tip, and fees', { tax: 1, tip: 2, fees: [{ name: 'Fee', amount: 1 }, { name: 'Delivery', amount: 2 }] }, 'Tax, tip, and fees are included.'],
   ]
 
   for (const [what, totals, note] of notes) {
@@ -72,7 +72,7 @@ describe('renderSummary with the default template', () => {
 
 describe('renderSummaryHtml', () => {
   it('renders the sample bill with the title in bold', () => {
-    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br>Tax, tip, fees and discounts are included.</div>"`)
+    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br>Tax, tip, fees, and discounts are included.</div>"`)
   })
 
   it('has the same text and line breaks as the plain summary', () => {
