@@ -32,7 +32,7 @@ interface Props {
  *
  * It shares plain text through the share sheet. Where there's no share
  * sheet it copies instead, and the clipboard also gets a rich-text version
- * (title and total in bold) for apps that keep formatting on paste.
+ * (title in bold) for apps that keep formatting on paste.
  *
  * The text ends with a link that opens the bill in the app (see
  * src/share/link/).
