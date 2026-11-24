@@ -46,20 +46,19 @@ export function ShareButton({ label, getContent, disabled = false }: Props) {
     return () => clearTimeout(timer)
   }, [status])
 
-  function report(outcome: ShareOutcome) {
-    setStatus(STATUS_TEXT[outcome] ?? null)
-  }
-
   function handleClick() {
     const { text, title, url, html } = getContent()
-    void shareText(text, { title, url, html }).then(report)
+    void shareText(text, { title, url, html }).then(outcome => setStatus(STATUS_TEXT[outcome] ?? null))
   }
-
-  const buttonClass = 'text-sm font-medium text-teal-700 border border-teal-200 rounded px-3 py-1.5 min-h-[44px] hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed'
 
   return (
     <div className="flex items-center gap-2">
-      <button type="button" onClick={handleClick} disabled={disabled} className={buttonClass}>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={disabled}
+        className="text-sm font-medium text-teal-700 border border-teal-200 rounded px-3 py-1.5 min-h-[44px] hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
         {useSheet ? `Share ${label}` : `Copy ${label}`}
       </button>
       <span role="status" className="text-xs text-gray-500">
