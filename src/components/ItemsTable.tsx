@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -83,6 +83,8 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   // Narrow layout only: the one card whose participant list is open.
   const [openItemId, setOpenItemId] = useState<string | null>(null)
+  // Price fields by item, so Enter in a card's name can move on to its price.
+  const priceInputs = useRef(new Map<string, HTMLInputElement>())
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -179,10 +181,27 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                 return (
                   <SortableItemCard key={item.id} id={item.id} isBlank={blank}>
                     <div className="flex items-center gap-1">
-                      <div className="flex-1 min-w-0">
-                        <ItemNameInput item={item} isBlank={blank} onUpdateItem={onUpdateItem} />
+                      {/* The price sits on the last line of a wrapped name. */}
+                      <div className="flex flex-1 min-w-0 items-end gap-1">
+                        <div className="flex-1 min-w-0">
+                          <ItemNameInput
+                            item={item}
+                            isBlank={blank}
+                            onUpdateItem={onUpdateItem}
+                            wrap
+                            onEnter={() => priceInputs.current.get(item.id)?.focus()}
+                          />
+                        </div>
+                        <ItemPriceInput
+                          item={item}
+                          onUpdateItem={onUpdateItem}
+                          className="w-20"
+                          inputRef={el => {
+                            if (el) priceInputs.current.set(item.id, el)
+                            else priceInputs.current.delete(item.id)
+                          }}
+                        />
                       </div>
-                      <ItemPriceInput item={item} onUpdateItem={onUpdateItem} className="w-20" />
                       {blank
                         ? <span aria-hidden="true" className="w-11 flex-shrink-0" /> // keeps prices aligned with item cards
                         : <RemoveItemButton item={item} onRemoveItem={onRemoveItem} />}
@@ -634,25 +653,75 @@ function AssignRow({
 
 // ─── Inputs shared by both layouts ────────────────────────────────────────────
 
+/**
+ * The item's description. On phones the field is narrow, and iOS Safari can't
+ * swipe-scroll a one-line field, so the end of a long name was out of reach
+ * once the field lost focus. The card layout passes `wrap` to use a textarea
+ * that grows a line at a time instead, so the whole name is always visible.
+ * It stays a single-line value: Enter never adds a line (the card uses it to
+ * move on to the price) and pasted line breaks become spaces.
+ */
 function ItemNameInput({
   item,
   isBlank,
   onUpdateItem,
+  wrap = false,
+  onEnter,
 }: {
   item: Item
   isBlank: boolean
   onUpdateItem: (item: Item) => void
+  wrap?: boolean
+  /** Called on Enter in the wrapping field, which never inserts a line break. */
+  onEnter?: () => void
 }) {
+  const fieldClass =
+    'w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none py-0.5 placeholder-gray-300 text-gray-800'
+
+  if (!wrap) {
+    return (
+      <input
+        type="text"
+        value={item.name}
+        onChange={e => onUpdateItem({ ...item, name: e.target.value })}
+        placeholder={isBlank ? 'Description' : ''}
+        aria-label="Item description"
+        maxLength={NAME_MAX_LENGTH}
+        className={fieldClass}
+      />
+    )
+  }
+
+  // The textarea and an invisible copy of its text share one grid cell, so the
+  // copy sets the height and the textarea fills it. No measuring in script.
+  // Both copies set the same font size and line height, or the heights drift.
+  // This layout is phone-only, so it matches the size index.css gives phone text fields.
+  const wrapClass = 'col-start-1 row-start-1 text-base whitespace-pre-wrap [overflow-wrap:anywhere]'
   return (
-    <input
-      type="text"
-      value={item.name}
-      onChange={e => onUpdateItem({ ...item, name: e.target.value })}
-      placeholder={isBlank ? 'Description' : ''}
-      aria-label="Item description"
-      maxLength={NAME_MAX_LENGTH}
-      className="w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none py-0.5 placeholder-gray-300 text-gray-800"
-    />
+    <div className="grid">
+      <textarea
+        rows={1}
+        value={item.name}
+        onChange={e => onUpdateItem({ ...item, name: e.target.value.replace(/[\r\n]+/g, ' ') })}
+        onKeyDown={e => {
+          // Enter that confirms an IME composition (keyCode 229 in Safari)
+          // belongs to the input method, not to us.
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
+            e.preventDefault()
+            onEnter?.()
+          }
+        }}
+        enterKeyHint={onEnter ? 'next' : undefined}
+        placeholder={isBlank ? 'Description' : ''}
+        aria-label="Item description"
+        maxLength={NAME_MAX_LENGTH}
+        className={`${fieldClass} ${wrapClass} resize-none overflow-hidden`}
+      />
+      {/* The trailing space keeps a new empty line's height while typing. */}
+      <span aria-hidden="true" className={`${fieldClass} ${wrapClass} invisible`}>
+        {item.name}{' '}
+      </span>
+    </div>
   )
 }
 
@@ -660,11 +729,13 @@ function ItemPriceInput({
   item,
   onUpdateItem,
   className,
+  inputRef,
 }: {
   item: Item
   onUpdateItem: (item: Item) => void
   /** Width of the field; the layouts size it differently. */
   className: string
+  inputRef?: React.Ref<HTMLInputElement>
 }) {
   const priceInvalid = item.price !== '' && !isValidPrice(item.price)
   return (
@@ -672,6 +743,7 @@ function ItemPriceInput({
       <input
         type="text"
         inputMode="decimal"
+        ref={inputRef}
         value={item.price}
         onChange={e => onUpdateItem({ ...item, price: e.target.value })}
         placeholder="0.00"

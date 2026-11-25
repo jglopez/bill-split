@@ -320,6 +320,44 @@ describe('ItemsTable (cards layout only)', () => {
     expect(within(blank).queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('wraps the description so a long name stays fully visible', () => {
+    render(<ItemsTable {...baseProps()} />)
+    const field = screen.getAllByLabelText('Item description')[0]
+    expect(field.tagName).toBe('TEXTAREA')
+    expect(field).toHaveValue('Dinner')
+  })
+
+  it('moves from the description to its price on Enter, without adding a line', async () => {
+    const user = userEvent.setup()
+    const props = baseProps()
+    render(<ItemsTable {...props} />)
+    const [card] = screen.getAllByRole('listitem')
+    const field = within(card).getByLabelText('Item description')
+    expect(field).toHaveAttribute('enterkeyhint', 'next')
+    await user.click(field)
+    await user.keyboard('{Enter}')
+    expect(within(card).getByLabelText('Item price')).toHaveFocus()
+    expect(props.onUpdateItem).not.toHaveBeenCalled()
+  })
+
+  it('leaves Enter alone while an input method is composing text', () => {
+    const props = baseProps()
+    render(<ItemsTable {...props} />)
+    const [card] = screen.getAllByRole('listitem')
+    const field = within(card).getByLabelText('Item description')
+    field.focus()
+    fireEvent.keyDown(field, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(field, { key: 'Enter', keyCode: 229 })
+    expect(field).toHaveFocus()
+  })
+
+  it('turns pasted line breaks into spaces', () => {
+    const props = baseProps()
+    render(<ItemsTable {...props} />)
+    fireEvent.change(screen.getAllByLabelText('Item description')[0], { target: { value: 'Fish\r\nand chips' } })
+    expect(props.onUpdateItem).toHaveBeenCalledWith({ ...props.items[0], name: 'Fish and chips' })
+  })
+
   it('keeps a drag grip on item cards but not on the blank card', () => {
     render(<ItemsTable {...baseProps()} />)
     const [item, blank] = screen.getAllByRole('listitem')
