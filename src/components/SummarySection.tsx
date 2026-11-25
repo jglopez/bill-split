@@ -111,7 +111,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           {/* Tax */}
           {breakdown.totalTax !== 0 && (
             <SummaryRow
-              label={`+ Tax${rateSuffix(state.tax)}`}
+              label={taxLabel(state)}
               total={breakdown.totalTax}
               values={participants.map(p => perPersonValue(p.id, 'tax'))}
             />
@@ -120,7 +120,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           {/* Tip */}
           {breakdown.totalTip !== 0 && (
             <SummaryRow
-              label={`+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+              label={tipLabel(state)}
               total={breakdown.totalTip}
               values={participants.map(p => perPersonValue(p.id, 'tip'))}
             />
@@ -134,7 +134,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             return (
               <SummaryRow
                 key={fee.id}
-                label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${rateSuffix(fee.amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
+                label={feeLabel(fee, isDiscount)}
                 total={total}
                 values={participants.map(p => perPersonFee(p.id, i))}
                 isDiscount={isDiscount}
@@ -212,13 +212,13 @@ function SummaryCard({
       <CardRow label="Subtotal" value={subtotal} />
       {breakdown.totalTax !== 0 && (
         <CardRow
-          label={`+ Tax${rateSuffix(state.tax)}`}
+          label={taxLabel(state)}
           value={tax}
         />
       )}
       {breakdown.totalTip !== 0 && (
         <CardRow
-          label={`+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+          label={tipLabel(state)}
           value={tip}
         />
       )}
@@ -229,7 +229,7 @@ function SummaryCard({
         return (
           <CardRow
             key={fee.id}
-            label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${rateSuffix(fee.amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
+            label={feeLabel(fee, isDiscount)}
             value={feeAmount}
             isDiscount={isDiscount}
           />
@@ -241,6 +241,25 @@ function SummaryCard({
       </div>
     </section>
   )
+}
+
+// ─── Row labels ───────────────────────────────────────────────────────────────
+//
+// The desktop table and the mobile cards label their tax, tip, and fee rows
+// with these, so both views always word them the same way.
+
+function taxLabel(state: BillState): string {
+  return `+ Tax${rateSuffix(state.tax)}`
+}
+
+function tipLabel(state: BillState): string {
+  return `+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`
+}
+
+/** A fee or discount row label. The caller says which, from the amount the row shows. */
+function feeLabel(fee: AdditionalFee, isDiscount: boolean): string {
+  const name = fee.name || (isDiscount ? 'Discount' : 'Fee')
+  return `${isDiscount ? '−' : '+'} ${name}${rateSuffix(fee.amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`
 }
 
 /**
