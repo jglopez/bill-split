@@ -122,6 +122,24 @@ describe('SummarySection', () => {
     expect(screen.getByText('+ Service')).toBeInTheDocument()
   })
 
+  it('keeps a fee rate and drops the minus sign from a discount rate on desktop', () => {
+    const fees: AdditionalFee[] = [
+      { id: 'f1', name: 'Service', amount: '18%', base: 'post-tax' },
+      { id: 'f2', name: 'Coupon', amount: '-10%', base: 'pre-tax' },
+    ]
+    const state = billState({ additionalFees: fees })
+    render(
+      <SummarySection
+        participants={[alice, bob]}
+        additionalFees={fees}
+        state={state}
+        breakdown={calculateBreakdown(state)}
+      />,
+    )
+    expect(screen.getByText('+ Service (18%) incl. tax')).toBeInTheDocument()
+    expect(screen.getByText('− Coupon (10%)')).toBeInTheDocument()
+  })
+
   it('shows an additional fee row and styles a discount differently from a surcharge', () => {
     const fees: AdditionalFee[] = [
       { id: 'f1', name: 'Service', amount: '10', base: 'pre-tax' },

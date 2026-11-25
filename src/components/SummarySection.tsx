@@ -256,10 +256,15 @@ function tipLabel(state: BillState): string {
   return `+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`
 }
 
-/** A fee or discount row label. The caller says which, from the amount the row shows. */
+/**
+ * A fee or discount row label. The caller says which, from the amount the
+ * row shows. A discount's leading "−" already says it's taken off, so its
+ * rate drops its own minus sign: "− Coupon (10%)", not "− Coupon (-10%)".
+ */
 function feeLabel(fee: AdditionalFee, isDiscount: boolean): string {
   const name = fee.name || (isDiscount ? 'Discount' : 'Fee')
-  return `${isDiscount ? '−' : '+'} ${name}${rateSuffix(fee.amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`
+  const amount = isDiscount ? fee.amount.trim().replace(/^-\s*/, '') : fee.amount
+  return `${isDiscount ? '−' : '+'} ${name}${rateSuffix(amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`
 }
 
 /**
