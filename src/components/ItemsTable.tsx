@@ -174,7 +174,10 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
   if (isMobile) {
     return (
       <div className="mb-2">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        {/* Each layout keys its own DndContext. DndContext uses its props as
+            effect dependencies, so React must not reuse one instance across
+            layouts that pass it a different set of props. */}
+        <DndContext key="cards" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
             <ul aria-label="Items" className="space-y-2">
               {items.map(item => {
@@ -231,7 +234,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
 
   return (
     <div className="mb-2 overflow-x-auto overscroll-x-none -mx-4 px-4">
-      <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext key="table" sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <table className="w-full text-sm border-collapse min-w-[500px]">
           <thead>
             <tr className="border-b border-gray-200">
