@@ -203,7 +203,7 @@ function SummaryCard({
     : 'border-gray-200'
   return (
     <section aria-label={title} className={`rounded-lg border px-4 py-3 text-sm ${containerClass}`}>
-      <div className="font-medium text-gray-800 mb-2">{title}</div>
+      <div className="font-medium text-gray-800 mb-2 [overflow-wrap:anywhere]">{title}</div>
       {items && items.length > 0 && (
         <ul aria-label={`${title}'s items`} className="border-b border-gray-200 mb-1 pb-1">
           {items.map(line => <ItemLine key={line.itemId} line={line} others={others} />)}
@@ -262,22 +262,23 @@ function rateSuffix(amount: string): string {
  * says what it cost in full and who else shares it, such as "18.00 split
  * with Sam and Alex", so the reader can see where their share came from and
  * check who was on it. The card is the owner's own receipt, so the owner
- * isn't named; "everyone" means everyone else on the bill. The full price sits under the name,
- * away from the amounts column, so it isn't read as the person's own
- * amount, and it has no currency symbol, like the rest of the card. Long
- * names wrap rather than truncate, the same as the item cards on phones,
- * and the amount keeps its column.
+ * isn't named; "everyone" means everyone else on the bill. The caption sits
+ * on its own line below the name and amount, so it isn't read as the
+ * person's own amount, and it runs the card's full width so a long list of
+ * names wraps onto fewer lines. It has no currency symbol, like the rest of
+ * the card. Long names wrap rather than truncate, the same as the item cards
+ * on phones, and the amount keeps its column.
  */
 function ItemLine({ line, others }: { line: PersonItemShare; others: Participant[] }) {
   const name = line.name.trim()
   const caption = line.sharedWith.length > 0 ? `${formatAmount(line.price)} split with ${sharedWithText(line, others)}` : null
   return (
-    <li className="flex justify-between gap-3 py-0.5 text-xs text-gray-700">
-      <span className="min-w-0 [overflow-wrap:anywhere]">
+    <li className="grid grid-cols-[1fr_auto] gap-x-3 py-0.5 text-xs text-gray-700 [overflow-wrap:anywhere]">
+      <span className="min-w-0">
         {name || <span className="italic text-gray-400">Unnamed item</span>}
-        {caption && <span className="block text-gray-400">{caption}</span>}
       </span>
-      <span className="shrink-0 tabular-nums">{formatAmount(line.share)}</span>
+      {caption && <span className="col-span-2 row-start-2 min-w-0 text-gray-400">{caption}</span>}
+      <span className="col-start-2 row-start-1 tabular-nums">{formatAmount(line.share)}</span>
     </li>
   )
 }
