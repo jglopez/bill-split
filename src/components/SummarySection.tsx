@@ -257,8 +257,9 @@ function rateSuffix(amount: string): string {
  * says what it cost in full and how many ways it was split, so the reader
  * can see where their share came from. The full price sits under the name,
  * away from the amounts column, so it isn't read as the person's own
- * amount, and it has no currency symbol, like the rest of the card. Long names wrap rather than truncate, the
- * same as the item cards on phones, and the amount keeps its column.
+ * amount, and it has no currency symbol, like the rest of the card. Long
+ * names wrap rather than truncate, the same as the item cards on phones,
+ * and the amount keeps its column.
  */
 function ItemLine({ line }: { line: PersonItemShare }) {
   const name = line.name.trim()

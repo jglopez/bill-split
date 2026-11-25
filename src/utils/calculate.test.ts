@@ -977,6 +977,32 @@ describe('personItemShares', () => {
     }
   })
 
+  it('adds up to the subtotal for many random bills', () => {
+    // A small seeded generator keeps failures reproducible.
+    let seed = 1
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    const ids = ['a', 'b', 'c', 'd', 'e']
+    for (let run = 0; run < 500; run++) {
+      const people = ids.slice(0, 1 + Math.floor(rand() * ids.length)).map(p)
+      const items = Array.from({ length: 1 + Math.floor(rand() * 8) }, (_, i) => {
+        const price = (Math.floor(rand() * 10000) / 100).toString()
+        const roll = rand()
+        // Mix everyone, a random subset, and an id that isn't a participant.
+        const assignedTo = roll < 0.3
+          ? null
+          : [...people.filter(() => rand() < 0.5).map(x => x.id), ...(roll > 0.9 ? ['gone'] : [])]
+        return item(`i${i}`, price, assignedTo)
+      })
+      const s = state(items, people)
+      for (const person of people) {
+        const subtotal = subtotalOf(s, person.id)
+        const lines = personItemShares(s, person.id, subtotal)
+        const sumCents = lines.reduce((acc, l) => acc + Math.round(l.share * 100), 0)
+        expect(sumCents).toBe(Math.round(subtotal * 100))
+      }
+    }
+  })
+
   it('gives every line a whole number of cents', () => {
     const s = state([item('x', '10', null), item('y', '7.77', ['a', 'c'])])
     for (const line of personItemShares(s, 'a', subtotalOf(s, 'a'))) {
