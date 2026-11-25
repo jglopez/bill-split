@@ -106,6 +106,40 @@ describe('SummarySection', () => {
     expect(screen.getByText('+ Tip (20%)')).toBeInTheDocument()
   })
 
+  it('leaves out amounts entered in dollars from the labels on desktop', () => {
+    const fees: AdditionalFee[] = [{ id: 'f1', name: 'Service', amount: '3.00', base: 'pre-tax' }]
+    const state = billState({ tax: '0.85', tip: '2.00', additionalFees: fees })
+    render(
+      <SummarySection
+        participants={[alice, bob]}
+        additionalFees={fees}
+        state={state}
+        breakdown={calculateBreakdown(state)}
+      />,
+    )
+    expect(screen.getByText('+ Tax')).toBeInTheDocument()
+    expect(screen.getByText('+ Tip')).toBeInTheDocument()
+    expect(screen.getByText('+ Service')).toBeInTheDocument()
+  })
+
+  it('keeps a fee rate and drops the minus sign from a discount rate on desktop', () => {
+    const fees: AdditionalFee[] = [
+      { id: 'f1', name: 'Service', amount: '18%', base: 'post-tax' },
+      { id: 'f2', name: 'Coupon', amount: '-10%', base: 'pre-tax' },
+    ]
+    const state = billState({ additionalFees: fees })
+    render(
+      <SummarySection
+        participants={[alice, bob]}
+        additionalFees={fees}
+        state={state}
+        breakdown={calculateBreakdown(state)}
+      />,
+    )
+    expect(screen.getByText('+ Service (18%) incl. tax')).toBeInTheDocument()
+    expect(screen.getByText('− Coupon (10%)')).toBeInTheDocument()
+  })
+
   it('shows an additional fee row and styles a discount differently from a surcharge', () => {
     const fees: AdditionalFee[] = [
       { id: 'f1', name: 'Service', amount: '10', base: 'pre-tax' },
@@ -120,8 +154,8 @@ describe('SummarySection', () => {
         breakdown={calculateBreakdown(state)}
       />,
     )
-    expect(screen.getByText('+ Service (10)')).toHaveClass('text-gray-700')
-    expect(screen.getByText('− Coupon (-2)')).toHaveClass('text-green-700')
+    expect(screen.getByText('+ Service')).toHaveClass('text-gray-700')
+    expect(screen.getByText('− Coupon')).toHaveClass('text-green-700')
   })
 
   it('omits a fee row entirely when its total is zero', () => {
@@ -348,6 +382,18 @@ describe('SummarySection', () => {
     it('does not list items on the bill total card', () => {
       renderCards(billState())
       expect(within(screen.getByRole('region', { name: 'Bill total' })).queryByRole('list')).not.toBeInTheDocument()
+    })
+
+    it('labels a discount as one on a card whose share of it is zero', () => {
+      const fees: AdditionalFee[] = [{ id: 'f1', name: 'Coupon', amount: '-10%', base: 'pre-tax' }]
+      renderCards(billState({
+        items: [{ id: 'i1', name: 'Pasta', price: '18', assignedTo: ['a'] }],
+        additionalFees: fees,
+      }))
+      for (const name of ['Bill total', 'Alice', 'Bob']) {
+        const card = within(screen.getByRole('region', { name }))
+        expect(card.getByText('− Coupon (10%)')).toBeInTheDocument()
+      }
     })
 
     it('keeps rates entered as percents in the labels', () => {

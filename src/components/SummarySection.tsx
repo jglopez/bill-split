@@ -111,7 +111,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           {/* Tax */}
           {breakdown.totalTax !== 0 && (
             <SummaryRow
-              label={`+ Tax ${state.tax ? `(${state.tax})` : ''}`}
+              label={taxLabel(state)}
               total={breakdown.totalTax}
               values={participants.map(p => perPersonValue(p.id, 'tax'))}
             />
@@ -120,7 +120,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           {/* Tip */}
           {breakdown.totalTip !== 0 && (
             <SummaryRow
-              label={`+ Tip ${state.tip ? `(${state.tip})` : ''}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+              label={tipLabel(state)}
               total={breakdown.totalTip}
               values={participants.map(p => perPersonValue(p.id, 'tip'))}
             />
@@ -134,7 +134,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             return (
               <SummaryRow
                 key={fee.id}
-                label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')} ${fee.amount ? `(${fee.amount})` : ''}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
+                label={feeLabel(fee, isDiscount)}
                 total={total}
                 values={participants.map(p => perPersonFee(p.id, i))}
                 isDiscount={isDiscount}
@@ -212,24 +212,24 @@ function SummaryCard({
       <CardRow label="Subtotal" value={subtotal} />
       {breakdown.totalTax !== 0 && (
         <CardRow
-          label={`+ Tax${rateSuffix(state.tax)}`}
+          label={taxLabel(state)}
           value={tax}
         />
       )}
       {breakdown.totalTip !== 0 && (
         <CardRow
-          label={`+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+          label={tipLabel(state)}
           value={tip}
         />
       )}
       {additionalFees.map((fee, i) => {
         if (breakdown.totalAdditionalFees[i] === 0) return null
         const feeAmount = feeAmounts[i] ?? 0
-        const isDiscount = feeAmount < 0
+        const isDiscount = breakdown.totalAdditionalFees[i] < 0
         return (
           <CardRow
             key={fee.id}
-            label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${rateSuffix(fee.amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
+            label={feeLabel(fee, isDiscount)}
             value={feeAmount}
             isDiscount={isDiscount}
           />
@@ -243,12 +243,38 @@ function SummaryCard({
   )
 }
 
+// ─── Row labels ───────────────────────────────────────────────────────────────
+//
+// The desktop table and the mobile cards label their tax, tip, and fee rows
+// with these, so both views always word them the same way.
+
+function taxLabel(state: BillState): string {
+  return `+ Tax${rateSuffix(state.tax)}`
+}
+
+function tipLabel(state: BillState): string {
+  return `+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`
+}
+
 /**
- * The rate a tax, tip, or fee was entered as, for a mobile card label, such
- * as " (8.5%)". A rate is the same for everyone, so it reads correctly on a
- * participant's card. An amount entered in dollars is left out: on the bill
- * card it repeats the value beside it, and on a participant's card readers
- * took the bill's full amount for their own.
+ * A fee or discount row label. The caller says which, from the bill's total
+ * for that fee, so every view and card words the row the same way, even a
+ * card whose share of a discount rounds to zero. A discount's leading "−" already says it's taken off, so its
+ * rate drops its own minus sign: "− Coupon (10%)", not "− Coupon (-10%)".
+ */
+function feeLabel(fee: AdditionalFee, isDiscount: boolean): string {
+  const name = fee.name || (isDiscount ? 'Discount' : 'Fee')
+  const amount = isDiscount ? fee.amount.trim().replace(/^-\s*/, '') : fee.amount
+  return `${isDiscount ? '−' : '+'} ${name}${rateSuffix(amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`
+}
+
+/**
+ * The rate a tax, tip, or fee was entered as, for a summary label, such as
+ * " (8.5%)". A rate is the same for everyone, so it reads correctly next to
+ * any person's share. An amount entered in dollars is left out: the bill's
+ * own amount already sits beside the label (the table's Total column, or the
+ * bill total card), and on a participant's card readers took the bill's
+ * full amount for their own.
  */
 function rateSuffix(amount: string): string {
   const { isPercent, numeric } = splitAmountInput(amount)
