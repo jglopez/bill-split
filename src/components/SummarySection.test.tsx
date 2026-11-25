@@ -283,6 +283,30 @@ describe('SummarySection', () => {
         expect(itemLines('Alice')[0]).toContain('40.00 split with Bob, Carol, and Dan')
       })
 
+      describe('punctuates the names in the caption', () => {
+        const table: Participant[] = ['Alice', 'Bob', 'Carol', 'Dan', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jo']
+          .map(name => ({ id: name.toLowerCase(), name }))
+        const ids = (names: string[]) => names.map(n => n.toLowerCase())
+        const allBut = (left: string[]) => table.filter(p => !left.includes(p.name)).map(p => p.id)
+
+        it.each([
+          { assignedTo: allBut(['Bob']), names: 'everyone but Bob' },
+          { assignedTo: allBut(['Bob', 'Carol']), names: 'everyone but Bob and Carol' },
+          { assignedTo: allBut(['Bob', 'Carol', 'Dan']), names: 'everyone but Bob, Carol, and Dan' },
+          { assignedTo: allBut(['Bob', 'Carol', 'Dan', 'Eve']), names: 'everyone but Bob, Carol, Dan, and Eve' },
+          { assignedTo: ids(['Alice', 'Bob', 'Carol']), names: 'Bob and Carol' },
+          { assignedTo: ids(['Alice', 'Bob', 'Carol', 'Dan']), names: 'Bob, Carol, and Dan' },
+          { assignedTo: ids(['Alice', 'Bob', 'Carol', 'Dan', 'Eve']), names: 'Bob, Carol, Dan, and Eve' },
+        ])('reads "split with $names" on Alice\'s card', ({ assignedTo, names }) => {
+          renderCards(billState({
+            participants: table,
+            items: [{ id: 'i1', name: 'Wine', price: '120', assignedTo }],
+          }))
+          // Alice's share follows the names directly, so the digit pins where the names end.
+          expect(itemLines('Alice')[0]).toMatch(new RegExp(`split with ${names}\\d`))
+        })
+      })
+
       it('says everyone when the item is shared by the whole table', () => {
         renderCards(billState({
           participants: [alice, bob, carol],
