@@ -179,10 +179,13 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                 return (
                   <SortableItemCard key={item.id} id={item.id} isBlank={blank}>
                     <div className="flex items-center gap-1">
-                      <div className="flex-1 min-w-0">
-                        <ItemNameInput item={item} isBlank={blank} onUpdateItem={onUpdateItem} wrap />
+                      {/* The price sits on the last line of a wrapped name. */}
+                      <div className="flex flex-1 min-w-0 items-end gap-1">
+                        <div className="flex-1 min-w-0">
+                          <ItemNameInput item={item} isBlank={blank} onUpdateItem={onUpdateItem} wrap />
+                        </div>
+                        <ItemPriceInput item={item} onUpdateItem={onUpdateItem} className="w-20" />
                       </div>
-                      <ItemPriceInput item={item} onUpdateItem={onUpdateItem} className="w-20" />
                       {blank
                         ? <span aria-hidden="true" className="w-11 flex-shrink-0" /> // keeps prices aligned with item cards
                         : <RemoveItemButton item={item} onRemoveItem={onRemoveItem} />}
