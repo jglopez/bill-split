@@ -14,8 +14,8 @@
   The bill link, when there is one, goes last, on its own line after a
   blank line, so chat apps show it as a link preview.
 
-  The bill's name and each person's share are bold. `bold` makes text bold
-  in the rich-text copy and leaves plain text alone.
+  The bill's name is bold and the note is italic. `bold` and `italic` style
+  text in the rich-text copy and leave plain text alone.
 {%- endcomment -%}
 {%- assign included = "" -%}
 {%- if totals.tax != 0 %}{% assign included = included | append: ",tax" %}{% endif -%}
@@ -29,17 +29,20 @@
 {%- if has_discount %}{% assign included = included | append: ",discounts" %}{% endif -%}
 {% if name != "" %}{{ name | bold }}{% else %}{{ "Bill split" | bold }}{% endif %}
 {% for person in people %}
-{{ person.name }}: {{ person.total | money | bold }}
+{{ person.name }}: {{ person.total | money }}
 {%- endfor %}
 {%- if included != "" %}
 {%- assign verb = " are" %}
 {%- if included == ",tax" or included == ",tip" %}{% assign verb = " is" %}{% endif %}
 {%- assign parts = included | remove_first: "," | split: "," %}
-
-{% for part in parts -%}
+{%- capture note -%}
+{%- for part in parts -%}
   {%- if forloop.first %}{{ part | capitalize }}{% elsif forloop.last and forloop.length > 2 %}, and {{ part }}{% elsif forloop.last %} and {{ part }}{% else %}, {{ part }}{% endif -%}
 {%- endfor -%}
 {{ verb }} included.
+{%- endcapture %}
+
+{{ note | italic }}
 {%- endif %}
 {%- if link != "" %}
 
