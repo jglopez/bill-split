@@ -3,7 +3,7 @@ import type { BillBreakdown, PersonItemShare } from '../utils/calculate'
 import { personItemShares, splitAmountInput } from '../utils/calculate'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { formatAmount } from '../utils/format'
-import { joinNames, summarizeGroup } from '../utils/group'
+import { describeGroup, summarizeGroup } from '../utils/group'
 
 interface Props {
   participants: Participant[]
@@ -285,10 +285,7 @@ function ItemLine({ line, others }: { line: PersonItemShare; others: Participant
 
 /** Who else shares an item: "Sam and Alex", "everyone", or "everyone but Jo". */
 function sharedWithText(line: PersonItemShare, others: Participant[]): string {
-  const group = summarizeGroup(others, p => line.sharedWith.includes(p.id))
-  if (group.kind === 'everyone') return 'everyone'
-  if (group.kind === 'everyoneBut') return `everyone but ${joinNames(group.names)}`
-  return joinNames(group.names)
+  return describeGroup(summarizeGroup(others, p => line.sharedWith.includes(p.id)))
 }
 
 // ─── Mobile card row ──────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Participant } from '../types'
-import { joinNames, summarizeGroup } from './group'
+import { describeGroup, joinNames, summarizeGroup } from './group'
 
 const people: Participant[] = ['Ann', 'Ben', 'Cal', 'Dee', 'Eli'].map((name, i) => ({ id: String(i), name }))
 
@@ -51,5 +51,17 @@ describe('joinNames', () => {
     [['Ann', 'Ben', 'Cal'], 'Ann, Ben, and Cal'],
   ])('joins %j as "%s"', (names, text) => {
     expect(joinNames(names)).toBe(text)
+  })
+})
+
+describe('describeGroup', () => {
+  it.each([
+    [{ kind: 'everyone' } as const, false, 'everyone'],
+    [{ kind: 'everyone' } as const, true, 'Everyone'],
+    [{ kind: 'everyoneBut', names: ['de Vries', 'Ben'] } as const, true, 'Everyone but de Vries and Ben'],
+    [{ kind: 'names', names: ['de Vries'] } as const, true, 'de Vries'],
+    [{ kind: 'names', names: [] } as const, true, ''],
+  ])('words %j (capitalize: %s) as "%s"', (summary, capitalize, text) => {
+    expect(describeGroup(summary, capitalize)).toBe(text)
   })
 })

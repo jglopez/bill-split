@@ -40,3 +40,16 @@ export function joinNames(names: string[]): string {
   if (names.length <= 2) return names.join(' and ')
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
 }
+
+/**
+ * A group summary as words: "Sam and Alex", "everyone", or "everyone but
+ * Jo". An empty group gives an empty string, so callers pick their own
+ * wording for no one. `capitalize` capitalizes "everyone" to start a line;
+ * names are never changed.
+ */
+export function describeGroup(summary: GroupSummary, capitalize = false): string {
+  const everyone = capitalize ? 'Everyone' : 'everyone'
+  if (summary.kind === 'everyone') return everyone
+  if (summary.kind === 'everyoneBut') return `${everyone} but ${joinNames(summary.names)}`
+  return joinNames(summary.names)
+}

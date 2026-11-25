@@ -249,9 +249,11 @@ describe('ItemsTable (cards layout only)', () => {
 
   it.each([
     { assignedTo: ['b'], taxable: undefined, text: 'Bob10.00' },
-    { assignedTo: ['b', 'a'], taxable: undefined, text: 'Alice, Bob5.00 each' }, // participant order
+    { assignedTo: ['b', 'a'], taxable: undefined, text: 'Alice and Bob5.00 each' }, // participant order
     { assignedTo: ['a', 'b', 'c', 'd'], taxable: undefined, text: 'Everyone2.50 each' },
     { assignedTo: ['a', 'c', 'd'], taxable: undefined, text: 'Everyone but Bob3.33 each' },
+    { assignedTo: ['a', 'b', 'c'], taxable: undefined, text: 'Everyone but Dan3.33 each' },
+    { assignedTo: ['a', 'b'], taxable: undefined, text: 'Alice and Bob5.00 each' }, // tie: names win
     { assignedTo: [], taxable: undefined, text: 'No one' },
     { assignedTo: null, taxable: false, text: 'Everyone2.50 eachno tax' },
   ])('summarizes $assignedTo (taxable: $taxable) as "$text"', ({ assignedTo, taxable, text }) => {
