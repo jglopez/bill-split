@@ -225,7 +225,7 @@ function SummaryCard({
       {additionalFees.map((fee, i) => {
         if (breakdown.totalAdditionalFees[i] === 0) return null
         const feeAmount = feeAmounts[i] ?? 0
-        const isDiscount = feeAmount < 0
+        const isDiscount = breakdown.totalAdditionalFees[i] < 0
         return (
           <CardRow
             key={fee.id}
@@ -257,8 +257,9 @@ function tipLabel(state: BillState): string {
 }
 
 /**
- * A fee or discount row label. The caller says which, from the amount the
- * row shows. A discount's leading "−" already says it's taken off, so its
+ * A fee or discount row label. The caller says which, from the bill's total
+ * for that fee, so every view and card words the row the same way, even a
+ * card whose share of a discount rounds to zero. A discount's leading "−" already says it's taken off, so its
  * rate drops its own minus sign: "− Coupon (10%)", not "− Coupon (-10%)".
  */
 function feeLabel(fee: AdditionalFee, isDiscount: boolean): string {

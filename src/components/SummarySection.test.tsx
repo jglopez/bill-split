@@ -384,6 +384,18 @@ describe('SummarySection', () => {
       expect(within(screen.getByRole('region', { name: 'Bill total' })).queryByRole('list')).not.toBeInTheDocument()
     })
 
+    it('labels a discount as one on a card whose share of it is zero', () => {
+      const fees: AdditionalFee[] = [{ id: 'f1', name: 'Coupon', amount: '-10%', base: 'pre-tax' }]
+      renderCards(billState({
+        items: [{ id: 'i1', name: 'Pasta', price: '18', assignedTo: ['a'] }],
+        additionalFees: fees,
+      }))
+      for (const name of ['Bill total', 'Alice', 'Bob']) {
+        const card = within(screen.getByRole('region', { name }))
+        expect(card.getByText('− Coupon (10%)')).toBeInTheDocument()
+      }
+    })
+
     it('keeps rates entered as percents in the labels', () => {
       renderCards(billState({ tax: '8.5%', tip: '20%' }))
       const card = within(screen.getByRole('region', { name: 'Alice' }))
