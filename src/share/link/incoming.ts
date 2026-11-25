@@ -3,10 +3,14 @@
 
 import type { BillState } from '../../types'
 import { MigrationLoadError } from '../../lib/migrations'
-import { isBillHash } from './hash'
+import { isBillHash, splitBillHash } from './hash'
 
 export type IncomingLink =
-  | { kind: 'bill'; bill: BillState }
+  /**
+   * `personId` is the participant the link points at (an id in `bill`), or
+   * null when it points at no one or at a position the bill doesn't have.
+   */
+  | { kind: 'bill'; bill: BillState; personId: string | null }
   /** Made by a newer version of the app. Updating should open it. */
   | { kind: 'newer' }
   /** Damaged or truncated. Nothing can open it. */
@@ -26,7 +30,10 @@ export async function readIncomingLink(hash: string): Promise<IncomingLink | nul
   }
 
   try {
-    return { kind: 'bill', bill: await mod.decodeBillHash(hash) }
+    const bill = await mod.decodeBillHash(hash)
+    const { person } = splitBillHash(hash)
+    const personId = person === null ? null : bill.participants[person]?.id ?? null
+    return { kind: 'bill', bill, personId }
   } catch (err) {
     if (err instanceof mod.NewerLinkError) return { kind: 'newer' }
     if (err instanceof MigrationLoadError) return { kind: 'unavailable' }
