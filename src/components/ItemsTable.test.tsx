@@ -264,6 +264,30 @@ describe('ItemsTable (cards layout only)', () => {
     expect(screen.getAllByRole('button', { expanded: false })[0]).toHaveTextContent(text)
   })
 
+  describe('punctuates the names in the summary', () => {
+    const table: Participant[] = ['Alice', 'Bob', 'Carol', 'Dan', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy']
+      .map(name => ({ id: name.toLowerCase(), name }))
+    const ids = (names: string[]) => names.map(n => n.toLowerCase())
+    const allBut = (left: string[]) => table.filter(p => !left.includes(p.name)).map(p => p.id)
+
+    it.each([
+      { assignedTo: allBut(['Bob']), text: 'Everyone but Bob' },
+      { assignedTo: allBut(['Bob', 'Carol']), text: 'Everyone but Bob and Carol' },
+      { assignedTo: allBut(['Bob', 'Carol', 'Dan']), text: 'Everyone but Bob, Carol, and Dan' },
+      { assignedTo: allBut(['Bob', 'Carol', 'Dan', 'Eve']), text: 'Everyone but Bob, Carol, Dan, and Eve' },
+      { assignedTo: ids(['Alice', 'Bob']), text: 'Alice and Bob' },
+      { assignedTo: ids(['Alice', 'Bob', 'Carol']), text: 'Alice, Bob, and Carol' },
+      { assignedTo: ids(['Alice', 'Bob', 'Carol', 'Dan']), text: 'Alice, Bob, Carol, and Dan' },
+    ])('reads "$text"', ({ assignedTo, text }) => {
+      const props = baseProps()
+      props.participants = table
+      props.items[0] = { ...props.items[0], price: '90', assignedTo }
+      render(<ItemsTable {...props} />)
+      // The share amount follows the names directly, so the digit pins where the names end.
+      expect(screen.getAllByRole('button', { expanded: false })[0]).toHaveTextContent(new RegExp(`^${text}\\d`))
+    })
+  })
+
   it('names the item in the summary button for screen readers', () => {
     const props = baseProps()
     props.items[0].taxable = false
