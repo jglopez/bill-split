@@ -90,8 +90,8 @@ function htmlToText(html: string): string {
 }
 
 describe('renderSummaryHtml', () => {
-  it('renders the sample bill with the title in bold', () => {
-    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br>Tax, tip, fees, and discounts are included.</div>"`)
+  it("renders the sample bill with the title and each person's share in bold", () => {
+    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: <b>$46.86</b><br>Bob: <b>$14.57</b><br>Chris: <b>$31.68</b><br><br>Tax, tip, fees, and discounts are included.</div>"`)
   })
 
   it('has the same text and line breaks as the plain summary', () => {
