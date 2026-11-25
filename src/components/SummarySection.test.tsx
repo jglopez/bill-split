@@ -106,6 +106,22 @@ describe('SummarySection', () => {
     expect(screen.getByText('+ Tip (20%)')).toBeInTheDocument()
   })
 
+  it('leaves out amounts entered in dollars from the labels on desktop', () => {
+    const fees: AdditionalFee[] = [{ id: 'f1', name: 'Service', amount: '3.00', base: 'pre-tax' }]
+    const state = billState({ tax: '0.85', tip: '2.00', additionalFees: fees })
+    render(
+      <SummarySection
+        participants={[alice, bob]}
+        additionalFees={fees}
+        state={state}
+        breakdown={calculateBreakdown(state)}
+      />,
+    )
+    expect(screen.getByText('+ Tax')).toBeInTheDocument()
+    expect(screen.getByText('+ Tip')).toBeInTheDocument()
+    expect(screen.getByText('+ Service')).toBeInTheDocument()
+  })
+
   it('shows an additional fee row and styles a discount differently from a surcharge', () => {
     const fees: AdditionalFee[] = [
       { id: 'f1', name: 'Service', amount: '10', base: 'pre-tax' },
@@ -120,8 +136,8 @@ describe('SummarySection', () => {
         breakdown={calculateBreakdown(state)}
       />,
     )
-    expect(screen.getByText('+ Service (10)')).toHaveClass('text-gray-700')
-    expect(screen.getByText('− Coupon (-2)')).toHaveClass('text-green-700')
+    expect(screen.getByText('+ Service')).toHaveClass('text-gray-700')
+    expect(screen.getByText('− Coupon')).toHaveClass('text-green-700')
   })
 
   it('omits a fee row entirely when its total is zero', () => {

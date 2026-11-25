@@ -111,7 +111,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           {/* Tax */}
           {breakdown.totalTax !== 0 && (
             <SummaryRow
-              label={`+ Tax ${state.tax ? `(${state.tax})` : ''}`}
+              label={`+ Tax${rateSuffix(state.tax)}`}
               total={breakdown.totalTax}
               values={participants.map(p => perPersonValue(p.id, 'tax'))}
             />
@@ -120,7 +120,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
           {/* Tip */}
           {breakdown.totalTip !== 0 && (
             <SummaryRow
-              label={`+ Tip ${state.tip ? `(${state.tip})` : ''}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+              label={`+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
               total={breakdown.totalTip}
               values={participants.map(p => perPersonValue(p.id, 'tip'))}
             />
@@ -134,7 +134,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             return (
               <SummaryRow
                 key={fee.id}
-                label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')} ${fee.amount ? `(${fee.amount})` : ''}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
+                label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${rateSuffix(fee.amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
                 total={total}
                 values={participants.map(p => perPersonFee(p.id, i))}
                 isDiscount={isDiscount}
@@ -244,11 +244,12 @@ function SummaryCard({
 }
 
 /**
- * The rate a tax, tip, or fee was entered as, for a mobile card label, such
- * as " (8.5%)". A rate is the same for everyone, so it reads correctly on a
- * participant's card. An amount entered in dollars is left out: on the bill
- * card it repeats the value beside it, and on a participant's card readers
- * took the bill's full amount for their own.
+ * The rate a tax, tip, or fee was entered as, for a summary label, such as
+ * " (8.5%)". A rate is the same for everyone, so it reads correctly next to
+ * any person's share. An amount entered in dollars is left out: the bill's
+ * own amount already sits beside the label (the table's Total column, or the
+ * bill total card), and on a participant's card readers took the bill's
+ * full amount for their own.
  */
 function rateSuffix(amount: string): string {
   const { isPercent, numeric } = splitAmountInput(amount)
