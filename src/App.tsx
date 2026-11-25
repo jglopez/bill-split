@@ -11,7 +11,7 @@ import { SummarySection } from './components/SummarySection'
 import { PayerSection } from './components/PayerSection'
 import { SettlementSection } from './components/SettlementSection'
 import { ShareSection } from './components/ShareSection'
-import { ShareSummaryButton } from './components/ShareSummaryButton'
+import { ShareBillButtons } from './components/ShareBillButtons'
 import { ResetModal } from './components/ResetModal'
 import { BuildInfo } from './components/BuildInfo'
 import { SharedBillNotice } from './components/SharedBillNotice'
@@ -166,12 +166,12 @@ export function App() {
             transactions={transactions}
           />
 
-          {/* Share: each way of sending the bill out is a ShareButton child (see #4).
+          {/* Share: each way of sending the bill out is a ShareButton (see #4).
               Methods that need a bill render only when there is one. */}
           <ShareSection>
             {state.participants.length > 0 && breakdown.totalSubtotal > 0
               && Number.isFinite(breakdown.totalGrandTotal) && (
-              <ShareSummaryButton state={state} breakdown={breakdown} transactions={transactions} />
+              <ShareBillButtons state={state} breakdown={breakdown} transactions={transactions} />
             )}
           </ShareSection>
         </div>

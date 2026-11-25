@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { canUseShareSheet, shareText, type ShareOutcome } from '../share/shareText'
+import { canUseShareSheet, copyText, shareText, type ShareOutcome } from '../share/shareText'
 
 export interface ShareContent {
+  /** The text to send. Empty when only `url` is shared. */
   text: string
   title?: string
   url?: string
@@ -20,22 +21,46 @@ interface Props {
    */
   getContent: () => ShareContent
   disabled?: boolean
+  /**
+   * `share` (the default) opens the share sheet where there is one and
+   * copies otherwise. `copy` always copies, so rich text (`html`) reaches
+   * the clipboard even on phones, where the share sheet only takes plain
+   * text.
+   */
+  action?: 'share' | 'copy'
+  /**
+   * `primary` is the filled main action that grows to fill its row;
+   * `secondary` (the default) is the smaller outlined one beside it.
+   */
+  variant?: 'primary' | 'secondary'
 }
 
-// How long a "Copied" or error note stays visible.
-export const STATUS_TIMEOUT_MS = 4000
+// How long the button shows "Copied!" or an error before its label returns.
+export const STATUS_TIMEOUT_MS = 2000
 
-const STATUS_TEXT: Partial<Record<ShareOutcome, string>> = {
-  copied: 'Copied to clipboard',
-  failed: "Couldn't share or copy",
+const VARIANT_CLASS = {
+  primary:
+    'flex-1 bg-teal-600 text-white border border-teal-600 hover:bg-teal-700 hover:border-teal-700',
+  secondary: 'text-teal-700 bg-white border border-teal-200 hover:bg-teal-50',
 }
 
 /**
- * One share action. Opens the OS share sheet where there is one (phones,
- * and most desktop Safari and Chrome), and copies to the clipboard
- * otherwise. The button says which it will do.
+ * One share action. By default it opens the OS share sheet where there is
+ * one (phones, and most desktop Safari and Chrome) and copies to the
+ * clipboard otherwise; the button says which it will do. With
+ * `action="copy"` it always copies.
+ *
+ * After a copy, or when something fails, the button's own label briefly
+ * says what happened, so the outcome shows even in a tight row of buttons.
+ * A hidden status region announces the same thing to screen readers.
  */
-export function ShareButton({ label, getContent, disabled = false }: Props) {
+export function ShareButton({
+  label,
+  getContent,
+  disabled = false,
+  action = 'share',
+  variant = 'secondary',
+}: Props) {
   // `seq` changes on every outcome, so repeating the same message restarts
   // its timer instead of letting the earlier one clear it early.
   const [status, setStatus] = useState<{ text: string; seq: number } | null>(null)
@@ -43,7 +68,7 @@ export function ShareButton({ label, getContent, disabled = false }: Props) {
   // another one (a desktop share popover stays open until it's dismissed).
   const [busy, setBusy] = useState(false)
   // Read once: whether the browser has a share sheet doesn't change.
-  const [useSheet] = useState(canUseShareSheet)
+  const [useSheet] = useState(() => action === 'share' && canUseShareSheet())
 
   useEffect(() => {
     if (!status) return
@@ -52,7 +77,10 @@ export function ShareButton({ label, getContent, disabled = false }: Props) {
   }, [status])
 
   function report(outcome: ShareOutcome) {
-    const text = STATUS_TEXT[outcome]
+    const text =
+      outcome === 'copied' ? 'Copied!'
+      : outcome === 'failed' ? (useSheet ? "Couldn't share" : "Couldn't copy")
+      : null
     setStatus(prev => (text ? { text, seq: (prev?.seq ?? 0) + 1 } : null))
   }
 
@@ -69,24 +97,25 @@ export function ShareButton({ label, getContent, disabled = false }: Props) {
       return
     }
     setBusy(true)
-    void shareText(content.text, { title: content.title, url: content.url, html: content.html })
-      .then(report)
-      .finally(() => setBusy(false))
+    const sent = action === 'copy'
+      ? copyText(content.text, { url: content.url, html: content.html })
+      : shareText(content.text, { title: content.title, url: content.url, html: content.html })
+    void sent.then(report).finally(() => setBusy(false))
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <>
       <button
         type="button"
         onClick={handleClick}
         disabled={disabled || busy}
-        className="text-sm font-medium text-teal-700 border border-teal-200 rounded px-3 py-1.5 min-h-[44px] hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`text-sm font-medium rounded px-4 py-1.5 min-h-[44px] whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASS[variant]}`}
       >
-        {useSheet ? `Share ${label}` : `Copy ${label}`}
+        {status?.text ?? (useSheet ? `Share ${label}` : `Copy ${label}`)}
       </button>
-      <span role="status" className="text-xs text-gray-500">
+      <span role="status" className="sr-only">
         {status?.text}
       </span>
-    </div>
+    </>
   )
 }

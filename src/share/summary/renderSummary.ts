@@ -29,12 +29,18 @@ export class SummaryTemplateError extends Error {
  * - Parse, render and memory limits, so a runaway template can't hang the
  *   page. They are generous for anything a person would write by hand.
  */
-// Marks bold text while rendering. buildShareData strips control characters
-// from names, so these never collide with the bill's own text.
-const BOLD_START = '\u0002'
-const BOLD_END = '\u0003'
+// Mark styled text while rendering. buildShareData strips control characters
+// from names, so these never collide with the bill's own text. Each style is
+// a filter: it styles its text in the rich-text copy and does nothing in
+// plain text.
+const STYLES = {
+  bold: { start: '\u0002', end: '\u0003', tag: 'b' },
+  italic: { start: '\u0004', end: '\u0005', tag: 'i' },
+} as const
 
-function makeEngine(bold: (text: string) => string): Liquid {
+type StyleName = keyof typeof STYLES
+
+function makeEngine(style: (name: StyleName, text: string) => string): Liquid {
   const engine = new Liquid({
     templates: {},
     strictFilters: true,
@@ -53,17 +59,29 @@ function makeEngine(bold: (text: string) => string): Liquid {
     return formatMoney(value)
   })
 
-  // Bold in the rich-text copy; unchanged in plain text, so plain text never
-  // shows markup.
-  engine.registerFilter('bold', (value: unknown) => bold(String(value)))
+  // Styled in the rich-text copy; unchanged in plain text, so plain text
+  // never shows markup.
+  for (const name of Object.keys(STYLES) as StyleName[]) {
+    engine.registerFilter(name, (value: unknown) => style(name, String(value)))
+  }
 
   return engine
 }
 
-const textEngine = makeEngine(text => text)
-const stripMarkers = (text: string) => text.split(BOLD_START).join('').split(BOLD_END).join('')
-const BOLD_SPAN = new RegExp(`${BOLD_START}([^${BOLD_END}]*)${BOLD_END}`, 'g')
-const htmlEngine = makeEngine(text => BOLD_START + stripMarkers(text) + BOLD_END)
+const textEngine = makeEngine((_name, text) => text)
+const MARKERS = new RegExp(`[${Object.values(STYLES).map(s => s.start + s.end).join('')}]`, 'g')
+// Styles don't nest: text that is already styled loses its inner style.
+const htmlEngine = makeEngine(
+  (name, text) => STYLES[name].start + text.replace(MARKERS, '') + STYLES[name].end,
+)
+
+function markersToTags(html: string): string {
+  return Object.values(STYLES).reduce(
+    (out, { start, end, tag }) =>
+      out.replace(new RegExp(`${start}([^${end}]*)${end}`, 'g'), `<${tag}>$1</${tag}>`),
+    html,
+  )
+}
 
 function render(engine: Liquid, data: SummaryTemplateData, template: string): string {
   let output: string
@@ -91,7 +109,7 @@ function escapeHtml(text: string): string {
 /**
  * Render the plain-text summary of a bill. Trailing whitespace on each line
  * and blank lines at either end are trimmed, so templates can be laid out
- * for readability. The `bold` filter has no effect here.
+ * for readability. The `bold` and `italic` filters have no effect here.
  *
  * Throws SummaryTemplateError if the template is malformed or fails while
  * rendering.
@@ -106,7 +124,8 @@ export function renderSummary(
 /**
  * Render the same summary as rich text (HTML) for pasting into apps that
  * keep formatting. It has the same text and line breaks as renderSummary;
- * only text passed through the `bold` filter differs, wrapped in <b>.
+ * only text passed through the `bold` or `italic` filter differs, wrapped
+ * in <b> or <i>.
  * Everything else is escaped, so names can't inject markup.
  *
  * Throws SummaryTemplateError like renderSummary.
@@ -115,8 +134,7 @@ export function renderSummaryHtml(
   data: SummaryTemplateData,
   template: string = defaultTemplate,
 ): string {
-  const body = escapeHtml(render(htmlEngine, data, template))
-    .replace(BOLD_SPAN, '<b>$1</b>')
+  const body = markersToTags(escapeHtml(render(htmlEngine, data, template)))
     .replace(/\n/g, '<br>')
   return `<div>${body}</div>`
 }
