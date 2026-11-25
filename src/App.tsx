@@ -47,7 +47,13 @@ export function App() {
     dismissSaveWarning,
   } = useBillSplit()
 
-  const { incoming, open: openIncoming, dismiss: dismissIncoming } = useIncomingLink(state, load)
+  const {
+    incoming,
+    open: openIncoming,
+    dismiss: dismissIncoming,
+    focus,
+    clearFocus,
+  } = useIncomingLink(state, load)
 
   // A reload would discard unsaved state, so only auto-update while saving works.
   useAutoUpdate({ enabled: isPersisted })
@@ -148,6 +154,8 @@ export function App() {
             additionalFees={state.additionalFees}
             state={state}
             breakdown={breakdown}
+            focus={focus}
+            onFocusDone={clearFocus}
           />
 
           {/* Payer selection */}

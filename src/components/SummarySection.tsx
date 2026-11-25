@@ -1,15 +1,34 @@
+import { useEffect, useRef, type ReactNode, type Ref } from 'react'
 import type { AdditionalFee, BillState, Participant } from '../types'
 import type { BillBreakdown, PersonItemShare } from '../utils/calculate'
 import { personItemShares, splitAmountInput } from '../utils/calculate'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { formatAmount } from '../utils/format'
 import { describeGroup, summarizeGroup } from '../utils/group'
+import { SharePersonButton } from './SharePersonButton'
 
 interface Props {
   participants: Participant[]
   additionalFees: AdditionalFee[]
   state: BillState
   breakdown: BillBreakdown
+  /**
+   * A person to scroll to and briefly highlight, such as the one a shared
+   * link points at. `seq` changes on every request, so the same person can
+   * be focused twice.
+   */
+  focus?: { participantId: string; seq: number } | null
+  /** Called once the highlight is over, or right away when there's nothing to scroll to. */
+  onFocusDone?: () => void
+}
+
+/** How long a focused person stays highlighted. */
+export const FOCUS_HIGHLIGHT_MS = 2000
+/** With reduced motion the highlight appears and disappears without fading, so it stays up a little longer. */
+export const FOCUS_HIGHLIGHT_REDUCED_MOTION_MS = 3000
+
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /**
@@ -27,12 +46,50 @@ interface Props {
  * then their subtotal, tax, tip, fees, and total. With a single participant
  * only the "Bill total" card is shown, since their card would be identical.
  *
+ * On narrow screens each person's card has a share icon that sends a link
+ * to their share.
+ *
+ * A `focus` request scrolls to that person: their card on narrow screens,
+ * or the table on wide ones, where their column is tinted instead.
+ *
  * Display-only; all interactive inputs live in the sections above.
  */
-export function SummarySection({ participants, additionalFees, state, breakdown }: Props) {
+export function SummarySection({ participants, additionalFees, state, breakdown, focus = null, onFocusDone }: Props) {
   const isMobile = useIsMobile()
+  // Each person's card, by participant id, so a focus request can find it.
+  const cards = useRef(new Map<string, HTMLElement>())
+  const table = useRef<HTMLDivElement>(null)
+  // The latest callback, so a parent re-render doesn't restart the highlight.
+  const onFocusDoneRef = useRef(onFocusDone)
+  useEffect(() => {
+    onFocusDoneRef.current = onFocusDone
+  }, [onFocusDone])
+
+  const participantId = focus?.participantId
+  const seq = focus?.seq
+  useEffect(() => {
+    if (participantId === undefined) return
+    const target = isMobile ? cards.current.get(participantId) : table.current
+    if (!target) {
+      // Nothing to show this person in (for example a bill with nothing on
+      // it yet), so there's nothing to highlight either.
+      onFocusDoneRef.current?.()
+      return
+    }
+    const reduced = prefersReducedMotion()
+    target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+    const timer = setTimeout(
+      () => onFocusDoneRef.current?.(),
+      reduced ? FOCUS_HIGHLIGHT_REDUCED_MOTION_MS : FOCUS_HIGHLIGHT_MS,
+    )
+    return () => clearTimeout(timer)
+    // isMobile is left out on purpose: rotating the phone mid-highlight
+    // shouldn't scroll again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participantId, seq])
 
   if (participants.length === 0 || breakdown.totalSubtotal === 0) return null
+  const highlightId = participantId ?? null
   const perPersonMap = new Map(breakdown.perPerson.map(p => [p.participantId, p]))
 
   function perPersonValue(participantId: string, field: 'subtotal' | 'tax' | 'tip' | 'grandTotal'): number {
@@ -63,6 +120,11 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
         {participants.length > 1 && participants.map(p => (
           <SummaryCard
             key={p.id}
+            cardRef={el => {
+              if (el) cards.current.set(p.id, el)
+              else cards.current.delete(p.id)
+            }}
+            focused={p.id === highlightId}
             title={p.name}
             totalLabel="Total"
             subtotal={perPersonValue(p.id, 'subtotal')}
@@ -75,14 +137,18 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             breakdown={breakdown}
             items={personItemShares(state, p.id, perPersonValue(p.id, 'subtotal'))}
             others={participants.filter(other => other.id !== p.id)}
+            action={Number.isFinite(perPersonValue(p.id, 'grandTotal')) && (
+              <SharePersonButton state={state} participant={p} total={perPersonValue(p.id, 'grandTotal')} />
+            )}
           />
         ))}
       </div>
     )
   }
 
+  const highlightIndex = participants.findIndex(p => p.id === highlightId)
   return (
-    <div className="mt-4 overflow-x-auto overscroll-x-none -mx-4 px-4">
+    <div ref={table} className="mt-4 overflow-x-auto overscroll-x-none -mx-4 px-4 scroll-mt-4">
       <table className="w-full text-sm border-collapse min-w-[400px]">
         <thead>
           <tr className="border-b-2 border-gray-200">
@@ -91,7 +157,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             {participants.map(p => (
               <th
                 key={p.id}
-                className="text-right py-2 px-2 font-medium text-gray-600 w-20"
+                className={`text-right py-2 px-2 font-medium text-gray-600 w-20 ${columnClass(p.id === highlightId)}`}
               >
                 <span className="block text-xs leading-tight max-w-[70px] ml-auto break-words text-right">
                   {p.name}
@@ -106,6 +172,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             label="Subtotal"
             total={breakdown.totalSubtotal}
             values={participants.map(p => perPersonValue(p.id, 'subtotal'))}
+            highlightIndex={highlightIndex}
           />
 
           {/* Tax */}
@@ -114,6 +181,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
               label={taxLabel(state)}
               total={breakdown.totalTax}
               values={participants.map(p => perPersonValue(p.id, 'tax'))}
+              highlightIndex={highlightIndex}
             />
           )}
 
@@ -123,6 +191,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
               label={tipLabel(state)}
               total={breakdown.totalTip}
               values={participants.map(p => perPersonValue(p.id, 'tip'))}
+              highlightIndex={highlightIndex}
             />
           )}
 
@@ -137,6 +206,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
                 label={feeLabel(fee, isDiscount)}
                 total={total}
                 values={participants.map(p => perPersonFee(p.id, i))}
+                highlightIndex={highlightIndex}
                 isDiscount={isDiscount}
               />
             )
@@ -149,11 +219,12 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
               {formatAmount(breakdown.totalGrandTotal)}
             </td>
             {participants.map(p => (
-              <td key={p.id} className="py-2 px-2 text-right text-gray-800 tabular-nums">
+              <td key={p.id} className={`py-2 px-2 text-right text-gray-800 tabular-nums ${columnClass(p.id === highlightId)}`}>
                 {formatAmount(perPersonValue(p.id, 'grandTotal'))}
               </td>
             ))}
           </tr>
+
         </tbody>
       </table>
     </div>
@@ -182,6 +253,9 @@ function SummaryCard({
   items,
   others = [],
   highlight = false,
+  focused = false,
+  cardRef,
+  action,
 }: {
   title: string
   totalLabel: string
@@ -197,13 +271,29 @@ function SummaryCard({
   /** Everyone on the bill but the card's owner, for naming who shares an item. */
   others?: Participant[]
   highlight?: boolean
+  /** Briefly ringed when a shared link points at this card's person. */
+  focused?: boolean
+  cardRef?: Ref<HTMLElement>
+  /** A control for the card's top-right corner, such as its share icon. */
+  action?: ReactNode
 }) {
   const containerClass = highlight
     ? 'border-gray-300 bg-gray-50'
     : 'border-gray-200'
+  const focusClass = focused ? 'ring-2 ring-teal-500 ring-offset-2' : 'ring-0'
   return (
-    <section aria-label={title} className={`rounded-lg border px-4 py-3 text-sm ${containerClass}`}>
-      <div className="font-medium text-gray-800 mb-2 [overflow-wrap:anywhere]">{title}</div>
+    <section
+      ref={cardRef}
+      aria-label={title}
+      data-focused={focused || undefined}
+      className={`rounded-lg border px-4 py-3 text-sm scroll-mt-4 transition-shadow duration-700 motion-reduce:transition-none ${containerClass} ${focusClass}`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="font-medium text-gray-800 [overflow-wrap:anywhere]">{title}</div>
+        {/* The tap target is larger than the glyph; negative margins keep it
+            from making the card taller or pushing the title in. */}
+        {action && <div className="-mr-3 -my-3 shrink-0">{action}</div>}
+      </div>
       {items && items.length > 0 && (
         <ul aria-label={`${title}'s items`} className="border-b border-gray-200 mb-1 pb-1">
           {items.map(line => <ItemLine key={line.itemId} line={line} others={others} />)}
@@ -336,16 +426,24 @@ function CardRow({
 
 // ─── Desktop table row ────────────────────────────────────────────────────────
 
+/** Tints a person's column in the desktop table while a shared link points at them. */
+function columnClass(focused: boolean): string {
+  return `transition-colors duration-700 motion-reduce:transition-none ${focused ? 'bg-teal-50' : ''}`
+}
+
 function SummaryRow({
   label,
   total,
   values,
   isDiscount = false,
+  highlightIndex = -1,
 }: {
   label: string
   total: number
   values: number[]
   isDiscount?: boolean
+  /** The column to tint, by position in `values`, or -1 for none. */
+  highlightIndex?: number
 }) {
   const colorClass = isDiscount ? 'text-green-700' : 'text-gray-700'
   return (
@@ -353,7 +451,7 @@ function SummaryRow({
       <td className={`py-1.5 pr-3 ${colorClass} text-xs`}>{label}</td>
       <td className={`py-1.5 px-2 text-right tabular-nums ${colorClass}`}>{formatAmount(total)}</td>
       {values.map((v, i) => (
-        <td key={i} className={`py-1.5 px-2 text-right tabular-nums ${colorClass}`}>
+        <td key={i} data-focused={i === highlightIndex || undefined} className={`py-1.5 px-2 text-right tabular-nums ${colorClass} ${columnClass(i === highlightIndex)}`}>
           {formatAmount(v)}
         </td>
       ))}

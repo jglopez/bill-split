@@ -7,10 +7,12 @@ import {
   NewerLinkError,
   billLinkUrl,
   decodeBillHash,
+  personLinkUrl,
   encodeBillHash,
   formats,
 } from './billLink'
-import { BILL_HASH_PREFIX } from './hash'
+import { BILL_HASH_PREFIX, PERSON_PARAM, withPerson } from './hash'
+import { readIncomingLink } from './incoming'
 
 // Swap ids for names so two bills compare by content. Ids are regenerated
 // whenever a link is opened, so they never match.
@@ -133,6 +135,61 @@ describe('bill links', () => {
     const hash = encodeBillHash(dinner)
     expect(billLinkUrl(dinner, 'https://example.test/split/')).toBe(`https://example.test/split/${hash}`)
     expect(billLinkUrl(dinner, 'https://example.test/#old')).toBe(`https://example.test/${hash}`)
+  })
+
+  describe('links to one person', () => {
+    const base = 'https://example.test/'
+    const personFrom = (url: string) => url.slice(base.length)
+
+    it('builds a bill link with the person marker after the bill', () => {
+      expect(personLinkUrl(dinner, 'p2', base)).toBe(`${base}${encodeBillHash(dinner)}${PERSON_PARAM}2`)
+    })
+
+    it('opens the same bill as a plain link', async () => {
+      const opened = await decodeBillHash(personFrom(personLinkUrl(dinner, 'p2', base)))
+      expect(byName(opened)).toEqual(byName(dinner))
+    })
+
+    it('points at the same person in the opened bill, by their fresh id', async () => {
+      for (const person of dinner.participants) {
+        const link = await readIncomingLink(personFrom(personLinkUrl(dinner, person.id, base)))
+        if (link?.kind !== 'bill') throw new Error('expected a bill')
+        const opened = link.bill.participants.find(p => p.id === link.personId)
+        expect(opened?.name).toBe(person.name)
+      }
+    })
+
+    it('tells apart people with the same name', async () => {
+      const twins: BillState = { ...dinner, participants: [{ id: 'a', name: 'Sam' }, { id: 'b', name: 'Sam' }] }
+      const link = await readIncomingLink(personFrom(personLinkUrl(twins, 'b', base)))
+      if (link?.kind !== 'bill') throw new Error('expected a bill')
+      expect(link.bill.participants.findIndex(p => p.id === link.personId)).toBe(1)
+    })
+
+    it('still points at the right person after the sender reorders people', async () => {
+      const reordered = { ...dinner, participants: [...dinner.participants].reverse() }
+      const link = await readIncomingLink(personFrom(personLinkUrl(reordered, 'p0', base)))
+      if (link?.kind !== 'bill') throw new Error('expected a bill')
+      expect(link.bill.participants.find(p => p.id === link.personId)?.name).toBe('Alice')
+    })
+
+    it('opens the bill without a person when the position is past the end', async () => {
+      const link = await readIncomingLink(withPerson(encodeBillHash(dinner), dinner.participants.length))
+      expect(link).toMatchObject({ kind: 'bill', personId: null })
+    })
+
+    it('opens the bill without a person when the marker is garbled', async () => {
+      const link = await readIncomingLink(`${encodeBillHash(dinner)}${PERSON_PARAM}two`)
+      expect(link).toMatchObject({ kind: 'bill', personId: null })
+    })
+
+    it('reports a plain link as pointing at no one', async () => {
+      expect(await readIncomingLink(encodeBillHash(dinner))).toMatchObject({ kind: 'bill', personId: null })
+    })
+
+    it('refuses a person who is not on the bill', () => {
+      expect(() => personLinkUrl(dinner, 'nobody', base)).toThrow(RangeError)
+    })
   })
 
   describe('formats', () => {

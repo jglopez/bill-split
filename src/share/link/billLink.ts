@@ -22,7 +22,7 @@ import { deflateSync, inflateSync, strFromU8, strToU8 } from 'fflate'
 import type { BillState } from '../../types'
 import { CURRENT_BILL_VERSION, MigrationLoadError, migrateToCurrent } from '../../lib/migrations'
 import { isBillState } from '../../hooks/useBillSplit'
-import { BILL_HASH_PREFIX, isBillHash } from './hash'
+import { BILL_HASH_PREFIX, isBillHash, splitBillHash, withPerson } from './hash'
 import * as v1 from './formats/v1'
 
 interface LinkFormat {
@@ -98,8 +98,19 @@ export function billLinkUrl(state: BillState, base: string = appBaseUrl()): stri
 }
 
 /**
+ * A full link that opens this bill in the app and scrolls to one person's
+ * receipt. Throws when the person isn't on the bill.
+ */
+export function personLinkUrl(state: BillState, participantId: string, base: string = appBaseUrl()): string {
+  const position = state.participants.findIndex(p => p.id === participantId)
+  if (position === -1) throw new RangeError(`Participant ${participantId} is not on the bill`)
+  return base.replace(/#.*$/, '') + withPerson(encodeBillHash(state), position)
+}
+
+/**
  * Read a bill from a URL fragment (including its `#`). The result is a
- * current-version bill with fresh ids.
+ * current-version bill with fresh ids. A person marker is ignored here; see
+ * splitBillHash.
  *
  * Rejects with NewerLinkError for links from a newer app, MalformedLinkError
  * for anything damaged, and MigrationLoadError when the code to upgrade an
@@ -107,7 +118,9 @@ export function billLinkUrl(state: BillState, base: string = appBaseUrl()): stri
  */
 export async function decodeBillHash(hash: string): Promise<BillState> {
   if (!isBillHash(hash)) throw new MalformedLinkError('Not a bill link')
-  const match = /^(\d{1,6})\.(.*)$/s.exec(hash.slice(BILL_HASH_PREFIX.length))
+  // A person marker only says where to scroll; the bill is the same.
+  const billHash = splitBillHash(hash).bill
+  const match = /^(\d{1,6})\.(.*)$/s.exec(billHash.slice(BILL_HASH_PREFIX.length))
   if (!match) throw new MalformedLinkError('Bill link has no format number')
 
   const formatNumber = Number(match[1])

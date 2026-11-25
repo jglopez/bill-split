@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
-import { SummarySection } from './SummarySection'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { FOCUS_HIGHLIGHT_MS, FOCUS_HIGHLIGHT_REDUCED_MOTION_MS, SummarySection } from './SummarySection'
 import { calculateBreakdown } from '../utils/calculate'
 import { formatAmount } from '../utils/format'
 import type { AdditionalFee, BillState, Participant } from '../types'
@@ -437,5 +437,115 @@ describe('SummarySection', () => {
         expect(card.getByText('+ Service')).toBeInTheDocument()
       }
     })
+  })
+})
+
+describe('SummarySection receipt links', () => {
+  const carol: Participant = { id: 'c', name: 'Carol' }
+  const three = billState({ participants: [alice, bob, carol] })
+
+  function renderFocus(focus: { participantId: string; seq: number } | null, onFocusDone = vi.fn()) {
+    const utils = render(
+      <SummarySection
+        participants={three.participants}
+        additionalFees={[]}
+        state={three}
+        breakdown={calculateBreakdown(three)}
+        focus={focus}
+        onFocusDone={onFocusDone}
+      />,
+    )
+    return { ...utils, onFocusDone }
+  }
+
+  let scrollIntoView: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    scrollIntoView = vi.fn()
+    // jsdom doesn't lay pages out, so it has no scrollIntoView.
+    Element.prototype.scrollIntoView = scrollIntoView as unknown as Element['scrollIntoView']
+  })
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it('puts a share icon on each person card but not on the bill total card', async () => {
+    setInnerWidth(375)
+    renderFocus(null)
+    for (const name of ['Alice', 'Bob', 'Carol']) {
+      const card = screen.getByRole('region', { name })
+      const button = within(card).getByRole('button', { name: new RegExp(`link to ${name}'s receipt`) })
+      // Enabled once the link encoder has loaded.
+      await waitFor(() => expect(button).toBeEnabled())
+    }
+    expect(within(screen.getByRole('region', { name: 'Bill total' })).queryByRole('button')).toBeNull()
+  })
+
+  it('has no share icons in the desktop table', () => {
+    renderFocus(null)
+    expect(screen.queryByRole('button', { name: /receipt/ })).toBeNull()
+  })
+
+  it('scrolls to the focused person card and rings it until the highlight ends', async () => {
+    vi.useFakeTimers()
+    setInnerWidth(375)
+    const { onFocusDone } = renderFocus({ participantId: 'b', seq: 1 })
+    const card = screen.getByRole('region', { name: 'Bob' })
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.contexts[0]).toBe(card)
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    expect(card).toHaveAttribute('data-focused')
+    expect(screen.getByRole('region', { name: 'Alice' })).not.toHaveAttribute('data-focused')
+
+    act(() => vi.advanceTimersByTime(FOCUS_HIGHLIGHT_MS - 1))
+    expect(onFocusDone).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(1))
+    expect(onFocusDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('jumps without animation, and highlights for longer, with reduced motion', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce') }))
+    setInnerWidth(375)
+    const { onFocusDone } = renderFocus({ participantId: 'c', seq: 1 })
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
+    act(() => vi.advanceTimersByTime(FOCUS_HIGHLIGHT_MS))
+    expect(onFocusDone).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(FOCUS_HIGHLIGHT_REDUCED_MOTION_MS - FOCUS_HIGHLIGHT_MS))
+    expect(onFocusDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('scrolls again when the same person is focused again', () => {
+    setInnerWidth(375)
+    const { rerender, onFocusDone } = renderFocus({ participantId: 'a', seq: 1 })
+    rerender(
+      <SummarySection
+        participants={three.participants}
+        additionalFees={[]}
+        state={three}
+        breakdown={calculateBreakdown(three)}
+        focus={{ participantId: 'a', seq: 2 }}
+        onFocusDone={onFocusDone}
+      />,
+    )
+    expect(scrollIntoView).toHaveBeenCalledTimes(2)
+  })
+
+  it('scrolls to the table and tints the person column on desktop', () => {
+    renderFocus({ participantId: 'b', seq: 1 })
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('table').parentElement)
+    const row = screen.getByText('Subtotal').closest('tr')!
+    const cells = within(row).getAllByRole('cell')
+    // Label, Total, then Alice, Bob, Carol.
+    expect(cells.map(c => c.hasAttribute('data-focused'))).toEqual([false, false, false, true, false])
+  })
+
+  it('finishes straight away when the person is not on the bill', () => {
+    setInnerWidth(375)
+    const { onFocusDone } = renderFocus({ participantId: 'nobody', seq: 1 })
+    expect(scrollIntoView).not.toHaveBeenCalled()
+    expect(onFocusDone).toHaveBeenCalledTimes(1)
   })
 })

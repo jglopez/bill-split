@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { canUseShareSheet, copyText, shareText, type ShareOutcome } from '../share/shareText'
+import CheckIcon from './icons/check.svg?react'
+import LinkIcon from './icons/link.svg?react'
+import ShareIcon from './icons/share.svg?react'
 
 export interface ShareContent {
   /** The text to send. Empty when only `url` is shared. */
@@ -31,8 +34,10 @@ interface Props {
   /**
    * `primary` is the filled main action that grows to fill its row;
    * `secondary` (the default) is the smaller outlined one beside it.
+   * `icon` is a small glyph with a full-size tap target, for actions on a
+   * single card; its label is its accessible name instead of visible text.
    */
-  variant?: 'primary' | 'secondary'
+  variant?: 'primary' | 'secondary' | 'icon'
 }
 
 // How long the button shows "Copied!" or an error before its label returns.
@@ -103,6 +108,38 @@ export function ShareButton({
     void sent.then(report).finally(() => setBusy(false))
   }
 
+  const name = useSheet ? `Share ${label}` : `Copy ${label}`
+
+  if (variant === 'icon') {
+    const Icon = useSheet ? ShareIcon : LinkIcon
+    const copied = status?.text === 'Copied!'
+    return (
+      <span className="relative inline-flex">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={disabled || busy}
+          aria-label={name}
+          title={name}
+          className="inline-flex items-center justify-center w-11 h-11 rounded-full text-gray-400 hover:text-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {copied
+            ? <CheckIcon aria-hidden="true" className="w-3 h-3 text-teal-700" />
+            : <Icon aria-hidden="true" className="w-4 h-4" />}
+        </button>
+        {/* Too little room for the outcome inside an icon, so it shows beside it. */}
+        {status && !copied && (
+          <span aria-hidden="true" className="absolute right-full top-1/2 -translate-y-1/2 mr-1 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white">
+            {status.text}
+          </span>
+        )}
+        <span role="status" className="sr-only">
+          {status?.text}
+        </span>
+      </span>
+    )
+  }
+
   return (
     <>
       <button
@@ -111,7 +148,7 @@ export function ShareButton({
         disabled={disabled || busy}
         className={`text-sm font-medium rounded px-4 py-1.5 min-h-[44px] whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASS[variant]}`}
       >
-        {status?.text ?? (useSheet ? `Share ${label}` : `Copy ${label}`)}
+        {status?.text ?? name}
       </button>
       <span role="status" className="sr-only">
         {status?.text}
