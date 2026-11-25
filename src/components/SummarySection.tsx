@@ -46,6 +46,9 @@ function prefersReducedMotion(): boolean {
  * then their subtotal, tax, tip, fees, and total. With a single participant
  * only the "Bill total" card is shown, since their card would be identical.
  *
+ * Each person's share can be sent as a link: an icon on their card, or
+ * under their column in the table.
+ *
  * A `focus` request scrolls to that person: their card on narrow screens,
  * or the table on wide ones, where their column is tinted instead.
  *
@@ -220,6 +223,26 @@ export function SummarySection({ participants, additionalFees, state, breakdown,
                 {formatAmount(perPersonValue(p.id, 'grandTotal'))}
               </td>
             ))}
+          </tr>
+
+          {/* A link to each person's share, under their total. */}
+          <tr>
+            <td className="pr-3">
+              <span className="sr-only">Share</span>
+            </td>
+            <td />
+            {participants.map(p => {
+              const total = perPersonValue(p.id, 'grandTotal')
+              return (
+                <td key={p.id} className={`px-2 text-right ${columnClass(p.id === highlightId)}`}>
+                  {Number.isFinite(total) && (
+                    <span className="inline-flex -mr-3">
+                      <SharePersonButton state={state} participant={p} total={total} />
+                    </span>
+                  )}
+                </td>
+              )
+            })}
           </tr>
         </tbody>
       </table>

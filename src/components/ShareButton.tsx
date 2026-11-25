@@ -121,11 +121,11 @@ export function ShareButton({
           disabled={disabled || busy}
           aria-label={name}
           title={name}
-          className="inline-flex items-center justify-center w-11 h-11 rounded-full text-gray-500 hover:text-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center w-11 h-11 rounded-full text-gray-400 hover:text-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {copied
-            ? <CheckIcon aria-hidden="true" className="w-4 h-4 text-teal-700" />
-            : <Icon aria-hidden="true" className="w-5 h-5" />}
+            ? <CheckIcon aria-hidden="true" className="w-3 h-3 text-teal-700" />
+            : <Icon aria-hidden="true" className="w-4 h-4" />}
         </button>
         {/* Too little room for the outcome inside an icon, so it shows beside it. */}
         {status && !copied && (
