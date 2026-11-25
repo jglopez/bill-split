@@ -1,10 +1,11 @@
-import { useEffect, useRef, type Ref } from 'react'
+import { useEffect, useRef, type ReactNode, type Ref } from 'react'
 import type { AdditionalFee, BillState, Participant } from '../types'
 import type { BillBreakdown, PersonItemShare } from '../utils/calculate'
 import { personItemShares, splitAmountInput } from '../utils/calculate'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { formatAmount } from '../utils/format'
 import { describeGroup, summarizeGroup } from '../utils/group'
+import { SharePersonButton } from './SharePersonButton'
 
 interface Props {
   participants: Participant[]
@@ -133,6 +134,9 @@ export function SummarySection({ participants, additionalFees, state, breakdown,
             breakdown={breakdown}
             items={personItemShares(state, p.id, perPersonValue(p.id, 'subtotal'))}
             others={participants.filter(other => other.id !== p.id)}
+            action={Number.isFinite(perPersonValue(p.id, 'grandTotal')) && (
+              <SharePersonButton state={state} participant={p} total={perPersonValue(p.id, 'grandTotal')} />
+            )}
           />
         ))}
       </div>
@@ -247,6 +251,7 @@ function SummaryCard({
   highlight = false,
   focused = false,
   cardRef,
+  action,
 }: {
   title: string
   totalLabel: string
@@ -265,6 +270,8 @@ function SummaryCard({
   /** Briefly ringed when a shared link points at this card's person. */
   focused?: boolean
   cardRef?: Ref<HTMLElement>
+  /** A control for the card's top-right corner, such as its share icon. */
+  action?: ReactNode
 }) {
   const containerClass = highlight
     ? 'border-gray-300 bg-gray-50'
@@ -277,7 +284,12 @@ function SummaryCard({
       data-focused={focused || undefined}
       className={`rounded-lg border px-4 py-3 text-sm scroll-mt-4 transition-shadow duration-700 motion-reduce:transition-none ${containerClass} ${focusClass}`}
     >
-      <div className="font-medium text-gray-800 mb-2 [overflow-wrap:anywhere]">{title}</div>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="font-medium text-gray-800 [overflow-wrap:anywhere]">{title}</div>
+        {/* The tap target is larger than the glyph; negative margins keep it
+            from making the card taller or pushing the title in. */}
+        {action && <div className="-mr-3 -my-3 shrink-0">{action}</div>}
+      </div>
       {items && items.length > 0 && (
         <ul aria-label={`${title}'s items`} className="border-b border-gray-200 mb-1 pb-1">
           {items.map(line => <ItemLine key={line.itemId} line={line} others={others} />)}

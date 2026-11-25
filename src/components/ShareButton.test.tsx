@@ -164,4 +164,39 @@ describe('ShareButton', () => {
     await user.click(screen.getByRole('button', { name: 'Share link' }))
     expect(await screen.findByRole('status')).toHaveTextContent("Couldn't share")
   })
+
+  describe('icon variant', () => {
+    it('names its action for screen readers and shares on tap', async () => {
+      const share = vi.fn().mockResolvedValue(undefined)
+      install('share', share)
+      render(<ShareButton variant="icon" label="link to Bob's receipt" getContent={() => ({ text: 'hi', url: 'https://x.test/' })} />)
+
+      const button = screen.getByRole('button', { name: "Share link to Bob's receipt" })
+      expect(button).toHaveTextContent('')
+      await userEvent.click(button)
+      expect(share).toHaveBeenCalledWith({ text: 'hi', url: 'https://x.test/' })
+    })
+
+    it('offers to copy without a share sheet, and keeps its name after copying', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      render(<ShareButton variant="icon" label="link to Bob's receipt" getContent={() => ({ text: 'hi', url: 'https://x.test/' })} />)
+      const user = userEvent.setup()
+      install('clipboard', { writeText })
+
+      await user.click(screen.getByRole('button', { name: "Copy link to Bob's receipt" }))
+      expect(writeText).toHaveBeenCalledWith('hi\n\nhttps://x.test/')
+      expect(await screen.findByRole('status')).toHaveTextContent('Copied!')
+      expect(screen.getByRole('button', { name: "Copy link to Bob's receipt" })).toBeInTheDocument()
+    })
+
+    it('shows a failure beside the icon', async () => {
+      const user = userEvent.setup()
+      install('clipboard', { writeText: vi.fn().mockRejectedValue(new Error('denied')) })
+      render(<ShareButton variant="icon" label="link to Bob's receipt" getContent={() => ({ text: 'hi' })} />)
+
+      await user.click(screen.getByRole('button', { name: "Copy link to Bob's receipt" }))
+      expect(await screen.findByRole('status')).toHaveTextContent("Couldn't copy")
+      expect(screen.getAllByText("Couldn't copy")).toHaveLength(2)
+    })
+  })
 })
