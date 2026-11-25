@@ -360,6 +360,50 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
   }
 }
 
+// ─── Per-person item lines ───────────────────────────────────────────────────
+
+export interface PersonItemShare {
+  itemId: string
+  name: string
+  // This person's part of the item's price, in whole cents.
+  share: number
+  // How many people the item is split between; 1 means theirs alone.
+  splitCount: number
+}
+
+/**
+ * The items one participant is part of, in bill order, with their share of
+ * each: the lines of their own itemized receipt.
+ *
+ * Shares follow the same rules as `calculateBreakdown` (equal split between
+ * the item's assignees; blank, zero, and unassigned items are skipped). Each
+ * share is then rounded to whole cents so the lines add up exactly to the
+ * person's `subtotal` from the breakdown, the way a receipt's lines add up
+ * to its subtotal. The pennies a split leaves over go to the lines that lost
+ * the most to rounding, so a line can be a cent off from another person's
+ * line for the same item.
+ */
+export function personItemShares(
+  state: BillState,
+  participantId: string,
+  subtotal: number,
+): PersonItemShare[] {
+  const lines: PersonItemShare[] = []
+  const rawShares: number[] = []
+  for (const item of state.items) {
+    const price = Number(item.price)
+    if (isNaN(price) || price <= 0) continue
+    const assigned =
+      item.assignedTo === null ? state.participants.map(p => p.id) : item.assignedTo
+    if (!assigned.includes(participantId)) continue
+    const raw = price / assigned.length
+    rawShares.push(raw)
+    lines.push({ itemId: item.id, name: item.name, share: raw, splitCount: assigned.length })
+  }
+  const shares = reconcileCents(rawShares, subtotal)
+  return lines.map((line, i) => ({ ...line, share: shares[i] }))
+}
+
 // ─── Settlement ──────────────────────────────────────────────────────────────
 
 export interface Transaction {

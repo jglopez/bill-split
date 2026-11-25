@@ -194,10 +194,10 @@ describe('SummarySection', () => {
     expect(billCard.getByText('Subtotal').nextSibling).toHaveTextContent(formatAmount(breakdown.totalSubtotal))
     expect(billCard.getByText('+ Tax (10%)').nextSibling).toHaveTextContent(formatAmount(breakdown.totalTax))
     expect(billCard.getByText('+ Tip (20%)').nextSibling).toHaveTextContent(formatAmount(breakdown.totalTip))
-    expect(billCard.getByText('+ Service (2.00)').nextSibling).toHaveTextContent(
+    expect(billCard.getByText('+ Service').nextSibling).toHaveTextContent(
       formatAmount(breakdown.totalAdditionalFees[0]),
     )
-    const coupon = billCard.getByText('− Coupon (-4.00)')
+    const coupon = billCard.getByText('− Coupon')
     expect(coupon.nextSibling).toHaveTextContent(formatAmount(breakdown.totalAdditionalFees[1]))
     expect(coupon.parentElement).toHaveClass('text-green-700')
     expect(billCard.getByText('Grand total').nextSibling).toHaveTextContent(
@@ -218,5 +218,106 @@ describe('SummarySection', () => {
     const cards = screen.getAllByRole('region')
     expect(cards.map(c => c.getAttribute('aria-label'))).toEqual(['Bill total'])
     expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+  })
+
+  describe('participant receipt on mobile', () => {
+    const carol: Participant = { id: 'c', name: 'Carol' }
+
+    function renderCards(state: BillState) {
+      setInnerWidth(500)
+      render(
+        <SummarySection
+          participants={state.participants}
+          additionalFees={state.additionalFees}
+          state={state}
+          breakdown={calculateBreakdown(state)}
+        />,
+      )
+    }
+
+    function itemLines(name: string): string[] {
+      const list = within(screen.getByRole('region', { name })).queryByRole('list')
+      if (!list) return []
+      return within(list).getAllByRole('listitem').map(li => li.textContent ?? '')
+    }
+
+    it('lists each item a participant is part of, in bill order, with their share', () => {
+      renderCards(billState({
+        participants: [alice, bob],
+        items: [
+          { id: 'i1', name: 'Pasta', price: '18', assignedTo: ['a'] },
+          { id: 'i2', name: 'Steak', price: '30', assignedTo: ['b'] },
+          { id: 'i3', name: 'Wine', price: '40', assignedTo: null },
+        ],
+      }))
+      expect(itemLines('Alice')).toEqual(['Pasta18.00', 'WineSplit 2 ways20.00'])
+      expect(itemLines('Bob')).toEqual(['Steak30.00', 'WineSplit 2 ways20.00'])
+    })
+
+    it('puts the item lines above the subtotal', () => {
+      renderCards(billState({
+        items: [{ id: 'i1', name: 'Pasta', price: '18', assignedTo: ['a'] }, { id: 'i2', name: 'Soup', price: '6', assignedTo: ['b'] }],
+      }))
+      const card = within(screen.getByRole('region', { name: 'Alice' }))
+      const list = card.getByRole('list')
+      const subtotal = card.getByText('Subtotal')
+      expect(list.compareDocumentPosition(subtotal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('makes the item lines add up to the subtotal when a split leaves pennies', () => {
+      const state = billState({
+        participants: [alice, bob, carol],
+        items: [
+          { id: 'i1', name: 'Nachos', price: '10', assignedTo: null },
+          { id: 'i2', name: 'Fries', price: '5', assignedTo: null },
+        ],
+      })
+      renderCards(state)
+      const breakdown = calculateBreakdown(state)
+      for (const person of state.participants) {
+        const sum = itemLines(person.name)
+          .map(text => Number(text.match(/(\d+\.\d{2})$/)?.[1]))
+          .reduce((a, b) => a + b, 0)
+        const subtotal = breakdown.perPerson.find(p => p.participantId === person.id)?.subtotal ?? 0
+        expect(sum.toFixed(2)).toBe(subtotal.toFixed(2))
+      }
+    })
+
+    it('labels an item with no name', () => {
+      renderCards(billState({
+        items: [{ id: 'i1', name: '  ', price: '8', assignedTo: ['a'] }, { id: 'i2', name: 'Soup', price: '6', assignedTo: ['b'] }],
+      }))
+      expect(itemLines('Alice')).toEqual(['Unnamed item8.00'])
+    })
+
+    it('shows no item list for a participant with no items', () => {
+      renderCards(billState({
+        items: [{ id: 'i1', name: 'Pasta', price: '18', assignedTo: ['a'] }],
+      }))
+      expect(itemLines('Bob')).toEqual([])
+    })
+
+    it('does not list items on the bill total card', () => {
+      renderCards(billState())
+      expect(within(screen.getByRole('region', { name: 'Bill total' })).queryByRole('list')).not.toBeInTheDocument()
+    })
+
+    it('keeps rates entered as percents in the labels', () => {
+      renderCards(billState({ tax: '8.5%', tip: '20%' }))
+      const card = within(screen.getByRole('region', { name: 'Alice' }))
+      expect(card.getByText('+ Tax (8.5%)')).toBeInTheDocument()
+      expect(card.getByText('+ Tip (20%)')).toBeInTheDocument()
+    })
+
+    it('leaves out amounts entered in dollars from the labels', () => {
+      const fees: AdditionalFee[] = [{ id: 'f1', name: 'Service', amount: '3.00', base: 'pre-tax' }]
+      renderCards(billState({ tax: '0.85', tip: '2.00', additionalFees: fees }))
+      for (const name of ['Bill total', 'Alice', 'Bob']) {
+        const card = within(screen.getByRole('region', { name }))
+        expect(card.getByText('+ Tax')).toBeInTheDocument()
+        expect(card.getByText('+ Tip')).toBeInTheDocument()
+        expect(card.getByText('+ Service')).toBeInTheDocument()
+      }
+    })
   })
 })

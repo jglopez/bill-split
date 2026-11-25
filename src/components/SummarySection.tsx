@@ -1,5 +1,6 @@
 import type { AdditionalFee, BillState, Participant } from '../types'
-import type { BillBreakdown } from '../utils/calculate'
+import type { BillBreakdown, PersonItemShare } from '../utils/calculate'
+import { personItemShares, splitAmountInput } from '../utils/calculate'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { formatAmount } from '../utils/format'
 
@@ -20,8 +21,10 @@ interface Props {
  *
  * On narrow screens (below sm breakpoint) the table becomes stacked cards:
  * a "Bill total" card first (the equivalent of the table's Total column),
- * then one card per participant. With a single participant only the
- * "Bill total" card is shown, since their card would be identical.
+ * then one card per participant. Each participant's card reads like their
+ * own itemized receipt: the items they're part of with their share of each,
+ * then their subtotal, tax, tip, fees, and total. With a single participant
+ * only the "Bill total" card is shown, since their card would be identical.
  *
  * Display-only; all interactive inputs live in the sections above.
  */
@@ -69,6 +72,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
             state={state}
             additionalFees={additionalFees}
             breakdown={breakdown}
+            items={personItemShares(state, p.id, perPersonValue(p.id, 'subtotal'))}
           />
         ))}
       </div>
@@ -159,7 +163,8 @@ export function SummarySection({ participants, additionalFees, state, breakdown 
 /**
  * One stacked card in the mobile summary: either the whole bill or a single
  * participant's share. Rows are shown or hidden based on the bill-level
- * totals so every card lists the same lines.
+ * totals so every card lists the same lines. A participant's card also
+ * lists their item lines above the subtotal.
  */
 function SummaryCard({
   title,
@@ -172,6 +177,7 @@ function SummaryCard({
   state,
   additionalFees,
   breakdown,
+  items,
   highlight = false,
 }: {
   title: string
@@ -184,6 +190,7 @@ function SummaryCard({
   state: BillState
   additionalFees: AdditionalFee[]
   breakdown: BillBreakdown
+  items?: PersonItemShare[]
   highlight?: boolean
 }) {
   const containerClass = highlight
@@ -192,16 +199,21 @@ function SummaryCard({
   return (
     <section aria-label={title} className={`rounded-lg border px-4 py-3 text-sm ${containerClass}`}>
       <div className="font-medium text-gray-800 mb-2">{title}</div>
+      {items && items.length > 0 && (
+        <ul aria-label={`${title}'s items`} className="border-b border-gray-200 mb-1 pb-1">
+          {items.map(line => <ItemLine key={line.itemId} line={line} />)}
+        </ul>
+      )}
       <CardRow label="Subtotal" value={subtotal} />
       {breakdown.totalTax !== 0 && (
         <CardRow
-          label={`+ Tax${state.tax ? ` (${state.tax})` : ''}`}
+          label={`+ Tax${rateSuffix(state.tax)}`}
           value={tax}
         />
       )}
       {breakdown.totalTip !== 0 && (
         <CardRow
-          label={`+ Tip${state.tip ? ` (${state.tip})` : ''}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
+          label={`+ Tip${rateSuffix(state.tip)}${state.tipBase === 'post-tax' ? ' incl. tax' : ''}`}
           value={tip}
         />
       )}
@@ -212,7 +224,7 @@ function SummaryCard({
         return (
           <CardRow
             key={fee.id}
-            label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${fee.amount ? ` (${fee.amount})` : ''}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
+            label={`${isDiscount ? '−' : '+'} ${fee.name || (isDiscount ? 'Discount' : 'Fee')}${rateSuffix(fee.amount)}${fee.base === 'post-tax' ? ' incl. tax' : ''}`}
             value={feeAmount}
             isDiscount={isDiscount}
           />
@@ -223,6 +235,40 @@ function SummaryCard({
         <span className="tabular-nums">{formatAmount(total)}</span>
       </div>
     </section>
+  )
+}
+
+/**
+ * The rate a tax, tip, or fee was entered as, for a mobile card label, such
+ * as " (8.5%)". A rate is the same for everyone, so it reads correctly on a
+ * participant's card. An amount entered in dollars is left out: on the bill
+ * card it repeats the value beside it, and on a participant's card readers
+ * took the bill's full amount for their own.
+ */
+function rateSuffix(amount: string): string {
+  const { isPercent, numeric } = splitAmountInput(amount)
+  return isPercent && numeric ? ` (${amount.trim()})` : ''
+}
+
+// ─── Mobile item line ─────────────────────────────────────────────────────────
+
+/**
+ * One item on a participant's card, with their share of it. A shared item
+ * says how many ways it was split. Long names wrap rather than truncate, the
+ * same as the item cards on phones, and the amount keeps its column.
+ */
+function ItemLine({ line }: { line: PersonItemShare }) {
+  const name = line.name.trim()
+  return (
+    <li className="flex justify-between gap-3 py-0.5 text-xs text-gray-700">
+      <span className="min-w-0 [overflow-wrap:anywhere]">
+        {name || <span className="italic text-gray-400">Unnamed item</span>}
+        {line.splitCount > 1 && (
+          <span className="block text-gray-400">Split {line.splitCount} ways</span>
+        )}
+      </span>
+      <span className="shrink-0 tabular-nums">{formatAmount(line.share)}</span>
+    </li>
   )
 }
 

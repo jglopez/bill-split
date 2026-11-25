@@ -12,6 +12,7 @@ import {
   reconcileCents,
   calculateBreakdown,
   calculateSettlement,
+  personItemShares,
 } from './calculate'
 import type { BillState, Item, Participant, AdditionalFee } from '../types'
 import { describe, it, expect } from 'vitest'
@@ -940,5 +941,46 @@ describe('splitAmountInput', () => {
   })
   it('negative percent', () => {
     expect(splitAmountInput('-10%')).toEqual({ isPercent: true, numeric: '-10' })
+  })
+})
+
+describe('personItemShares', () => {
+  function state(items: Item[], participants = [p('a'), p('b'), p('c')]): BillState {
+    return {
+      name: '', participants, items, tax: '', tip: '', tipBase: 'pre-tax',
+      tipDiscountBase: 'pre-discount', tipFeeBase: 'pre-fee', additionalFees: [],
+      payerMode: 'single', singlePayerId: 'a', amountPaid: {},
+    }
+  }
+
+  function subtotalOf(s: BillState, id: string): number {
+    return calculateBreakdown(s).perPerson.find(x => x.participantId === id)?.subtotal ?? 0
+  }
+
+  it('lists only the items the person is part of, in bill order', () => {
+    const s = state([item('x', '9', ['a']), item('y', '6', ['b']), item('z', '12', null)])
+    const lines = personItemShares(s, 'a', subtotalOf(s, 'a'))
+    expect(lines.map(l => [l.itemId, l.share, l.splitCount])).toEqual([['x', 9, 1], ['z', 4, 3]])
+  })
+
+  it('skips blank, zero, invalid and unassigned items', () => {
+    const s = state([item('x', ''), item('y', '0'), item('z', 'abc'), item('w', '5', [])])
+    expect(personItemShares(s, 'a', subtotalOf(s, 'a'))).toEqual([])
+  })
+
+  it('adds up to every person\'s subtotal when splits leave pennies', () => {
+    const s = state([item('x', '10', null), item('y', '10', null), item('z', '0.05', ['a', 'b'])])
+    for (const person of s.participants) {
+      const subtotal = subtotalOf(s, person.id)
+      const sum = personItemShares(s, person.id, subtotal).reduce((acc, l) => acc + l.share, 0)
+      expect(sum.toFixed(2)).toBe(subtotal.toFixed(2))
+    }
+  })
+
+  it('gives every line a whole number of cents', () => {
+    const s = state([item('x', '10', null), item('y', '7.77', ['a', 'c'])])
+    for (const line of personItemShares(s, 'a', subtotalOf(s, 'a'))) {
+      expect(Math.round(line.share * 100) / 100).toBe(line.share)
+    }
   })
 })
