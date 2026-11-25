@@ -49,6 +49,7 @@ describe('joinNames', () => {
     [['Ann'], 'Ann'],
     [['Ann', 'Ben'], 'Ann and Ben'],
     [['Ann', 'Ben', 'Cal'], 'Ann, Ben, and Cal'],
+    [['Ann', 'Ben', 'Cal', 'Dee'], 'Ann, Ben, Cal, and Dee'],
   ])('joins %j as "%s"', (names, text) => {
     expect(joinNames(names)).toBe(text)
   })
@@ -59,6 +60,13 @@ describe('describeGroup', () => {
     [{ kind: 'everyone' } as const, false, 'everyone'],
     [{ kind: 'everyone' } as const, true, 'Everyone'],
     [{ kind: 'everyoneBut', names: ['de Vries', 'Ben'] } as const, true, 'Everyone but de Vries and Ben'],
+    // "but" means "except", so no comma before it; three or more names take a serial comma.
+    [{ kind: 'everyoneBut', names: ['Ann'] } as const, false, 'everyone but Ann'],
+    [{ kind: 'everyoneBut', names: ['Ann', 'Ben'] } as const, false, 'everyone but Ann and Ben'],
+    [{ kind: 'everyoneBut', names: ['Ann', 'Ben', 'Cal'] } as const, false, 'everyone but Ann, Ben, and Cal'],
+    [{ kind: 'everyoneBut', names: ['Ann', 'Ben', 'Cal', 'Dee'] } as const, false, 'everyone but Ann, Ben, Cal, and Dee'],
+    [{ kind: 'names', names: ['Ann', 'Ben'] } as const, false, 'Ann and Ben'],
+    [{ kind: 'names', names: ['Ann', 'Ben', 'Cal'] } as const, false, 'Ann, Ben, and Cal'],
     [{ kind: 'names', names: ['de Vries'] } as const, true, 'de Vries'],
     [{ kind: 'names', names: [] } as const, true, ''],
   ])('words %j (capitalize: %s) as "%s"', (summary, capitalize, text) => {
