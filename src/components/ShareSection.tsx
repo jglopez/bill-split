@@ -23,7 +23,7 @@ export function ShareSection({ children }: Props) {
       >
         Share
       </h2>
-      <div className="flex flex-wrap gap-2">{children}</div>
+      <div className="flex flex-wrap items-center gap-2 max-w-md">{children}</div>
     </section>
   )
 }

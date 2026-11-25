@@ -57,6 +57,19 @@ describe('shareText', () => {
     expect(share).toHaveBeenCalledWith({ text: 'hello' })
   })
 
+  it('shares only the url when the text is empty', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    install('share', share)
+    await shareText('', { title: 'Dinner', url: 'https://example.com/b' })
+    expect(share).toHaveBeenCalledWith({ title: 'Dinner', url: 'https://example.com/b' })
+  })
+
+  it('copies only the url when the text is empty and there is no share sheet', async () => {
+    const writeText = installClipboard()
+    await expect(shareText('', { url: 'https://example.com/b' })).resolves.toBe('copied')
+    expect(writeText).toHaveBeenCalledWith('https://example.com/b')
+  })
+
   it('reports cancelled when the user closes the share sheet, without copying', async () => {
     install('share', vi.fn().mockRejectedValue(new DOMException('closed', 'AbortError')))
     const writeText = installClipboard()

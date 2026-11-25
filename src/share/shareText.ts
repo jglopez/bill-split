@@ -31,7 +31,8 @@ export function canUseShareSheet(): boolean {
 /**
  * Share text through the OS share sheet, or copy it to the clipboard when
  * there's no share sheet. The URL, when given, goes in its own share field so
- * apps can show it as a link; when copying, it's appended to the text.
+ * apps can show it as a link; when copying, it's appended to the text. Pass
+ * empty text to share only the URL.
  *
  * Resolves to what happened; never rejects.
  */
@@ -39,7 +40,10 @@ export async function shareText(text: string, opts: ShareTextOptions = {}): Prom
   const { title, url, html } = opts
 
   if (canUseShareSheet()) {
-    const data: ShareData = { text }
+    // An empty text field would make some targets start the message with a
+    // blank line, so a link-only share leaves it out.
+    const data: ShareData = {}
+    if (text) data.text = text
     if (title) data.title = title
     if (url) data.url = url
     try {
@@ -72,7 +76,7 @@ export async function copyText(
   opts: Pick<ShareTextOptions, 'url' | 'html'> = {},
 ): Promise<ShareOutcome> {
   const { url, html } = opts
-  const plain = url ? `${text}\n\n${url}` : text
+  const plain = text && url ? `${text}\n\n${url}` : text || url || ''
   if (typeof navigator === 'undefined' || !navigator.clipboard) return 'failed'
 
   if (html && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard.write === 'function') {
