@@ -180,7 +180,7 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                   <SortableItemCard key={item.id} id={item.id} isBlank={blank}>
                     <div className="flex items-center gap-1">
                       <div className="flex-1 min-w-0">
-                        <ItemNameInput item={item} isBlank={blank} onUpdateItem={onUpdateItem} />
+                        <ItemNameInput item={item} isBlank={blank} onUpdateItem={onUpdateItem} wrap />
                       </div>
                       <ItemPriceInput item={item} onUpdateItem={onUpdateItem} className="w-20" />
                       {blank
@@ -634,25 +634,70 @@ function AssignRow({
 
 // ─── Inputs shared by both layouts ────────────────────────────────────────────
 
+/**
+ * The item's description. On phones the field is narrow, and iOS Safari can't
+ * swipe-scroll a one-line field, so the end of a long name was out of reach
+ * once the field lost focus. The card layout passes `wrap` to use a textarea
+ * that grows a line at a time instead, so the whole name is always visible.
+ * It stays a single-line value: Enter finishes editing and line breaks are
+ * dropped.
+ */
 function ItemNameInput({
   item,
   isBlank,
   onUpdateItem,
+  wrap = false,
 }: {
   item: Item
   isBlank: boolean
   onUpdateItem: (item: Item) => void
+  wrap?: boolean
 }) {
+  const fieldClass =
+    'w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none py-0.5 placeholder-gray-300 text-gray-800'
+
+  if (!wrap) {
+    return (
+      <input
+        type="text"
+        value={item.name}
+        onChange={e => onUpdateItem({ ...item, name: e.target.value })}
+        placeholder={isBlank ? 'Description' : ''}
+        aria-label="Item description"
+        maxLength={NAME_MAX_LENGTH}
+        className={fieldClass}
+      />
+    )
+  }
+
+  // The textarea and an invisible copy of its text share one grid cell, so the
+  // copy sets the height and the textarea fills it. No measuring in script.
+  // Both copies set the same font size and line height, or the heights drift.
+  // This layout is phone-only, so it matches the size index.css gives phone text fields.
+  const wrapClass = 'col-start-1 row-start-1 text-base whitespace-pre-wrap [overflow-wrap:anywhere]'
   return (
-    <input
-      type="text"
-      value={item.name}
-      onChange={e => onUpdateItem({ ...item, name: e.target.value })}
-      placeholder={isBlank ? 'Description' : ''}
-      aria-label="Item description"
-      maxLength={NAME_MAX_LENGTH}
-      className="w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none py-0.5 placeholder-gray-300 text-gray-800"
-    />
+    <div className="grid">
+      <textarea
+        rows={1}
+        value={item.name}
+        onChange={e => onUpdateItem({ ...item, name: e.target.value.replace(/[\r\n]+/g, ' ') })}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            e.currentTarget.blur()
+          }
+        }}
+        enterKeyHint="done"
+        placeholder={isBlank ? 'Description' : ''}
+        aria-label="Item description"
+        maxLength={NAME_MAX_LENGTH}
+        className={`${fieldClass} ${wrapClass} resize-none overflow-hidden`}
+      />
+      {/* The trailing space keeps a new empty line's height while typing. */}
+      <span aria-hidden="true" className={`${fieldClass} ${wrapClass} invisible`}>
+        {item.name}{' '}
+      </span>
+    </div>
   )
 }
 

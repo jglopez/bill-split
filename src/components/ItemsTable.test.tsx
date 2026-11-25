@@ -320,6 +320,31 @@ describe('ItemsTable (cards layout only)', () => {
     expect(within(blank).queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('wraps the description so a long name stays fully visible', () => {
+    render(<ItemsTable {...baseProps()} />)
+    const field = screen.getAllByLabelText('Item description')[0]
+    expect(field.tagName).toBe('TEXTAREA')
+    expect(field).toHaveValue('Dinner')
+  })
+
+  it('keeps the description on one line: Enter finishes editing instead of adding a line', async () => {
+    const user = userEvent.setup()
+    const props = baseProps()
+    render(<ItemsTable {...props} />)
+    const field = screen.getAllByLabelText('Item description')[0]
+    await user.click(field)
+    await user.keyboard('{Enter}')
+    expect(field).not.toHaveFocus()
+    expect(props.onUpdateItem).not.toHaveBeenCalled()
+  })
+
+  it('turns pasted line breaks into spaces', () => {
+    const props = baseProps()
+    render(<ItemsTable {...props} />)
+    fireEvent.change(screen.getAllByLabelText('Item description')[0], { target: { value: 'Fish\r\nand chips' } })
+    expect(props.onUpdateItem).toHaveBeenCalledWith({ ...props.items[0], name: 'Fish and chips' })
+  })
+
   it('keeps a drag grip on item cards but not on the blank card', () => {
     render(<ItemsTable {...baseProps()} />)
     const [item, blank] = screen.getAllByRole('listitem')
