@@ -90,8 +90,8 @@ function htmlToText(html: string): string {
 }
 
 describe('renderSummaryHtml', () => {
-  it("renders the sample bill with the title and each person's share in bold", () => {
-    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: <b>$46.86</b><br>Bob: <b>$14.57</b><br>Chris: <b>$31.68</b><br><br>Tax, tip, fees, and discounts are included.</div>"`)
+  it('renders the sample bill with the title in bold and the note in italics', () => {
+    expect(renderSummaryHtml(sample)).toMatchInlineSnapshot(`"<div><b>Dinner at Rosa's</b><br><br>Alice: $46.86<br>Bob: $14.57<br>Chris: $31.68<br><br><i>Tax, tip, fees, and discounts are included.</i></div>"`)
   })
 
   it('has the same text and line breaks as the plain summary', () => {
@@ -114,6 +114,18 @@ describe('renderSummaryHtml', () => {
 })
 
 describe('renderSummary with a custom template', () => {
+  it('leaves italic text unmarked in plain text', () => {
+    expect(renderSummary(minimal, '{{ "Hi" | italic }} there')).toBe('Hi there')
+  })
+
+  it('wraps italic text in <i> in the rich text', () => {
+    expect(renderSummaryHtml(minimal, '{{ "Hi" | italic }} {{ "there" | bold }}')).toBe('<div><i>Hi</i> <b>there</b></div>')
+  })
+
+  it('does not nest styles', () => {
+    expect(renderSummaryHtml(minimal, '{{ "Hi" | bold | italic }}')).toBe('<div><i>Hi</i></div>')
+  })
+
   it('leaves bold text unmarked in plain text', () => {
     expect(renderSummary(minimal, '{{ "Hi" | bold }} there')).toBe('Hi there')
   })
