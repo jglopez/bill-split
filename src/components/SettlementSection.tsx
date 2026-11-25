@@ -26,7 +26,7 @@ export function SettlementSection({ participants, transactions }: Props) {
       </h2>
       <ul className="space-y-1 text-sm">
         {transactions.map((t, i) => (
-          <li key={i} className="text-gray-700">
+          <li key={i} className="text-gray-700 [overflow-wrap:anywhere]">
             <span className="font-medium">{nameById[t.fromId] ?? '?'}</span>
             {' pays '}
             <span className="font-medium">{nameById[t.toId] ?? '?'}</span>
