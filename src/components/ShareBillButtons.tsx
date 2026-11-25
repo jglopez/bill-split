@@ -32,7 +32,7 @@ interface Props {
  *   template in src/share/summary/) ending with the bill link. It always
  *   copies rather than opening the share sheet, because only the clipboard
  *   carries rich text: apps that keep formatting on paste show the bold
- *   parts, and the rest get the same text without any markup.
+ *   and italic parts, and the rest get the same text without any markup.
  * - "Share link", the smaller one, sends only the bill link through the
  *   share sheet ("Copy link" where there's no share sheet).
  *
@@ -64,8 +64,8 @@ export function ShareBillButtons({ state, breakdown, transactions }: Props) {
       buildShareData(state, breakdown, transactions),
       modules.link.billLinkUrl(state),
     )
+    // No title: copying has nowhere to put one.
     return {
-      title: data.name || 'Bill split',
       text: modules.summary.renderSummary(data),
       html: modules.summary.renderSummaryHtml(data),
     }
