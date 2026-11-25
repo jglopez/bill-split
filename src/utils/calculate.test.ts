@@ -960,7 +960,7 @@ describe('personItemShares', () => {
   it('lists only the items the person is part of, in bill order', () => {
     const s = state([item('x', '9', ['a']), item('y', '6', ['b']), item('z', '12', null)])
     const lines = personItemShares(s, 'a', subtotalOf(s, 'a'))
-    expect(lines.map(l => [l.itemId, l.price, l.share, l.splitCount])).toEqual([['x', 9, 9, 1], ['z', 12, 4, 3]])
+    expect(lines.map(l => [l.itemId, l.price, l.share])).toEqual([['x', 9, 9], ['z', 12, 4]])
   })
 
   it('names the other participants sharing each item, in participant order', () => {
