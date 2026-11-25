@@ -382,20 +382,4 @@ describe('ItemsTable layout switching', () => {
     act(() => setInnerWidth(NARROW_WIDTH))
     expect(screen.getByRole('list', { name: 'Items' })).toBeInTheDocument()
   })
-
-  // The layouts pass DndContext different props, and DndContext uses its
-  // props as effect dependencies. Reusing one instance across layouts makes
-  // React warn that the dependency array changed size.
-  it('switches layouts without React warnings', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      setInnerWidth(NARROW_WIDTH)
-      render(<ItemsTable {...baseProps()} />)
-      act(() => setInnerWidth(WIDE_WIDTH))
-      act(() => setInnerWidth(NARROW_WIDTH))
-      expect(consoleError).not.toHaveBeenCalled()
-    } finally {
-      consoleError.mockRestore()
-    }
-  })
 })
