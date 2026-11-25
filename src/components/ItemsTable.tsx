@@ -704,7 +704,9 @@ function ItemNameInput({
         value={item.name}
         onChange={e => onUpdateItem({ ...item, name: e.target.value.replace(/[\r\n]+/g, ' ') })}
         onKeyDown={e => {
-          if (e.key === 'Enter') {
+          // Enter that confirms an IME composition (keyCode 229 in Safari)
+          // belongs to the input method, not to us.
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
             e.preventDefault()
             onEnter?.()
           }

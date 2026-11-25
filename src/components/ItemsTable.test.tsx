@@ -340,6 +340,17 @@ describe('ItemsTable (cards layout only)', () => {
     expect(props.onUpdateItem).not.toHaveBeenCalled()
   })
 
+  it('leaves Enter alone while an input method is composing text', () => {
+    const props = baseProps()
+    render(<ItemsTable {...props} />)
+    const [card] = screen.getAllByRole('listitem')
+    const field = within(card).getByLabelText('Item description')
+    field.focus()
+    fireEvent.keyDown(field, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(field, { key: 'Enter', keyCode: 229 })
+    expect(field).toHaveFocus()
+  })
+
   it('turns pasted line breaks into spaces', () => {
     const props = baseProps()
     render(<ItemsTable {...props} />)
