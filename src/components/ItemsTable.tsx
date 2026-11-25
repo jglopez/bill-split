@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -83,6 +83,8 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   // Narrow layout only: the one card whose participant list is open.
   const [openItemId, setOpenItemId] = useState<string | null>(null)
+  // Price fields by item, so Enter in a card's name can move on to its price.
+  const priceInputs = useRef(new Map<string, HTMLInputElement>())
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -182,9 +184,23 @@ export function ItemsTable({ participants, items, onUpdateItem, onRemoveItem, on
                       {/* The price sits on the last line of a wrapped name. */}
                       <div className="flex flex-1 min-w-0 items-end gap-1">
                         <div className="flex-1 min-w-0">
-                          <ItemNameInput item={item} isBlank={blank} onUpdateItem={onUpdateItem} wrap />
+                          <ItemNameInput
+                            item={item}
+                            isBlank={blank}
+                            onUpdateItem={onUpdateItem}
+                            wrap
+                            onEnter={() => priceInputs.current.get(item.id)?.focus()}
+                          />
                         </div>
-                        <ItemPriceInput item={item} onUpdateItem={onUpdateItem} className="w-20" />
+                        <ItemPriceInput
+                          item={item}
+                          onUpdateItem={onUpdateItem}
+                          className="w-20"
+                          inputRef={el => {
+                            if (el) priceInputs.current.set(item.id, el)
+                            else priceInputs.current.delete(item.id)
+                          }}
+                        />
                       </div>
                       {blank
                         ? <span aria-hidden="true" className="w-11 flex-shrink-0" /> // keeps prices aligned with item cards
@@ -642,19 +658,22 @@ function AssignRow({
  * swipe-scroll a one-line field, so the end of a long name was out of reach
  * once the field lost focus. The card layout passes `wrap` to use a textarea
  * that grows a line at a time instead, so the whole name is always visible.
- * It stays a single-line value: Enter finishes editing and line breaks are
- * dropped.
+ * It stays a single-line value: Enter never adds a line (the card uses it to
+ * move on to the price) and pasted line breaks become spaces.
  */
 function ItemNameInput({
   item,
   isBlank,
   onUpdateItem,
   wrap = false,
+  onEnter,
 }: {
   item: Item
   isBlank: boolean
   onUpdateItem: (item: Item) => void
   wrap?: boolean
+  /** Called on Enter in the wrapping field, which never inserts a line break. */
+  onEnter?: () => void
 }) {
   const fieldClass =
     'w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-gray-500 focus:outline-none py-0.5 placeholder-gray-300 text-gray-800'
@@ -687,10 +706,10 @@ function ItemNameInput({
         onKeyDown={e => {
           if (e.key === 'Enter') {
             e.preventDefault()
-            e.currentTarget.blur()
+            onEnter?.()
           }
         }}
-        enterKeyHint="done"
+        enterKeyHint={onEnter ? 'next' : undefined}
         placeholder={isBlank ? 'Description' : ''}
         aria-label="Item description"
         maxLength={NAME_MAX_LENGTH}
@@ -708,11 +727,13 @@ function ItemPriceInput({
   item,
   onUpdateItem,
   className,
+  inputRef,
 }: {
   item: Item
   onUpdateItem: (item: Item) => void
   /** Width of the field; the layouts size it differently. */
   className: string
+  inputRef?: React.Ref<HTMLInputElement>
 }) {
   const priceInvalid = item.price !== '' && !isValidPrice(item.price)
   return (
@@ -720,6 +741,7 @@ function ItemPriceInput({
       <input
         type="text"
         inputMode="decimal"
+        ref={inputRef}
         value={item.price}
         onChange={e => onUpdateItem({ ...item, price: e.target.value })}
         placeholder="0.00"

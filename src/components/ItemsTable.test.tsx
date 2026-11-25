@@ -327,14 +327,16 @@ describe('ItemsTable (cards layout only)', () => {
     expect(field).toHaveValue('Dinner')
   })
 
-  it('keeps the description on one line: Enter finishes editing instead of adding a line', async () => {
+  it('moves from the description to its price on Enter, without adding a line', async () => {
     const user = userEvent.setup()
     const props = baseProps()
     render(<ItemsTable {...props} />)
-    const field = screen.getAllByLabelText('Item description')[0]
+    const [card] = screen.getAllByRole('listitem')
+    const field = within(card).getByLabelText('Item description')
+    expect(field).toHaveAttribute('enterkeyhint', 'next')
     await user.click(field)
     await user.keyboard('{Enter}')
-    expect(field).not.toHaveFocus()
+    expect(within(card).getByLabelText('Item price')).toHaveFocus()
     expect(props.onUpdateItem).not.toHaveBeenCalled()
   })
 
