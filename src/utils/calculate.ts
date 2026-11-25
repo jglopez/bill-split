@@ -365,6 +365,8 @@ export function calculateBreakdown(state: BillState): BillBreakdown {
 export interface PersonItemShare {
   itemId: string
   name: string
+  // The item's full price.
+  price: number
   // This person's part of the item's price, in whole cents.
   share: number
   // How many people the item is split between; 1 means theirs alone.
@@ -398,7 +400,7 @@ export function personItemShares(
     if (!assigned.includes(participantId)) continue
     const raw = price / assigned.length
     rawShares.push(raw)
-    lines.push({ itemId: item.id, name: item.name, share: raw, splitCount: assigned.length })
+    lines.push({ itemId: item.id, name: item.name, price, share: raw, splitCount: assigned.length })
   }
   const shares = reconcileCents(rawShares, subtotal)
   return lines.map((line, i) => ({ ...line, share: shares[i] }))

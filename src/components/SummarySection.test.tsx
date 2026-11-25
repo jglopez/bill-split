@@ -250,8 +250,8 @@ describe('SummarySection', () => {
           { id: 'i3', name: 'Wine', price: '40', assignedTo: null },
         ],
       }))
-      expect(itemLines('Alice')).toEqual(['Pasta18.00', 'WineSplit 2 ways20.00'])
-      expect(itemLines('Bob')).toEqual(['Steak30.00', 'WineSplit 2 ways20.00'])
+      expect(itemLines('Alice')).toEqual(['Pasta18.00', 'Wine40.00 split 2 ways20.00'])
+      expect(itemLines('Bob')).toEqual(['Steak30.00', 'Wine40.00 split 2 ways20.00'])
     })
 
     it('puts the item lines above the subtotal', () => {

@@ -254,7 +254,10 @@ function rateSuffix(amount: string): string {
 
 /**
  * One item on a participant's card, with their share of it. A shared item
- * says how many ways it was split. Long names wrap rather than truncate, the
+ * says what it cost in full and how many ways it was split, so the reader
+ * can see where their share came from. The full price sits under the name,
+ * away from the amounts column, so it isn't read as the person's own
+ * amount, and it has no currency symbol, like the rest of the card. Long names wrap rather than truncate, the
  * same as the item cards on phones, and the amount keeps its column.
  */
 function ItemLine({ line }: { line: PersonItemShare }) {
@@ -264,7 +267,7 @@ function ItemLine({ line }: { line: PersonItemShare }) {
       <span className="min-w-0 [overflow-wrap:anywhere]">
         {name || <span className="italic text-gray-400">Unnamed item</span>}
         {line.splitCount > 1 && (
-          <span className="block text-gray-400">Split {line.splitCount} ways</span>
+          <span className="block text-gray-400">{formatAmount(line.price)} split {line.splitCount} ways</span>
         )}
       </span>
       <span className="shrink-0 tabular-nums">{formatAmount(line.share)}</span>
