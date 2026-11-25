@@ -482,13 +482,9 @@ describe('SummarySection receipt links', () => {
     expect(within(screen.getByRole('region', { name: 'Bill total' })).queryByRole('button')).toBeNull()
   })
 
-  it('puts a share icon under each person column in the desktop table', async () => {
+  it('has no share icons in the desktop table', () => {
     renderFocus(null)
-    for (const name of ['Alice', 'Bob', 'Carol']) {
-      const button = screen.getByRole('button', { name: new RegExp(`link to ${name}'s receipt`) })
-      await waitFor(() => expect(button).toBeEnabled())
-    }
-    expect(screen.getAllByRole('button', { name: /receipt/ })).toHaveLength(3)
+    expect(screen.queryByRole('button', { name: /receipt/ })).toBeNull()
   })
 
   it('scrolls to the focused person card and rings it until the highlight ends', async () => {
