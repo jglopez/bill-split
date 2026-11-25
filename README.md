@@ -16,7 +16,7 @@ An itemized bill-splitting tool. Add participants, enter line items, assign them
 - Share a plain-text summary of what each person owes, with a note naming what each share already includes (tax, tip, fees, and discounts, as the bill has them), through the share sheet or by copying it, ready to paste into a group chat. The wording lives in a template, `src/share/summary/default.liquid`
 - The summary ends with a link that opens the same bill in the app, ready to view or adjust. The bill travels in the link's `#` fragment, so it never reaches the server. Opening a link asks first if you already have a bill in progress
 - Session auto-saves to localStorage (survives page refresh)
-- Fully responsive: works on Safari on iOS, Chrome for Android, and desktop. On narrow phone screens the participants become a one-per-line list, and the items table and the summary turn into stacked cards (tap an item's split line to choose who shares it, and a long item name wraps onto more lines), so nothing scrolls sideways. Each person's summary card reads like their own itemized receipt: the items they share in and their part of each, then their subtotal, tax, tip, fees, and total
+- Fully responsive: works on Safari on iOS, Chrome for Android, and desktop. On narrow phone screens the participants become a one-per-line list, and the items table and the summary turn into stacked cards (tap an item's split line to choose who shares it, and a long item name wraps onto more lines), so nothing scrolls sideways. Each person's summary card reads like their own itemized receipt: the items they share in, who they share each one with, and their part of each, then their subtotal, tax, tip, fees, and total
 
 ---
 

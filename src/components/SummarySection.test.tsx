@@ -250,8 +250,56 @@ describe('SummarySection', () => {
           { id: 'i3', name: 'Wine', price: '40', assignedTo: null },
         ],
       }))
-      expect(itemLines('Alice')).toEqual(['Pasta18.00', 'Wine40.00 split 2 ways20.00'])
-      expect(itemLines('Bob')).toEqual(['Steak30.00', 'Wine40.00 split 2 ways20.00'])
+      expect(itemLines('Alice')).toEqual(['Pasta18.00', 'Wine40.00 split with Bob20.00'])
+      expect(itemLines('Bob')).toEqual(['Steak30.00', 'Wine40.00 split with Alice20.00'])
+    })
+
+    describe('names who else shares an item', () => {
+      const dan: Participant = { id: 'd', name: 'Dan' }
+      const eve: Participant = { id: 'e', name: 'Eve' }
+
+      it.each([
+        { assignedTo: null, caption: '50.00 split with everyone' },
+        { assignedTo: ['a', 'b'], caption: '50.00 split with Bob' },
+        { assignedTo: ['c', 'a', 'b'], caption: '50.00 split with Bob and Carol' }, // participant order
+        { assignedTo: ['a', 'b', 'c'], caption: '50.00 split with Bob and Carol' }, // tie: names win
+        { assignedTo: ['a', 'b', 'c', 'd'], caption: '50.00 split with everyone but Eve' },
+        { assignedTo: ['a', 'b', 'c', 'e', 'gone'], caption: '50.00 split with everyone but Dan' },
+      ])('$assignedTo reads "$caption" on Alice\'s card', ({ assignedTo, caption }) => {
+        renderCards(billState({
+          participants: [alice, bob, carol, dan, eve],
+          items: [{ id: 'i1', name: 'Wine', price: '50', assignedTo }],
+        }))
+        expect(itemLines('Alice')[0]).toContain(caption)
+      })
+
+      it('lists three or more names with a serial comma', () => {
+        const fay: Participant = { id: 'f', name: 'Fay' }
+        const gus: Participant = { id: 'g', name: 'Gus' }
+        renderCards(billState({
+          participants: [alice, bob, carol, dan, eve, fay, gus],
+          items: [{ id: 'i1', name: 'Wine', price: '40', assignedTo: ['a', 'b', 'c', 'd'] }],
+        }))
+        expect(itemLines('Alice')[0]).toContain('40.00 split with Bob, Carol, and Dan')
+      })
+
+      it('says everyone when the item is shared by the whole table', () => {
+        renderCards(billState({
+          participants: [alice, bob, carol],
+          items: [{ id: 'i1', name: 'Wine', price: '30', assignedTo: null }],
+        }))
+        for (const name of ['Alice', 'Bob', 'Carol']) {
+          expect(itemLines(name)[0]).toBe('Wine30.00 split with everyone10.00')
+        }
+      })
+
+      it('leaves an item that is theirs alone without a caption', () => {
+        renderCards(billState({
+          participants: [alice, bob],
+          items: [{ id: 'i1', name: 'Pasta', price: '18', assignedTo: ['a'] }],
+        }))
+        expect(itemLines('Alice')).toEqual(['Pasta18.00'])
+      })
     })
 
     it('puts the item lines above the subtotal', () => {
