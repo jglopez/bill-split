@@ -369,8 +369,9 @@ export interface PersonItemShare {
   price: number
   // This person's part of the item's price, in whole cents.
   share: number
-  // How many people the item is split between; 1 means theirs alone.
-  splitCount: number
+  // Ids of the other participants sharing the item, in participant order.
+  // Empty when the item is theirs alone.
+  sharedWith: string[]
 }
 
 /**
@@ -400,7 +401,10 @@ export function personItemShares(
     if (!assigned.includes(participantId)) continue
     const raw = price / assigned.length
     rawShares.push(raw)
-    lines.push({ itemId: item.id, name: item.name, price, share: raw, splitCount: assigned.length })
+    const sharedWith = state.participants
+      .filter(p => p.id !== participantId && assigned.includes(p.id))
+      .map(p => p.id)
+    lines.push({ itemId: item.id, name: item.name, price, share: raw, sharedWith })
   }
   const shares = reconcileCents(rawShares, subtotal)
   return lines.map((line, i) => ({ ...line, share: shares[i] }))

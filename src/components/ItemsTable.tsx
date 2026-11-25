@@ -22,6 +22,7 @@ import { isValidPrice } from '../utils/calculate'
 import { formatAmount } from '../utils/format'
 import { NAME_MAX_LENGTH } from '../constants'
 import { isItemBlank } from '../utils/items'
+import { describeGroup, summarizeGroup } from '../utils/group'
 import GripIcon from './icons/grip.svg?react'
 import CheckIcon from './icons/check.svg?react'
 import ChevronIcon from './icons/chevron.svg?react'
@@ -552,12 +553,7 @@ function ItemAssignment({
 
   // Name whichever side is shorter, so a mostly-shared item doesn't list
   // nearly everyone and run out of room.
-  const left = participants.filter(p => !isParticipantAssigned(item, p.id))
-  let who: string
-  if (assigned.length === 0) who = 'No one'
-  else if (isAssignedToAll && participants.length > 1) who = 'Everyone'
-  else if (assigned.length > 1 && left.length < assigned.length) who = `Everyone but ${left.map(p => p.name).join(', ')}`
-  else who = assigned.map(p => p.name).join(', ')
+  const who = describeGroup(summarizeGroup(participants, p => isParticipantAssigned(item, p.id)), true) || 'No one'
 
   return (
     <div>

@@ -76,7 +76,7 @@ export function PayerSection({
           value={singlePayerId}
           onChange={e => onSetSinglePayer(e.target.value)}
           aria-label="Who paid the bill"
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[44px]"
+          className="max-w-full border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[44px]"
         >
           {participants.map(p => (
             <option key={p.id} value={p.id}>
