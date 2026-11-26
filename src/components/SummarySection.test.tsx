@@ -488,7 +488,7 @@ describe('SummarySection receipt links', () => {
     }
   })
 
-  it('puts a share icon on the bill total card that shares only the bare bill link', async () => {
+  it('puts a share icon on the bill total card that shares the bare bill link with a title', async () => {
     setInnerWidth(375)
     const share = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'share', { value: share, configurable: true, writable: true })
@@ -500,8 +500,9 @@ describe('SummarySection receipt links', () => {
       await userEvent.click(button)
 
       const data = share.mock.calls[0][0] as ShareData
-      // Only the URL: no title or text around it.
-      expect(Object.keys(data)).toEqual(['url'])
+      // The same title as the "Share link" button, and no text around the URL.
+      expect(data.title).toBe('Bill split for Friday dinner')
+      expect(Object.keys(data).sort()).toEqual(['title', 'url'])
       const link = await readIncomingLink(new URL(data.url!).hash)
       if (link?.kind !== 'bill') throw new Error('expected a bill link')
       expect(link.personId).toBeNull()

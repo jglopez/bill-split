@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { BillState } from '../types'
 import type { BillBreakdown, Transaction } from '../utils/calculate'
-import { buildShareData } from '../share/shareData'
+import { billShareTitle, buildShareData } from '../share/shareData'
 import { toSummaryTemplateData } from '../share/summary/templateData'
 import { ShareButton } from './ShareButton'
 
@@ -73,10 +73,9 @@ export function ShareBillButtons({ state, breakdown, transactions }: Props) {
 
   function linkContent() {
     if (!modules) throw new Error('Share modules are not loaded yet')
-    // The bill name titles the share for targets that use one (such as an
-    // email subject); the message itself is just the link.
-    const { name } = buildShareData(state, breakdown, transactions)
-    return { text: '', title: name || 'Bill split', url: modules.link.billLinkUrl(state) }
+    // The title is for targets that use one (such as an email subject); the
+    // message itself is just the link.
+    return { text: '', title: billShareTitle(state.name), url: modules.link.billLinkUrl(state) }
   }
 
   return (

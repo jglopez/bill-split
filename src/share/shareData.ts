@@ -74,6 +74,16 @@ function cleanName(name: string): string {
     .trim()
 }
 
+/**
+ * The title a bill-wide share carries, for targets that show one (such as the
+ * share sheet's preview or an email subject). Every bill-wide method uses it
+ * so they read the same; a bill with no name falls back to the app name.
+ */
+export function billShareTitle(name: string): string {
+  const bill = cleanName(name)
+  return bill ? `Bill split for ${bill}` : 'Bill split'
+}
+
 /** Round to whole cents, so every consumer sees the same amounts the app shows. */
 function cents(n: number): number {
   return Math.round(n * 100) / 100
