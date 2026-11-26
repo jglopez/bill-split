@@ -1,4 +1,6 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { readIncomingLink } from '../share/link/incoming'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { FOCUS_HIGHLIGHT_MS, FOCUS_HIGHLIGHT_REDUCED_MOTION_MS, SummarySection } from './SummarySection'
 import { calculateBreakdown } from '../utils/calculate'
@@ -21,6 +23,7 @@ afterEach(() => {
 
 function billState(overrides: Partial<BillState> = {}): BillState {
   return {
+    name: '',
     participants: [alice, bob],
     items: [{ id: 'i1', name: 'Dinner', price: '10', assignedTo: null }],
     tax: '',
@@ -444,13 +447,17 @@ describe('SummarySection receipt links', () => {
   const carol: Participant = { id: 'c', name: 'Carol' }
   const three = billState({ participants: [alice, bob, carol] })
 
-  function renderFocus(focus: { participantId: string; seq: number } | null, onFocusDone = vi.fn()) {
+  function renderFocus(
+    focus: { participantId: string | null; seq: number } | null,
+    onFocusDone = vi.fn(),
+    bill: BillState = three,
+  ) {
     const utils = render(
       <SummarySection
-        participants={three.participants}
+        participants={bill.participants}
         additionalFees={[]}
-        state={three}
-        breakdown={calculateBreakdown(three)}
+        state={bill}
+        breakdown={calculateBreakdown(bill)}
         focus={focus}
         onFocusDone={onFocusDone}
       />,
@@ -470,7 +477,7 @@ describe('SummarySection receipt links', () => {
     vi.useRealTimers()
   })
 
-  it('puts a share icon on each person card but not on the bill total card', async () => {
+  it('puts a share icon on each person card', async () => {
     setInnerWidth(375)
     renderFocus(null)
     for (const name of ['Alice', 'Bob', 'Carol']) {
@@ -479,7 +486,76 @@ describe('SummarySection receipt links', () => {
       // Enabled once the link encoder has loaded.
       await waitFor(() => expect(button).toBeEnabled())
     }
-    expect(within(screen.getByRole('region', { name: 'Bill total' })).queryByRole('button')).toBeNull()
+  })
+
+  it('puts a share icon on the bill total card that shares only the bare bill link', async () => {
+    setInnerWidth(375)
+    const share = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true, writable: true })
+    try {
+      renderFocus(null, vi.fn(), billState({ name: 'Friday dinner', participants: [alice, bob, carol] }))
+      const button = within(screen.getByRole('region', { name: 'Bill total for Friday dinner' }))
+        .getByRole('button', { name: 'Share link to the bill total' })
+      await waitFor(() => expect(button).toBeEnabled())
+      await userEvent.click(button)
+
+      const data = share.mock.calls[0][0] as ShareData
+      // Only the URL: no title or text around it.
+      expect(Object.keys(data)).toEqual(['url'])
+      const link = await readIncomingLink(new URL(data.url!).hash)
+      if (link?.kind !== 'bill') throw new Error('expected a bill link')
+      expect(link.personId).toBeNull()
+      expect(link.bill.name).toBe('Friday dinner')
+    } finally {
+      delete (navigator as unknown as Record<string, unknown>).share
+    }
+  })
+
+  it('has a share icon on the bill total card even when it is the only card', () => {
+    setInnerWidth(375)
+    const solo = billState({ participants: [alice] })
+    renderFocus(null, vi.fn(), solo)
+    expect(within(screen.getByRole('region', { name: 'Bill total' })).getByRole('button')).toBeInTheDocument()
+  })
+
+  describe('bill total card title', () => {
+    function titles() {
+      return screen.getAllByRole('region').map(c => c.getAttribute('aria-label'))
+    }
+
+    it('says "Bill total" when the bill has no name', () => {
+      setInnerWidth(375)
+      renderFocus(null)
+      expect(titles()[0]).toBe('Bill total')
+    })
+
+    it('treats a name of only spaces as no name', () => {
+      setInnerWidth(375)
+      renderFocus(null, vi.fn(), billState({ name: '   ', participants: [alice, bob, carol] }))
+      expect(titles()[0]).toBe('Bill total')
+    })
+
+    it('adds the bill name, trimmed', () => {
+      setInnerWidth(375)
+      renderFocus(null, vi.fn(), billState({ name: '  Friday dinner ', participants: [alice, bob, carol] }))
+      expect(titles()[0]).toBe('Bill total for Friday dinner')
+      expect(screen.getByText('Bill total for Friday dinner')).toBeVisible()
+    })
+
+    it('keeps a long name on one line and offers the full title on hover', () => {
+      setInnerWidth(375)
+      const name = 'A very long name for a dinner that went on and on and on and on'
+      renderFocus(null, vi.fn(), billState({ name, participants: [alice, bob, carol] }))
+      const title = screen.getByText(`Bill total for ${name}`)
+      expect(title).toHaveClass('truncate')
+      expect(title).toHaveAttribute('title', `Bill total for ${name}`)
+    })
+
+    it('does not rename the person cards', () => {
+      setInnerWidth(375)
+      renderFocus(null, vi.fn(), billState({ name: 'Friday dinner', participants: [alice, bob, carol] }))
+      expect(titles().slice(1)).toEqual(['Alice', 'Bob', 'Carol'])
+    })
   })
 
   it('has no share icons in the desktop table', () => {
@@ -540,6 +616,62 @@ describe('SummarySection receipt links', () => {
     const cells = within(row).getAllByRole('cell')
     // Label, Total, then Alice, Bob, Carol.
     expect(cells.map(c => c.hasAttribute('data-focused'))).toEqual([false, false, false, true, false])
+  })
+
+  describe('when the focus is the whole bill', () => {
+    it('jumps to the bill total card without animation, and does not highlight it', () => {
+      vi.useFakeTimers()
+      setInnerWidth(375)
+      const { onFocusDone } = renderFocus({ participantId: null, seq: 1 })
+      const card = screen.getByRole('region', { name: 'Bill total' })
+      expect(scrollIntoView).toHaveBeenCalledTimes(1)
+      expect(scrollIntoView.mock.contexts[0]).toBe(card)
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
+      expect(card).not.toHaveAttribute('data-focused')
+      // Nothing to wait for, so the request is over straight away.
+      expect(onFocusDone).toHaveBeenCalledTimes(1)
+    })
+
+    it('jumps even when the visitor prefers reduced motion', () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce') }))
+      setInnerWidth(375)
+      renderFocus({ participantId: null, seq: 1 })
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
+    })
+
+    it('scrolls to the bill total card on a one-person bill', () => {
+      setInnerWidth(375)
+      renderFocus({ participantId: null, seq: 1 }, vi.fn(), billState({ participants: [alice] }))
+      expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('region', { name: 'Bill total' }))
+    })
+
+    it('does not scroll on wide screens, where the table is already in view', () => {
+      const { onFocusDone } = renderFocus({ participantId: null, seq: 1 })
+      expect(scrollIntoView).not.toHaveBeenCalled()
+      expect(onFocusDone).toHaveBeenCalledTimes(1)
+    })
+
+    it('scrolls again for a second request', () => {
+      setInnerWidth(375)
+      const { rerender, onFocusDone } = renderFocus({ participantId: null, seq: 1 })
+      rerender(
+        <SummarySection
+          participants={three.participants}
+          additionalFees={[]}
+          state={three}
+          breakdown={calculateBreakdown(three)}
+          focus={{ participantId: null, seq: 2 }}
+          onFocusDone={onFocusDone}
+        />,
+      )
+      expect(scrollIntoView).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not scroll when there is no request', () => {
+      setInnerWidth(375)
+      renderFocus(null)
+      expect(scrollIntoView).not.toHaveBeenCalled()
+    })
   })
 
   it('finishes straight away when the person is not on the bill', () => {

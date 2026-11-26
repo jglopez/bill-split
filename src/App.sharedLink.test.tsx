@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from './App'
-import { encodeBillHash, LATEST_LINK_FORMAT } from './share/link/billLink'
+import { encodeBillHash, LATEST_LINK_FORMAT, personLinkUrl } from './share/link/billLink'
 import { BILL_HASH_PREFIX } from './share/link/hash'
 import { DEFAULT_STATE } from './hooks/useBillSplit'
 import { CURRENT_BILL_VERSION } from './lib/migrations'
@@ -93,5 +93,53 @@ describe('opening a shared bill link', () => {
     visit(encodeBillHash(shared))
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await screen.findByLabelText('Rename Alice')
+  })
+})
+
+describe('where a shared bill link lands on phones', () => {
+  const DEFAULT_WIDTH = window.innerWidth
+  let scrollIntoView: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView as unknown as Element['scrollIntoView']
+    Object.defineProperty(window, 'innerWidth', { value: 375, configurable: true, writable: true })
+  })
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView
+    Object.defineProperty(window, 'innerWidth', { value: DEFAULT_WIDTH, configurable: true, writable: true })
+  })
+
+  it('scrolls to the bill total card when the link points at no one', async () => {
+    visit(encodeBillHash(shared))
+    render(<App />)
+    const card = await screen.findByRole('region', { name: 'Bill total for Shared dinner' })
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1))
+    expect(scrollIntoView.mock.contexts[0]).toBe(card)
+  })
+
+  it('scrolls to the person instead when the link points at one', async () => {
+    visit(new URL(personLinkUrl(shared, 'b', 'https://x.test/')).hash)
+    render(<App />)
+    const card = await screen.findByRole('region', { name: 'Bob' })
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1))
+    expect(scrollIntoView.mock.contexts[0]).toBe(card)
+  })
+
+  it('does not scroll for someone just opening their own bill', async () => {
+    localStorage.setItem(`bill-split:v${CURRENT_BILL_VERSION}`, JSON.stringify(shared))
+    render(<App />)
+    await screen.findByRole('region', { name: 'Bill total for Shared dinner' })
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('scrolls only after a bill in progress has been replaced, not when the question appears', async () => {
+    localStorage.setItem(`bill-split:v${CURRENT_BILL_VERSION}`, JSON.stringify(mine))
+    visit(encodeBillHash(shared))
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('dialog')
+    expect(scrollIntoView).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Open shared bill' }))
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1))
   })
 })

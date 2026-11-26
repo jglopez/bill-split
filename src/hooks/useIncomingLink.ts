@@ -13,16 +13,21 @@ import { clearIncomingLink, readIncomingLink, type IncomingLink } from '../share
  * the bill in progress. Links that can't be opened also wait in `incoming`,
  * so the app can say why.
  *
- * A link can point at one person's receipt. Once such a bill is opened,
- * `focus` names that person until `clearFocus` is called, so the summary can
- * scroll to them. `seq` changes each time, so opening the same link twice
- * scrolls twice. Dismissing the link doesn't scroll anywhere.
+ * Once a shared bill is opened, `focus` says where the summary should scroll
+ * until `clearFocus` is called. A link can point at one person's receipt,
+ * and then `participantId` names them. A link that points at no one (or at
+ * someone the bill doesn't have) gives a null `participantId`, which means
+ * the bill total: that is where anyone opening a shared bill should land,
+ * so no separate marker is needed in the link. `seq` changes each time, so
+ * opening the same link twice scrolls twice. Dismissing the link doesn't
+ * scroll anywhere, and a bill that was never opened from a link has no
+ * `focus`.
  */
 export function useIncomingLink(state: BillState, load: (bill: BillState) => void) {
   const [incoming, setIncoming] = useState<IncomingLink | null>(null)
-  const [focus, setFocus] = useState<{ participantId: string; seq: number } | null>(null)
+  const [focus, setFocus] = useState<{ participantId: string | null; seq: number } | null>(null)
   const focusOn = useCallback((participantId: string | null) => {
-    setFocus(prev => (participantId ? { participantId, seq: (prev?.seq ?? 0) + 1 } : null))
+    setFocus(prev => ({ participantId, seq: (prev?.seq ?? 0) + 1 }))
   }, [])
   const clearFocus = useCallback(() => setFocus(null), [])
   // The bill as of the latest render, read when a link finishes decoding.
