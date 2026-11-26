@@ -76,7 +76,7 @@ describe('ShareBillButtons', () => {
     renderButtons()
 
     await userEvent.click(await enabledButton('Share link'))
-    expect(share).toHaveBeenCalledWith({ title: sampleBill.name.trim(), url: billLinkUrl(sampleBill) })
+    expect(share).toHaveBeenCalledWith({ title: `Bill split for ${sampleBill.name.trim()}`, url: billLinkUrl(sampleBill) })
   })
 
   it('copies only the bill link where there is no share sheet', async () => {

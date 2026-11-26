@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildShareData } from './shareData'
+import { billShareTitle, buildShareData } from './shareData'
 import { sampleBill } from './fixtures/sampleBill'
 import { calculateBreakdown, calculateSettlement } from '../utils/calculate'
 import type { BillState } from '../types'
@@ -96,5 +96,20 @@ describe('buildShareData', () => {
   it('has no settlements when nobody owes anybody', () => {
     const solo: BillState = { ...sampleBill, participants: [{ id: 'a', name: 'Alice' }] }
     expect(buildShareData(solo).settlements).toEqual([])
+  })
+})
+
+describe('billShareTitle', () => {
+  it('names the bill', () => {
+    expect(billShareTitle('Friday dinner')).toBe('Bill split for Friday dinner')
+  })
+
+  it('trims the name and drops control characters', () => {
+    expect(billShareTitle('  Friday\tdinner\n ')).toBe('Bill split for Fridaydinner')
+  })
+
+  it('falls back to the app name when the bill has no name', () => {
+    expect(billShareTitle('')).toBe('Bill split')
+    expect(billShareTitle('   ')).toBe('Bill split')
   })
 })
