@@ -9,10 +9,11 @@ interface Props {
 
 /**
  * The share icon on the "Bill total" card. It sends the bare link to the
- * bill with the same title as the "Share link" button, and no other wording: opening any link without a person marker
- * lands on the bill total card (see SummarySection), so the plain link
- * already points where this card is. The title shows in the share sheet; the
- * message itself, and what a copy puts on the clipboard, is just the URL.
+ * bill, with the same title as the "Share link" button and no other wording:
+ * opening any link without a person marker lands on the bill total card (see
+ * SummarySection), so the plain link already points where this card is. The
+ * title shows in the share sheet; the message itself, and what a copy puts on
+ * the clipboard, is just the URL.
  */
 export function ShareBillTotalButton({ state }: Props) {
   const link = useLinkEncoder()
