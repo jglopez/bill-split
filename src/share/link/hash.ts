@@ -29,7 +29,8 @@ export interface SplitBillHash {
   /**
    * The position of the person the link points at, or null when it points at
    * no one in particular. A marker that isn't a plain position counts as
-   * none: the bill still opens, it just doesn't scroll anywhere.
+   * none: the bill still opens, and the app lands on the bill total, as it
+   * does for any link with no marker.
    */
   person: number | null
 }
