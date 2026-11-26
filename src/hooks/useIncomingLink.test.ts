@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type { BillState } from '../types'
 import { DEFAULT_STATE } from './useBillSplit'
 import { useIncomingLink } from './useIncomingLink'
-import { personLinkUrl } from '../share/link/billLink'
+import { billLinkUrl, personLinkUrl } from '../share/link/billLink'
 
 const bill: BillState = {
   ...DEFAULT_STATE,
@@ -56,5 +56,54 @@ describe('useIncomingLink with a link to one person', () => {
     await waitFor(() => expect(result.current.incoming?.kind).toBe('bill'))
     act(() => result.current.dismiss())
     expect(result.current.focus).toBeNull()
+  })
+})
+
+describe('useIncomingLink with a link to the bill as a whole', () => {
+  const hash = new URL(billLinkUrl(bill, 'https://x.test/')).hash
+
+  it('opens a blank bill and focuses the bill total, not a person', async () => {
+    visit(hash)
+    const load = vi.fn()
+    const { result } = renderHook(() => useIncomingLink(DEFAULT_STATE, load))
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1))
+    expect(result.current.focus).toEqual({ participantId: null, seq: 1 })
+
+    act(() => result.current.clearFocus())
+    expect(result.current.focus).toBeNull()
+  })
+
+  it('focuses the bill total only once the shared bill is opened over a bill in progress', async () => {
+    visit(hash)
+    const load = vi.fn()
+    const { result } = renderHook(() => useIncomingLink(bill, load))
+
+    await waitFor(() => expect(result.current.incoming?.kind).toBe('bill'))
+    expect(result.current.focus).toBeNull()
+    act(() => result.current.open())
+    expect(result.current.focus).toMatchObject({ participantId: null })
+  })
+
+  it('does not scroll anywhere when the shared bill is dismissed', async () => {
+    visit(hash)
+    const { result } = renderHook(() => useIncomingLink(bill, vi.fn()))
+
+    await waitFor(() => expect(result.current.incoming?.kind).toBe('bill'))
+    act(() => result.current.dismiss())
+    expect(result.current.focus).toBeNull()
+  })
+
+  it('does not focus anything when no link is opened', async () => {
+    const { result } = renderHook(() => useIncomingLink(DEFAULT_STATE, vi.fn()))
+    await act(async () => {})
+    expect(result.current.focus).toBeNull()
+  })
+
+  it('lets a link to a person win over the bill total', async () => {
+    visit(new URL(personLinkUrl(bill, 'a', 'https://x.test/')).hash)
+    const { result } = renderHook(() => useIncomingLink(DEFAULT_STATE, vi.fn()))
+    await waitFor(() => expect(result.current.focus).not.toBeNull())
+    expect(result.current.focus?.participantId).not.toBeNull()
   })
 })

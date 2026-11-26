@@ -6,6 +6,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { formatAmount } from '../utils/format'
 import { describeGroup, summarizeGroup } from '../utils/group'
 import { SharePersonButton } from './SharePersonButton'
+import { ShareBillTotalButton } from './ShareBillTotalButton'
 
 interface Props {
   participants: Participant[]
@@ -13,12 +14,15 @@ interface Props {
   state: BillState
   breakdown: BillBreakdown
   /**
-   * A person to scroll to and briefly highlight, such as the one a shared
-   * link points at. `seq` changes on every request, so the same person can
-   * be focused twice.
+   * Where to scroll to, such as what a shared link points at. A
+   * `participantId` scrolls to that person and briefly highlights them. A
+   * null one means the bill as a whole: on narrow screens it scrolls
+   * instantly to the "Bill total" card without highlighting it, and on wide
+   * screens, where the table is already in view, it does nothing. `seq`
+   * changes on every request, so the same target can be focused twice.
    */
-  focus?: { participantId: string; seq: number } | null
-  /** Called once the highlight is over, or right away when there's nothing to scroll to. */
+  focus?: { participantId: string | null; seq: number } | null
+  /** Called once the highlight is over, or right away when there's nothing to scroll to or highlight. */
   onFocusDone?: () => void
 }
 
@@ -47,10 +51,15 @@ function prefersReducedMotion(): boolean {
  * only the "Bill total" card is shown, since their card would be identical.
  *
  * On narrow screens each person's card has a share icon that sends a link
- * to their share.
+ * to their share, and the "Bill total" card has one that sends the bare
+ * link to the bill. The card is titled "Bill total for <name>" when the
+ * bill has a name, cut off with an ellipsis on one line when it's long.
  *
  * A `focus` request scrolls to that person: their card on narrow screens,
- * or the table on wide ones, where their column is tinted instead.
+ * or the table on wide ones, where their column is tinted instead. A
+ * request for no one in particular scrolls to the "Bill total" card, which
+ * is what a visitor opening a shared bill should see first: the simplest
+ * part of the app, and well away from the draggable lists above it.
  *
  * Display-only; all interactive inputs live in the sections above.
  */
@@ -59,16 +68,25 @@ export function SummarySection({ participants, additionalFees, state, breakdown,
   // Each person's card, by participant id, so a focus request can find it.
   const cards = useRef(new Map<string, HTMLElement>())
   const table = useRef<HTMLDivElement>(null)
+  const billCard = useRef<HTMLElement>(null)
   // The latest callback, so a parent re-render doesn't restart the highlight.
   const onFocusDoneRef = useRef(onFocusDone)
   useEffect(() => {
     onFocusDoneRef.current = onFocusDone
   }, [onFocusDone])
 
-  const participantId = focus?.participantId
+  const hasFocus = focus != null
+  const participantId = focus?.participantId ?? null
   const seq = focus?.seq
   useEffect(() => {
-    if (participantId === undefined) return
+    if (!hasFocus) return
+    if (participantId === null) {
+      // The bill as a whole. Jump rather than animate so a visitor never
+      // sees the page start at the top, and leave the card unhighlighted.
+      if (isMobile) billCard.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
+      onFocusDoneRef.current?.()
+      return
+    }
     const target = isMobile ? cards.current.get(participantId) : table.current
     if (!target) {
       // Nothing to show this person in (for example a bill with nothing on
@@ -86,10 +104,10 @@ export function SummarySection({ participants, additionalFees, state, breakdown,
     // isMobile is left out on purpose: rotating the phone mid-highlight
     // shouldn't scroll again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [participantId, seq])
+  }, [hasFocus, participantId, seq])
 
   if (participants.length === 0 || breakdown.totalSubtotal === 0) return null
-  const highlightId = participantId ?? null
+  const highlightId = participantId
   const perPersonMap = new Map(breakdown.perPerson.map(p => [p.participantId, p]))
 
   function perPersonValue(participantId: string, field: 'subtotal' | 'tax' | 'tip' | 'grandTotal'): number {
@@ -101,10 +119,14 @@ export function SummarySection({ participants, additionalFees, state, breakdown,
   }
 
   if (isMobile) {
+    const billName = state.name.trim()
     return (
       <div className="mt-4 space-y-3">
         <SummaryCard
-          title="Bill total"
+          title={billName ? `Bill total for ${billName}` : 'Bill total'}
+          truncateTitle
+          cardRef={billCard}
+          action={<ShareBillTotalButton state={state} />}
           totalLabel="Grand total"
           subtotal={breakdown.totalSubtotal}
           tax={breakdown.totalTax}
@@ -241,6 +263,7 @@ export function SummarySection({ participants, additionalFees, state, breakdown,
  */
 function SummaryCard({
   title,
+  truncateTitle = false,
   totalLabel,
   subtotal,
   tax,
@@ -258,6 +281,12 @@ function SummaryCard({
   action,
 }: {
   title: string
+  /**
+   * Keep the title on one line, cut off with an ellipsis, so a long bill
+   * name can't push the card's share icon or the totals around. The full
+   * title stays in the tooltip and the card's accessible name.
+   */
+  truncateTitle?: boolean
   totalLabel: string
   subtotal: number
   tax: number
@@ -289,7 +318,9 @@ function SummaryCard({
       className={`rounded-lg border px-4 py-3 text-sm scroll-mt-4 transition-shadow duration-700 motion-reduce:transition-none ${containerClass} ${focusClass}`}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="font-medium text-gray-800 [overflow-wrap:anywhere]">{title}</div>
+        {truncateTitle
+          ? <div title={title} className="min-w-0 font-medium text-gray-800 truncate">{title}</div>
+          : <div className="font-medium text-gray-800 [overflow-wrap:anywhere]">{title}</div>}
         {/* The tap target is larger than the glyph; negative margins keep it
             from making the card taller or pushing the title in. */}
         {action && <div className="-mr-3 -my-3 shrink-0">{action}</div>}

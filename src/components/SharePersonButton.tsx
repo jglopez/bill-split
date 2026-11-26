@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react'
 import type { BillState, Participant } from '../types'
+import { useLinkEncoder } from '../hooks/useLinkEncoder'
 import { formatMoney } from '../utils/format'
 import { ShareButton, type ShareContent } from './ShareButton'
-
-type LinkModule = typeof import('../share/link/billLink')
 
 interface Props {
   state: BillState
@@ -33,20 +31,11 @@ export function personShareContent(billName: string, personName: string, total: 
  * a line saying what they owe. Where there's no share sheet it copies the
  * same thing instead.
  *
- * The link encoder loads in the background when this mounts, and the icon
- * stays disabled until it has, because the link has to be built during the
- * tap itself (see ShareButton).
+ * The icon stays disabled until the link encoder has loaded, because the
+ * link has to be built during the tap itself (see useLinkEncoder).
  */
 export function SharePersonButton({ state, participant, total }: Props) {
-  const [link, setLink] = useState<LinkModule | null>(null)
-
-  useEffect(() => {
-    let active = true
-    // If the chunk can't be fetched the icon just stays disabled; the bill
-    // share buttons at the bottom already say to reload.
-    import('../share/link/billLink').then(mod => { if (active) setLink(mod) }, () => {})
-    return () => { active = false }
-  }, [])
+  const link = useLinkEncoder()
 
   function getContent(): ShareContent {
     if (!link) throw new Error('Link encoder is not loaded yet')
